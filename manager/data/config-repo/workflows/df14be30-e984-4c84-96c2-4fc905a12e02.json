@@ -1,6 +1,6 @@
 {
-  "id": "wf-1757470969419",
-  "name": "testalert",
+  "id": "df14be30-e984-4c84-96c2-4fc905a12e02",
+  "name": "testalert2",
   "enabled": true,
   "drawflow": {
     "drawflow": {
@@ -10,7 +10,7 @@
             "id": 1,
             "name": "schedule-trigger",
             "data": {
-              "cron": "0 * * * *"
+              "cron": "* * * * *"
             },
             "class": "node-trigger",
             "html": "\n      <div class=\"node-trigger\">\n        <div class=\"node-header\">Schedule Trigger</div>\n        <div class=\"node-content\">\n          <small style=\"color: #666;\">schedule-trigger</small>\n        </div>\n      </div>\n    ",
@@ -60,7 +60,7 @@
   "trigger": {
     "type": "schedule",
     "config": {
-      "cron": "0 * * * *"
+      "cron": "* * * * *"
     },
     "startSteps": [
       "step-2"
