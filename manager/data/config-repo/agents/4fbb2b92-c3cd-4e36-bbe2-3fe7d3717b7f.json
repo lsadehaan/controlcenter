@@ -248,6 +248,87 @@
           "next": []
         }
       ]
+    },
+    {
+      "id": "wf-1757470969419",
+      "name": "testalert",
+      "enabled": true,
+      "drawflow": {
+        "drawflow": {
+          "Home": {
+            "data": {
+              "1": {
+                "id": 1,
+                "name": "schedule-trigger",
+                "data": {
+                  "cron": "0 * * * *"
+                },
+                "class": "node-trigger",
+                "html": "\n      <div class=\"node-trigger\">\n        <div class=\"node-header\">Schedule Trigger</div>\n        <div class=\"node-content\">\n          <small style=\"color: #666;\">schedule-trigger</small>\n        </div>\n      </div>\n    ",
+                "typenode": false,
+                "inputs": {},
+                "outputs": {
+                  "output_1": {
+                    "connections": [
+                      {
+                        "node": "2",
+                        "output": "input_1"
+                      }
+                    ]
+                  }
+                },
+                "pos_x": 200,
+                "pos_y": 169.54165649414062
+              },
+              "2": {
+                "id": 2,
+                "name": "alert",
+                "data": {
+                  "level": "info",
+                  "message": ""
+                },
+                "class": "node-output",
+                "html": "\n      <div class=\"node-output\">\n        <div class=\"node-header\">Send Alert</div>\n        <div class=\"node-content\">\n          <small style=\"color: #666;\">alert</small>\n        </div>\n      </div>\n    ",
+                "typenode": false,
+                "inputs": {
+                  "input_1": {
+                    "connections": [
+                      {
+                        "node": "1",
+                        "input": "output_1"
+                      }
+                    ]
+                  }
+                },
+                "outputs": {},
+                "pos_x": 553,
+                "pos_y": 99
+              }
+            }
+          }
+        }
+      },
+      "trigger": {
+        "type": "schedule",
+        "config": {
+          "cron": "0 * * * *"
+        },
+        "startSteps": [
+          "step-2"
+        ]
+      },
+      "steps": [
+        {
+          "id": "step-2",
+          "type": "alert",
+          "name": "alert",
+          "config": {
+            "level": "info",
+            "message": ""
+          },
+          "next": []
+        }
+      ]
     }
   ]
 }
