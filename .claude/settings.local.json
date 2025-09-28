@@ -23,7 +23,9 @@
       "Bash(del \"C:\\Users\\ade_h\\.controlcenter-agent\\config-repo\\agents\\test.txt\")",
       "Bash(./agent.exe -list-backups)",
       "Bash(git pull:*)",
-      "Bash(./agent.exe -recover-backup latest)"
+      "Bash(./agent.exe -recover-backup latest)",
+      "WebSearch",
+      "Bash(git push:*)"
     ],
     "deny": [],
     "ask": [],
