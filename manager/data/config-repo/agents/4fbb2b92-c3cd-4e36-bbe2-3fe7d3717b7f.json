@@ -1,0 +1,988 @@
+{
+  "sshServerPort": 2222,
+  "configRepoPath": "",
+  "authorizedSSHKeys": [],
+  "workflows": [
+    {
+      "id": "df14be30-e984-4c84-96c2-4fc905a12e02",
+      "name": "testalert2",
+      "enabled": true,
+      "drawflow": {
+        "drawflow": {
+          "Home": {
+            "data": {
+              "1": {
+                "id": 1,
+                "name": "schedule-trigger",
+                "data": {
+                  "cron": "* * * * *"
+                },
+                "class": "node-trigger",
+                "html": "\n      <div class=\"node-trigger\">\n        <div class=\"node-header\">Schedule Trigger</div>\n        <div class=\"node-content\">\n          <small style=\"color: #666;\">schedule-trigger</small>\n        </div>\n      </div>\n    ",
+                "typenode": false,
+                "inputs": {},
+                "outputs": {
+                  "output_1": {
+                    "connections": [
+                      {
+                        "node": "2",
+                        "output": "input_1"
+                      }
+                    ]
+                  }
+                },
+                "pos_x": 93,
+                "pos_y": 90
+              },
+              "2": {
+                "id": 2,
+                "name": "alert",
+                "data": {
+                  "level": "info",
+                  "message": "Hello"
+                },
+                "class": "node-output",
+                "html": "\n      <div class=\"node-output\">\n        <div class=\"node-header\">Send Alert</div>\n        <div class=\"node-content\">\n          <small style=\"color: #666;\">alert</small>\n        </div>\n      </div>\n    ",
+                "typenode": false,
+                "inputs": {
+                  "input_1": {
+                    "connections": [
+                      {
+                        "node": "1",
+                        "input": "output_1"
+                      }
+                    ]
+                  }
+                },
+                "outputs": {},
+                "pos_x": 385,
+                "pos_y": 89
+              }
+            }
+          }
+        }
+      },
+      "trigger": {
+        "type": "schedule",
+        "config": {
+          "cron": "* * * * *"
+        },
+        "startSteps": [
+          "step-2"
+        ]
+      },
+      "steps": [
+        {
+          "id": "step-2",
+          "type": "alert",
+          "name": "alert",
+          "config": {
+            "level": "info",
+            "message": "Hello"
+          },
+          "next": []
+        }
+      ]
+    }
+  ],
+  "custom": {},
+  "fileWatcherRules": [
+    {
+      "id": "recebe_arquivos_banrisul",
+      "name": "Recebe Arquivos Banrisul",
+      "enabled": true,
+      "description": "",
+      "dirRegex": "(?i)\\Banrisul\\Entrada$",
+      "fileRegex": "BRIICAV.*",
+      "contentRegex": "",
+      "operations": {
+        "copyToDir": "\\\\cpc-srv-perseu\\InputFiles\\MPAG\\Banrisul",
+        "copyFileOption": 21,
+        "copyTempExtension": "",
+        "renameFileTo": "",
+        "insertTimestamp": false,
+        "backupToDir": "",
+        "backupFileOption": 0,
+        "removeAfterCopy": true,
+        "removeAfterHours": 0,
+        "overwrite": true,
+        "execProgBefore": "",
+        "execProg": "",
+        "execProgError": ""
+      },
+      "timeRestrictions": {
+        "startHour": 0,
+        "startMinute": 0,
+        "endHour": 23,
+        "endMinute": 59,
+        "weekDayInterval": 127,
+        "processAfterSecs": 0
+      },
+      "processingOptions": {
+        "checkFileInUse": false,
+        "maxRetries": 3,
+        "delayRetry": 1000,
+        "delayNextFile": 0,
+        "scanSubDir": false
+      }
+    },
+    {
+      "id": "recebe_arquivos_cef",
+      "name": "Recebe Arquivos CEF",
+      "enabled": false,
+      "description": "",
+      "dirRegex": "(?i)\\CEF\\PL$",
+      "fileRegex": "(?i)^.*",
+      "contentRegex": "",
+      "operations": {
+        "copyToDir": "F:\\STCPODT\\O0055INTELCAVPROD\\SAIDA",
+        "copyFileOption": 21,
+        "copyTempExtension": "",
+        "renameFileTo": "CEF-CON",
+        "insertTimestamp": false,
+        "backupToDir": "",
+        "backupFileOption": 0,
+        "removeAfterCopy": true,
+        "removeAfterHours": 0,
+        "overwrite": true,
+        "execProgBefore": "",
+        "execProg": "",
+        "execProgError": ""
+      },
+      "timeRestrictions": {
+        "startHour": 0,
+        "startMinute": 0,
+        "endHour": 23,
+        "endMinute": 59,
+        "weekDayInterval": 127,
+        "processAfterSecs": 0
+      },
+      "processingOptions": {
+        "checkFileInUse": false,
+        "maxRetries": 3,
+        "delayRetry": 1000,
+        "delayNextFile": 0,
+        "scanSubDir": false
+      }
+    },
+    {
+      "id": "recebe_arquivos_csu",
+      "name": "Recebe Arquivos CSU",
+      "enabled": true,
+      "description": "",
+      "dirRegex": "(?i)\\CSU$",
+      "fileRegex": "(?i)^.*",
+      "contentRegex": "",
+      "operations": {
+        "copyToDir": "F:\\STCPODT\\O0055INTELCAVPROD\\SAIDA",
+        "copyFileOption": 21,
+        "copyTempExtension": "",
+        "renameFileTo": "CSU-CON",
+        "insertTimestamp": false,
+        "backupToDir": "",
+        "backupFileOption": 0,
+        "removeAfterCopy": true,
+        "removeAfterHours": 0,
+        "overwrite": true,
+        "execProgBefore": "",
+        "execProg": "",
+        "execProgError": ""
+      },
+      "timeRestrictions": {
+        "startHour": 0,
+        "startMinute": 0,
+        "endHour": 23,
+        "endMinute": 59,
+        "weekDayInterval": 127,
+        "processAfterSecs": 0
+      },
+      "processingOptions": {
+        "checkFileInUse": false,
+        "maxRetries": 3,
+        "delayRetry": 1000,
+        "delayNextFile": 0,
+        "scanSubDir": false
+      }
+    },
+    {
+      "id": "recebe_arquivos_banco_amazonia",
+      "name": "Recebe Arquivos Banco_Amazonia",
+      "enabled": true,
+      "description": "",
+      "dirRegex": "(?i)\\Banco_Amazonia$",
+      "fileRegex": "(?i)^CWE_Emb*",
+      "contentRegex": "",
+      "operations": {
+        "copyToDir": "F:\\STCPODT\\O0055INTELCAVPROD\\SAIDA",
+        "copyFileOption": 21,
+        "copyTempExtension": "",
+        "renameFileTo": "",
+        "insertTimestamp": false,
+        "backupToDir": "",
+        "backupFileOption": 0,
+        "removeAfterCopy": true,
+        "removeAfterHours": 0,
+        "overwrite": true,
+        "execProgBefore": "",
+        "execProg": "",
+        "execProgError": ""
+      },
+      "timeRestrictions": {
+        "startHour": 0,
+        "startMinute": 0,
+        "endHour": 23,
+        "endMinute": 59,
+        "weekDayInterval": 127,
+        "processAfterSecs": 0
+      },
+      "processingOptions": {
+        "checkFileInUse": false,
+        "maxRetries": 3,
+        "delayRetry": 1000,
+        "delayNextFile": 0,
+        "scanSubDir": false
+      }
+    },
+    {
+      "id": "recebe_arquivos_banpara",
+      "name": "Recebe Arquivos Banpara",
+      "enabled": true,
+      "description": "",
+      "dirRegex": "(?i)\\Banpara$",
+      "fileRegex": "(?i)^.*",
+      "contentRegex": "",
+      "operations": {
+        "copyToDir": "F:\\STCPODT\\O0055INTELCAVPROD\\SAIDA",
+        "copyFileOption": 21,
+        "copyTempExtension": "",
+        "renameFileTo": "BANPARA-CON",
+        "insertTimestamp": false,
+        "backupToDir": "",
+        "backupFileOption": 0,
+        "removeAfterCopy": true,
+        "removeAfterHours": 0,
+        "overwrite": true,
+        "execProgBefore": "",
+        "execProg": "",
+        "execProgError": ""
+      },
+      "timeRestrictions": {
+        "startHour": 0,
+        "startMinute": 0,
+        "endHour": 23,
+        "endMinute": 59,
+        "weekDayInterval": 127,
+        "processAfterSecs": 0
+      },
+      "processingOptions": {
+        "checkFileInUse": false,
+        "maxRetries": 3,
+        "delayRetry": 1000,
+        "delayNextFile": 0,
+        "scanSubDir": false
+      }
+    },
+    {
+      "id": "recebe_arquivos_credz",
+      "name": "Recebe Arquivos Credz",
+      "enabled": true,
+      "description": "",
+      "dirRegex": "(?i)\\Credz$",
+      "fileRegex": "(?i)^.*",
+      "contentRegex": "",
+      "operations": {
+        "copyToDir": "F:\\STCPODT\\O0055INTELCAVPROD\\SAIDA",
+        "copyFileOption": 21,
+        "copyTempExtension": "",
+        "renameFileTo": "CREDZ-CON",
+        "insertTimestamp": false,
+        "backupToDir": "",
+        "backupFileOption": 0,
+        "removeAfterCopy": true,
+        "removeAfterHours": 0,
+        "overwrite": true,
+        "execProgBefore": "",
+        "execProg": "",
+        "execProgError": ""
+      },
+      "timeRestrictions": {
+        "startHour": 0,
+        "startMinute": 0,
+        "endHour": 23,
+        "endMinute": 59,
+        "weekDayInterval": 127,
+        "processAfterSecs": 0
+      },
+      "processingOptions": {
+        "checkFileInUse": false,
+        "maxRetries": 3,
+        "delayRetry": 1000,
+        "delayNextFile": 0,
+        "scanSubDir": false
+      }
+    },
+    {
+      "id": "recebe_arquivos_sodexo",
+      "name": "Recebe Arquivos Sodexo",
+      "enabled": true,
+      "description": "",
+      "dirRegex": "(?i)\\SodexoEMV$",
+      "fileRegex": "(?i)^.*",
+      "contentRegex": "",
+      "operations": {
+        "copyToDir": "F:\\STCPODT\\O0055INTELCAVPROD\\SAIDA",
+        "copyFileOption": 21,
+        "copyTempExtension": "",
+        "renameFileTo": "SODEXO-CON",
+        "insertTimestamp": false,
+        "backupToDir": "",
+        "backupFileOption": 0,
+        "removeAfterCopy": true,
+        "removeAfterHours": 0,
+        "overwrite": true,
+        "execProgBefore": "",
+        "execProg": "",
+        "execProgError": ""
+      },
+      "timeRestrictions": {
+        "startHour": 0,
+        "startMinute": 0,
+        "endHour": 23,
+        "endMinute": 59,
+        "weekDayInterval": 127,
+        "processAfterSecs": 0
+      },
+      "processingOptions": {
+        "checkFileInUse": false,
+        "maxRetries": 3,
+        "delayRetry": 1000,
+        "delayNextFile": 0,
+        "scanSubDir": false
+      }
+    },
+    {
+      "id": "recebe_arquivos_orbitall",
+      "name": "Recebe Arquivos Orbitall",
+      "enabled": true,
+      "description": "",
+      "dirRegex": "(?i)\\Orbitall\\Entrada$",
+      "fileRegex": "(?i)^.*",
+      "contentRegex": "",
+      "operations": {
+        "copyToDir": "F:\\STCPODT\\O0055INTELCAVPROD\\SAIDA",
+        "copyFileOption": 21,
+        "copyTempExtension": "",
+        "renameFileTo": "ORBITALL-CON",
+        "insertTimestamp": false,
+        "backupToDir": "",
+        "backupFileOption": 0,
+        "removeAfterCopy": true,
+        "removeAfterHours": 0,
+        "overwrite": true,
+        "execProgBefore": "",
+        "execProg": "",
+        "execProgError": ""
+      },
+      "timeRestrictions": {
+        "startHour": 0,
+        "startMinute": 0,
+        "endHour": 23,
+        "endMinute": 59,
+        "weekDayInterval": 127,
+        "processAfterSecs": 0
+      },
+      "processingOptions": {
+        "checkFileInUse": false,
+        "maxRetries": 3,
+        "delayRetry": 1000,
+        "delayNextFile": 0,
+        "scanSubDir": false
+      }
+    },
+    {
+      "id": "recebe_arquivos_hsherval",
+      "name": "Recebe Arquivos HSHerval",
+      "enabled": true,
+      "description": "",
+      "dirRegex": "(?i)\\HS-Herval\\PRD$",
+      "fileRegex": "(?i)^.*",
+      "contentRegex": "",
+      "operations": {
+        "copyToDir": "F:\\STCPODT\\O0055INTELCAVPROD\\SAIDA",
+        "copyFileOption": 21,
+        "copyTempExtension": "",
+        "renameFileTo": "HSHERVAL-CON",
+        "insertTimestamp": false,
+        "backupToDir": "",
+        "backupFileOption": 0,
+        "removeAfterCopy": true,
+        "removeAfterHours": 0,
+        "overwrite": true,
+        "execProgBefore": "",
+        "execProg": "",
+        "execProgError": ""
+      },
+      "timeRestrictions": {
+        "startHour": 0,
+        "startMinute": 0,
+        "endHour": 23,
+        "endMinute": 59,
+        "weekDayInterval": 127,
+        "processAfterSecs": 0
+      },
+      "processingOptions": {
+        "checkFileInUse": false,
+        "maxRetries": 3,
+        "delayRetry": 1000,
+        "delayNextFile": 0,
+        "scanSubDir": false
+      }
+    },
+    {
+      "id": "recebe_arquivos_itau",
+      "name": "Recebe Arquivos Itau",
+      "enabled": true,
+      "description": "",
+      "dirRegex": "(?i)\\Itau\\prd$",
+      "fileRegex": "(?i)^Itau_*",
+      "contentRegex": "",
+      "operations": {
+        "copyToDir": "F:\\FTPS\\Itau\\Entrada",
+        "copyFileOption": 21,
+        "copyTempExtension": "",
+        "renameFileTo": "",
+        "insertTimestamp": false,
+        "backupToDir": "",
+        "backupFileOption": 0,
+        "removeAfterCopy": true,
+        "removeAfterHours": 0,
+        "overwrite": true,
+        "execProgBefore": "",
+        "execProg": "",
+        "execProgError": ""
+      },
+      "timeRestrictions": {
+        "startHour": 0,
+        "startMinute": 0,
+        "endHour": 23,
+        "endMinute": 59,
+        "weekDayInterval": 127,
+        "processAfterSecs": 0
+      },
+      "processingOptions": {
+        "checkFileInUse": false,
+        "maxRetries": 3,
+        "delayRetry": 1000,
+        "delayNextFile": 0,
+        "scanSubDir": false
+      }
+    },
+    {
+      "id": "recebe_arquivos_credsystem",
+      "name": "Recebe Arquivos Credsystem",
+      "enabled": true,
+      "description": "",
+      "dirRegex": "(?i)\\Credsystem$",
+      "fileRegex": "(?i)^.*",
+      "contentRegex": "",
+      "operations": {
+        "copyToDir": "F:\\STCPODT\\O0055INTELCAVPROD\\SAIDA",
+        "copyFileOption": 21,
+        "copyTempExtension": "",
+        "renameFileTo": "CRESYSTEM-CON",
+        "insertTimestamp": false,
+        "backupToDir": "",
+        "backupFileOption": 0,
+        "removeAfterCopy": true,
+        "removeAfterHours": 0,
+        "overwrite": true,
+        "execProgBefore": "",
+        "execProg": "",
+        "execProgError": ""
+      },
+      "timeRestrictions": {
+        "startHour": 0,
+        "startMinute": 0,
+        "endHour": 23,
+        "endMinute": 59,
+        "weekDayInterval": 127,
+        "processAfterSecs": 0
+      },
+      "processingOptions": {
+        "checkFileInUse": false,
+        "maxRetries": 3,
+        "delayRetry": 1000,
+        "delayNextFile": 0,
+        "scanSubDir": false
+      }
+    },
+    {
+      "id": "recebe_arquivos_cef_hom",
+      "name": "Recebe Arquivos CEF HOM",
+      "enabled": true,
+      "description": "",
+      "dirRegex": "(?i)\\CEF\\PL\\HOM$",
+      "fileRegex": "(?i)^.*",
+      "contentRegex": "",
+      "operations": {
+        "copyToDir": "F:\\STCPODT\\O0055INTELCAVPROD\\SAIDA",
+        "copyFileOption": 21,
+        "copyTempExtension": "",
+        "renameFileTo": "HOM-CEF-CON",
+        "insertTimestamp": false,
+        "backupToDir": "",
+        "backupFileOption": 0,
+        "removeAfterCopy": true,
+        "removeAfterHours": 0,
+        "overwrite": true,
+        "execProgBefore": "",
+        "execProg": "",
+        "execProgError": ""
+      },
+      "timeRestrictions": {
+        "startHour": 0,
+        "startMinute": 0,
+        "endHour": 23,
+        "endMinute": 59,
+        "weekDayInterval": 127,
+        "processAfterSecs": 0
+      },
+      "processingOptions": {
+        "checkFileInUse": false,
+        "maxRetries": 3,
+        "delayRetry": 1000,
+        "delayNextFile": 0,
+        "scanSubDir": false
+      }
+    },
+    {
+      "id": "recebe_arquivos_banpara_tarja",
+      "name": "Recebe Arquivos Banpara Tarja",
+      "enabled": true,
+      "description": "",
+      "dirRegex": "(?i)\\Banpara\\CartaoTarja$",
+      "fileRegex": "(?i)^.*",
+      "contentRegex": "",
+      "operations": {
+        "copyToDir": "F:\\STCPODT\\O0055INTELCAVPROD\\SAIDA",
+        "copyFileOption": 21,
+        "copyTempExtension": "",
+        "renameFileTo": "T-BANPARA-CON",
+        "insertTimestamp": false,
+        "backupToDir": "",
+        "backupFileOption": 0,
+        "removeAfterCopy": true,
+        "removeAfterHours": 0,
+        "overwrite": true,
+        "execProgBefore": "",
+        "execProg": "",
+        "execProgError": ""
+      },
+      "timeRestrictions": {
+        "startHour": 0,
+        "startMinute": 0,
+        "endHour": 23,
+        "endMinute": 59,
+        "weekDayInterval": 127,
+        "processAfterSecs": 0
+      },
+      "processingOptions": {
+        "checkFileInUse": false,
+        "maxRetries": 3,
+        "delayRetry": 1000,
+        "delayNextFile": 0,
+        "scanSubDir": false
+      }
+    },
+    {
+      "id": "recebe_arquivos_credz_homologacao",
+      "name": "Recebe Arquivos Credz Homologacao",
+      "enabled": true,
+      "description": "",
+      "dirRegex": "(?i)\\Credz\\Homologacao$",
+      "fileRegex": "(?i)^.*",
+      "contentRegex": "",
+      "operations": {
+        "copyToDir": "F:\\STCPODT\\O0055INTELCAVPROD\\SAIDA",
+        "copyFileOption": 21,
+        "copyTempExtension": "",
+        "renameFileTo": "HOM-CREDZ-CON",
+        "insertTimestamp": false,
+        "backupToDir": "",
+        "backupFileOption": 0,
+        "removeAfterCopy": true,
+        "removeAfterHours": 0,
+        "overwrite": true,
+        "execProgBefore": "",
+        "execProg": "",
+        "execProgError": ""
+      },
+      "timeRestrictions": {
+        "startHour": 0,
+        "startMinute": 0,
+        "endHour": 23,
+        "endMinute": 59,
+        "weekDayInterval": 127,
+        "processAfterSecs": 0
+      },
+      "processingOptions": {
+        "checkFileInUse": false,
+        "maxRetries": 3,
+        "delayRetry": 1000,
+        "delayNextFile": 0,
+        "scanSubDir": false
+      }
+    },
+    {
+      "id": "recebe_arquivos_hsherval_homologacao",
+      "name": "Recebe Arquivos HSHerval Homologacao",
+      "enabled": true,
+      "description": "",
+      "dirRegex": "(?i)\\HS-Herval\\HOM$",
+      "fileRegex": "(?i)^.*",
+      "contentRegex": "",
+      "operations": {
+        "copyToDir": "F:\\STCPODT\\O0055INTELCAVPROD\\SAIDA",
+        "copyFileOption": 21,
+        "copyTempExtension": "",
+        "renameFileTo": "HOM-HSHERVAL-CON",
+        "insertTimestamp": false,
+        "backupToDir": "",
+        "backupFileOption": 0,
+        "removeAfterCopy": true,
+        "removeAfterHours": 0,
+        "overwrite": true,
+        "execProgBefore": "",
+        "execProg": "",
+        "execProgError": ""
+      },
+      "timeRestrictions": {
+        "startHour": 0,
+        "startMinute": 0,
+        "endHour": 23,
+        "endMinute": 59,
+        "weekDayInterval": 127,
+        "processAfterSecs": 0
+      },
+      "processingOptions": {
+        "checkFileInUse": false,
+        "maxRetries": 3,
+        "delayRetry": 1000,
+        "delayNextFile": 0,
+        "scanSubDir": false
+      }
+    },
+    {
+      "id": "recebe_arquivos_bradesco-bbcp",
+      "name": "Recebe Arquivos Bradesco-BBCP",
+      "enabled": true,
+      "description": "",
+      "dirRegex": "(?i)\\Bradesco-BBCP\\Prd$",
+      "fileRegex": "(?i)^.*",
+      "contentRegex": "",
+      "operations": {
+        "copyToDir": "F:\\STCPODT\\O0055INTELCAVPROD\\SAIDA",
+        "copyFileOption": 21,
+        "copyTempExtension": "",
+        "renameFileTo": "BRADESCOBBCP-CON",
+        "insertTimestamp": false,
+        "backupToDir": "",
+        "backupFileOption": 0,
+        "removeAfterCopy": true,
+        "removeAfterHours": 0,
+        "overwrite": true,
+        "execProgBefore": "",
+        "execProg": "",
+        "execProgError": ""
+      },
+      "timeRestrictions": {
+        "startHour": 0,
+        "startMinute": 0,
+        "endHour": 23,
+        "endMinute": 59,
+        "weekDayInterval": 127,
+        "processAfterSecs": 0
+      },
+      "processingOptions": {
+        "checkFileInUse": false,
+        "maxRetries": 3,
+        "delayRetry": 1000,
+        "delayNextFile": 0,
+        "scanSubDir": false
+      }
+    },
+    {
+      "id": "recebe_arquivos_bradesco-bbcp_homologacao",
+      "name": "Recebe Arquivos Bradesco-BBCP Homologacao",
+      "enabled": true,
+      "description": "",
+      "dirRegex": "(?i)\\Bradesco-BBCP\\Hom$",
+      "fileRegex": "(?i)^.*",
+      "contentRegex": "",
+      "operations": {
+        "copyToDir": "F:\\STCPODT\\O0055INTELCAVPROD\\SAIDA",
+        "copyFileOption": 21,
+        "copyTempExtension": "",
+        "renameFileTo": "HOM-BRADESCOBBCP-CON",
+        "insertTimestamp": false,
+        "backupToDir": "",
+        "backupFileOption": 0,
+        "removeAfterCopy": true,
+        "removeAfterHours": 0,
+        "overwrite": true,
+        "execProgBefore": "",
+        "execProg": "",
+        "execProgError": ""
+      },
+      "timeRestrictions": {
+        "startHour": 0,
+        "startMinute": 0,
+        "endHour": 23,
+        "endMinute": 59,
+        "weekDayInterval": 127,
+        "processAfterSecs": 0
+      },
+      "processingOptions": {
+        "checkFileInUse": false,
+        "maxRetries": 3,
+        "delayRetry": 1000,
+        "delayNextFile": 0,
+        "scanSubDir": false
+      }
+    },
+    {
+      "id": "recebe_arquivos_fidelity-bradesco",
+      "name": "Recebe Arquivos Fidelity-Bradesco",
+      "enabled": true,
+      "description": "",
+      "dirRegex": "(?i)\\Fidelity-BRADESCO$",
+      "fileRegex": "(?i)^.*",
+      "contentRegex": "",
+      "operations": {
+        "copyToDir": "F:\\STCPODT\\O0055INTELCAVPROD\\SAIDA",
+        "copyFileOption": 21,
+        "copyTempExtension": "",
+        "renameFileTo": "FIDELITY-BRAD-CON",
+        "insertTimestamp": false,
+        "backupToDir": "",
+        "backupFileOption": 0,
+        "removeAfterCopy": true,
+        "removeAfterHours": 0,
+        "overwrite": true,
+        "execProgBefore": "",
+        "execProg": "",
+        "execProgError": ""
+      },
+      "timeRestrictions": {
+        "startHour": 0,
+        "startMinute": 0,
+        "endHour": 23,
+        "endMinute": 59,
+        "weekDayInterval": 127,
+        "processAfterSecs": 0
+      },
+      "processingOptions": {
+        "checkFileInUse": false,
+        "maxRetries": 3,
+        "delayRetry": 1000,
+        "delayNextFile": 0,
+        "scanSubDir": false
+      }
+    },
+    {
+      "id": "recebe_arquivos_fidelity-bradesco_eloccd",
+      "name": "Recebe Arquivos Fidelity-Bradesco Eloccd",
+      "enabled": true,
+      "description": "",
+      "dirRegex": "(?i)\\Fidelity-BRADESCO\\NEW\\ELOCCD$",
+      "fileRegex": "(?i)^.*",
+      "contentRegex": "",
+      "operations": {
+        "copyToDir": "F:\\STCPODT\\O0055INTELCAVPROD\\SAIDA",
+        "copyFileOption": 21,
+        "copyTempExtension": "",
+        "renameFileTo": "ELOCCD-FIDELITY-BRAD-CON",
+        "insertTimestamp": false,
+        "backupToDir": "",
+        "backupFileOption": 0,
+        "removeAfterCopy": true,
+        "removeAfterHours": 0,
+        "overwrite": true,
+        "execProgBefore": "",
+        "execProg": "",
+        "execProgError": ""
+      },
+      "timeRestrictions": {
+        "startHour": 0,
+        "startMinute": 0,
+        "endHour": 23,
+        "endMinute": 59,
+        "weekDayInterval": 127,
+        "processAfterSecs": 0
+      },
+      "processingOptions": {
+        "checkFileInUse": false,
+        "maxRetries": 3,
+        "delayRetry": 1000,
+        "delayNextFile": 0,
+        "scanSubDir": false
+      }
+    },
+    {
+      "id": "recebe_arquivos_fidelity-bco",
+      "name": "Recebe Arquivos Fidelity-BCO",
+      "enabled": true,
+      "description": "",
+      "dirRegex": "(?i)\\Fidelity-BCO\\PRD$",
+      "fileRegex": "(?i)^.*",
+      "contentRegex": "",
+      "operations": {
+        "copyToDir": "F:\\STCPODT\\O0055INTELCAVPROD\\SAIDA",
+        "copyFileOption": 21,
+        "copyTempExtension": "",
+        "renameFileTo": "FIDELITY-BCO-CON",
+        "insertTimestamp": false,
+        "backupToDir": "",
+        "backupFileOption": 0,
+        "removeAfterCopy": true,
+        "removeAfterHours": 0,
+        "overwrite": true,
+        "execProgBefore": "",
+        "execProg": "",
+        "execProgError": ""
+      },
+      "timeRestrictions": {
+        "startHour": 0,
+        "startMinute": 0,
+        "endHour": 23,
+        "endMinute": 59,
+        "weekDayInterval": 127,
+        "processAfterSecs": 0
+      },
+      "processingOptions": {
+        "checkFileInUse": false,
+        "maxRetries": 3,
+        "delayRetry": 1000,
+        "delayNextFile": 0,
+        "scanSubDir": false
+      }
+    },
+    {
+      "id": "recebe_arquivos_fidelity-bco_hom",
+      "name": "Recebe Arquivos Fidelity-BCO HOM",
+      "enabled": true,
+      "description": "",
+      "dirRegex": "(?i)\\Fidelity-BCO\\HOM$",
+      "fileRegex": "(?i)^.*",
+      "contentRegex": "",
+      "operations": {
+        "copyToDir": "F:\\STCPODT\\O0055INTELCAVPROD\\SAIDA",
+        "copyFileOption": 21,
+        "copyTempExtension": "",
+        "renameFileTo": "HOM-FIDELITY-BCO-CON",
+        "insertTimestamp": false,
+        "backupToDir": "",
+        "backupFileOption": 0,
+        "removeAfterCopy": true,
+        "removeAfterHours": 0,
+        "overwrite": true,
+        "execProgBefore": "",
+        "execProg": "",
+        "execProgError": ""
+      },
+      "timeRestrictions": {
+        "startHour": 0,
+        "startMinute": 0,
+        "endHour": 23,
+        "endMinute": 59,
+        "weekDayInterval": 127,
+        "processAfterSecs": 0
+      },
+      "processingOptions": {
+        "checkFileInUse": false,
+        "maxRetries": 3,
+        "delayRetry": 1000,
+        "delayNextFile": 0,
+        "scanSubDir": false
+      }
+    },
+    {
+      "id": "recebe_arquivos_ccb",
+      "name": "Recebe Arquivos CCB",
+      "enabled": true,
+      "description": "",
+      "dirRegex": "(?i)\\CCB$",
+      "fileRegex": "(?i)^.*",
+      "contentRegex": "",
+      "operations": {
+        "copyToDir": "F:\\STCPODT\\O0055INTELCAVPROD\\SAIDA",
+        "copyFileOption": 21,
+        "copyTempExtension": "",
+        "renameFileTo": "CCB-CON",
+        "insertTimestamp": false,
+        "backupToDir": "",
+        "backupFileOption": 0,
+        "removeAfterCopy": true,
+        "removeAfterHours": 0,
+        "overwrite": true,
+        "execProgBefore": "",
+        "execProg": "",
+        "execProgError": ""
+      },
+      "timeRestrictions": {
+        "startHour": 0,
+        "startMinute": 0,
+        "endHour": 23,
+        "endMinute": 59,
+        "weekDayInterval": 127,
+        "processAfterSecs": 0
+      },
+      "processingOptions": {
+        "checkFileInUse": false,
+        "maxRetries": 3,
+        "delayRetry": 1000,
+        "delayNextFile": 0,
+        "scanSubDir": false
+      }
+    },
+    {
+      "id": "recebe_arquivos_bradesco",
+      "name": "Recebe Arquivos Bradesco",
+      "enabled": true,
+      "description": "",
+      "dirRegex": "(?i)\\Bradesco\\Debito$",
+      "fileRegex": "(?i)^.*",
+      "contentRegex": "",
+      "operations": {
+        "copyToDir": "F:\\STCPODT\\O0055INTELCAVPROD\\SAIDA",
+        "copyFileOption": 21,
+        "copyTempExtension": "",
+        "renameFileTo": "BRAD-CON",
+        "insertTimestamp": false,
+        "backupToDir": "",
+        "backupFileOption": 0,
+        "removeAfterCopy": true,
+        "removeAfterHours": 0,
+        "overwrite": true,
+        "execProgBefore": "",
+        "execProg": "",
+        "execProgError": ""
+      },
+      "timeRestrictions": {
+        "startHour": 0,
+        "startMinute": 0,
+        "endHour": 23,
+        "endMinute": 59,
+        "weekDayInterval": 127,
+        "processAfterSecs": 0
+      },
+      "processingOptions": {
+        "checkFileInUse": false,
+        "maxRetries": 3,
+        "delayRetry": 1000,
+        "delayNextFile": 0,
+        "scanSubDir": false
+      }
+    }
+  ]
+}

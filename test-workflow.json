@@ -1,0 +1,46 @@
+{
+  "id": "test-workflow-001",
+  "name": "Test File Processing Workflow",
+  "description": "A test workflow that monitors a folder and processes files",
+  "enabled": true,
+  "trigger": {
+    "type": "file",
+    "config": {
+      "path": "C:\\temp\\watch",
+      "pattern": "*.txt",
+      "events": ["create", "modify"]
+    }
+  },
+  "steps": [
+    {
+      "id": "step1",
+      "type": "copy-file",
+      "name": "Backup file",
+      "config": {
+        "source": "${trigger.file}",
+        "destination": "C:\\temp\\backup\\${trigger.filename}"
+      },
+      "next": ["step2"]
+    },
+    {
+      "id": "step2",
+      "type": "alert",
+      "name": "Send notification",
+      "config": {
+        "level": "info",
+        "message": "File processed: ${trigger.filename}"
+      },
+      "next": ["step3"]
+    },
+    {
+      "id": "step3",
+      "type": "move-file",
+      "name": "Move to processed",
+      "config": {
+        "source": "${trigger.file}",
+        "destination": "C:\\temp\\processed\\${trigger.filename}"
+      },
+      "next": []
+    }
+  ]
+}

@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= title %> - Control Center</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <nav class="navbar">
+    <div class="nav-container">
+      <div class="nav-brand">
+        <h1>Control Center</h1>
+      </div>
+      <ul class="nav-menu">
+        <li><a href="/">Dashboard</a></li>
+        <li><a href="/agents">Agents</a></li>
+        <li><a href="/workflows" class="active">Workflows</a></li>
+        <li><a href="/workflow-editor">Editor</a></li>
+        <li><a href="/alerts">Alerts</a></li>
+        <li><a href="/logs">Logs</a></li>
+        <li><a href="/settings">Settings</a></li>
+      </ul>
+    </div>
+  </nav>
+  
+  <main class="main-content">
+    <div class="container">
+      <div class="page-header">
+        <h2>Workflows</h2>
+        <a href="/workflow-editor" class="btn btn-primary">Create New Workflow</a>
+      </div>
+      
+      <div class="workflows-list">
+        <% if (workflows.length === 0) { %>
+          <div class="no-data">
+            <p>No workflows created yet</p>
+            <p>Use the visual editor to create your first workflow</p>
+          </div>
+        <% } else { %>
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Description</th>
+                <th>Steps</th>
+                <th>Created</th>
+                <th>Updated</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% workflows.forEach(workflow => { %>
+                <tr>
+                  <td><strong><%= workflow.name %></strong></td>
+                  <td><%= workflow.description || '-' %></td>
+                  <td><%= workflow.config.steps ? workflow.config.steps.length : 0 %></td>
+                  <td><%= new Date(workflow.created_at).toLocaleDateString() %></td>
+                  <td><%= new Date(workflow.updated_at).toLocaleDateString() %></td>
+                  <td>
+                    <button class="btn btn-sm" onclick="editWorkflow('<%= workflow.id %>')">Edit</button>
+                    <button class="btn btn-sm btn-success" onclick="deployWorkflow('<%= workflow.id %>')">Deploy</button>
+                    <button class="btn btn-sm btn-danger" onclick="deleteWorkflow('<%= workflow.id %>')">Delete</button>
+                  </td>
+                </tr>
+              <% }) %>
+            </tbody>
+          </table>
+        <% } %>
+      </div>
+    </div>
+  </main>
+  
+  <footer class="footer">
+    <p>&copy; 2025 Control Center - Distributed Automation Platform</p>
+  </footer>
+  
+  <div id="deploy-modal" class="modal" style="display: none;">
+    <div class="modal-content">
+      <h3>Deploy Workflow</h3>
+      <p>Select agents to deploy this workflow to:</p>
+      <div id="agent-list"></div>
+      <div class="modal-actions">
+        <button class="btn btn-primary" onclick="confirmDeploy()">Deploy</button>
+        <button class="btn" onclick="closeDeploy()">Cancel</button>
+      </div>
+    </div>
+  </div>
+  
+  <script>
+  let currentWorkflowId = null;
+  let selectedAgents = [];
+  
+  function editWorkflow(id) {
+    window.location.href = `/workflow-editor?id=${id}`;
+  }
+  
+  function deployWorkflow(id) {
+    currentWorkflowId = id;
+    
+    fetch('/api/agents')
+      .then(r => r.json())
+      .then(agents => {
+        const agentList = document.getElementById('agent-list');
+        if (agents.length === 0) {
+          agentList.innerHTML = '<p>No agents available for deployment</p>';
+        } else {
+          agentList.innerHTML = agents.map(agent => `
+            <label class="checkbox-label">
+              <input type="checkbox" value="${agent.id}" onchange="toggleAgent('${agent.id}')">
+              ${agent.hostname || agent.id} (${agent.status})
+            </label>
+          `).join('');
+        }
+        document.getElementById('deploy-modal').style.display = 'block';
+      });
+  }
+  
+  function toggleAgent(id) {
+    const index = selectedAgents.indexOf(id);
+    if (index > -1) {
+      selectedAgents.splice(index, 1);
+    } else {
+      selectedAgents.push(id);
+    }
+  }
+  
+  function confirmDeploy() {
+    if (selectedAgents.length === 0) {
+      alert('Please select at least one agent');
+      return;
+    }
+    
+    fetch(`/api/workflows/${currentWorkflowId}/deploy`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ agentIds: selectedAgents })
+    })
+    .then(r => r.json())
+    .then(data => {
+      alert(`Workflow deployed to ${data.deployed} agents`);
+      closeDeploy();
+    })
+    .catch(err => alert('Failed to deploy workflow: ' + err.message));
+  }
+  
+  function closeDeploy() {
+    document.getElementById('deploy-modal').style.display = 'none';
+    currentWorkflowId = null;
+    selectedAgents = [];
+  }
+  
+  function deleteWorkflow(id) {
+    if (confirm('Are you sure you want to delete this workflow?')) {
+      fetch(`/api/workflows/${id}`, { method: 'DELETE' })
+        .then(r => r.json())
+        .then(() => {
+          window.location.reload();
+        })
+        .catch(err => alert('Failed to delete workflow: ' + err.message));
+    }
+  }
+  </script>
+</body>
+</html>

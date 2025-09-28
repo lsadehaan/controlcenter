@@ -1,0 +1,642 @@
+package filewatcher
+
+import (
+	"fmt"
+	"io"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"regexp"
+	"runtime"
+	"strings"
+	"sync"
+	"time"
+
+	"github.com/fsnotify/fsnotify"
+	"github.com/rs/zerolog"
+)
+
+// Rule represents a file watching rule
+type Rule struct {
+	ID                string            `json:"id"`
+	Name              string            `json:"name"`
+	Enabled           bool              `json:"enabled"`
+	Description       string            `json:"description"`
+	
+	// Matching criteria
+	DirRegEx          string            `json:"dirRegex"`          // Regex for directory path
+	FileRegEx         string            `json:"fileRegex"`         // Regex for filename
+	ContentRegEx      string            `json:"contentRegex"`      // Regex for file content
+	
+	// File operations
+	Operations        FileOperations    `json:"operations"`
+	
+	// Time restrictions
+	TimeRestrictions  TimeRestrictions  `json:"timeRestrictions"`
+	
+	// Processing options
+	ProcessingOptions ProcessingOptions `json:"processingOptions"`
+}
+
+type FileOperations struct {
+	// Copy operations
+	CopyToDir         string `json:"copyToDir"`
+	CopyFileOption    int    `json:"copyFileOption"`    // 21 = move, 22 = copy
+	CopyTempExtension string `json:"copyTempExtension"`
+	
+	// Rename operations
+	RenameFileTo      string `json:"renameFileTo"`
+	InsertTimestamp   bool   `json:"insertTimestamp"`
+	
+	// Backup operations
+	BackupToDir       string `json:"backupToDir"`
+	BackupFileOption  int    `json:"backupFileOption"`
+	
+	// Post-processing
+	RemoveAfterCopy   bool   `json:"removeAfterCopy"`
+	RemoveAfterHours  int    `json:"removeAfterHours"`
+	Overwrite         bool   `json:"overwrite"`
+	
+	// External programs
+	ExecProgBefore    string `json:"execProgBefore"`
+	ExecProg          string `json:"execProg"`
+	ExecProgError     string `json:"execProgError"`
+}
+
+type TimeRestrictions struct {
+	StartHour         int    `json:"startHour"`
+	StartMinute       int    `json:"startMinute"`
+	EndHour           int    `json:"endHour"`
+	EndMinute         int    `json:"endMinute"`
+	WeekDayInterval   int    `json:"weekDayInterval"`  // Bitmask for days
+	ProcessAfterSecs  int    `json:"processAfterSecs"`
+}
+
+type ProcessingOptions struct {
+	CheckFileInUse    bool   `json:"checkFileInUse"`
+	MaxRetries        int    `json:"maxRetries"`
+	DelayRetry        int    `json:"delayRetry"`        // Milliseconds
+	DelayNextFile     int    `json:"delayNextFile"`     // Milliseconds
+	ScanSubDir        bool   `json:"scanSubDir"`
+}
+
+// Watcher manages file watching rules
+type Watcher struct {
+	mu               sync.Mutex
+	rules            []Rule
+	watchers         map[string]*fsnotify.Watcher
+	logger           zerolog.Logger
+	stopChan         chan struct{}
+	stopped          bool
+	workflowExecutor WorkflowExecutor
+}
+
+// WorkflowExecutor interface for executing workflows
+type WorkflowExecutor interface {
+	ExecuteWorkflow(workflowName string, context map[string]interface{}) error
+}
+
+// NewWatcher creates a new file watcher
+func NewWatcher(logger zerolog.Logger, executor WorkflowExecutor) *Watcher {
+	return &Watcher{
+		rules:            []Rule{},
+		watchers:         make(map[string]*fsnotify.Watcher),
+		logger:           logger.With().Str("component", "filewatcher").Logger(),
+		stopChan:         make(chan struct{}),
+		workflowExecutor: executor,
+	}
+}
+
+// LoadRules loads file watching rules
+func (w *Watcher) LoadRules(rules []Rule) error {
+	w.rules = rules
+	w.logger.Info().Int("count", len(rules)).Msg("Loaded file watching rules")
+	return nil
+}
+
+// UpdateRules updates the file watching rules and restarts watching
+func (w *Watcher) UpdateRules(rules []Rule) {
+	w.mu.Lock()
+	w.rules = rules
+	// Reset the stop channel if it was closed
+	if w.stopped {
+		w.stopChan = make(chan struct{})
+		w.stopped = false
+	}
+	w.mu.Unlock()
+	w.logger.Info().Int("count", len(rules)).Msg("Updated file watching rules")
+}
+
+// Start begins watching based on configured rules
+func (w *Watcher) Start() error {
+	for _, rule := range w.rules {
+		if !rule.Enabled {
+			w.logger.Debug().Str("rule", rule.Name).Msg("Skipping disabled rule")
+			continue
+		}
+		
+		if err := w.startWatchingRule(rule); err != nil {
+			w.logger.Error().Err(err).Str("rule", rule.Name).Msg("Failed to start watching rule")
+			continue
+		}
+	}
+	
+	return nil
+}
+
+// Stop stops all file watchers
+func (w *Watcher) Stop() {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	
+	if w.stopped {
+		w.logger.Debug().Msg("File watchers already stopped")
+		return
+	}
+	
+	w.stopped = true
+	close(w.stopChan)
+	
+	for _, watcher := range w.watchers {
+		watcher.Close()
+	}
+	w.watchers = make(map[string]*fsnotify.Watcher)
+	
+	w.logger.Info().Msg("File watchers stopped")
+}
+
+func (w *Watcher) startWatchingRule(rule Rule) error {
+	// Compile regex patterns
+	var dirRegex, fileRegex *regexp.Regexp
+	var err error
+	
+	if rule.DirRegEx != "" {
+		dirRegex, err = regexp.Compile(rule.DirRegEx)
+		if err != nil {
+			return fmt.Errorf("invalid directory regex: %w", err)
+		}
+	}
+	
+	if rule.FileRegEx != "" {
+		fileRegex, err = regexp.Compile(rule.FileRegEx)
+		if err != nil {
+			return fmt.Errorf("invalid file regex: %w", err)
+		}
+	}
+	
+	// Find directories to watch
+	dirsToWatch := w.findDirectoriesToWatch(rule.DirRegEx)
+	
+	for _, dir := range dirsToWatch {
+		watcher, err := fsnotify.NewWatcher()
+		if err != nil {
+			return fmt.Errorf("failed to create watcher: %w", err)
+		}
+		
+		err = watcher.Add(dir)
+		if err != nil {
+			watcher.Close()
+			return fmt.Errorf("failed to watch directory %s: %w", dir, err)
+		}
+		
+		w.watchers[rule.ID + ":" + dir] = watcher
+		
+		// Start goroutine to handle events for this watcher
+		go w.handleEvents(watcher, rule, dirRegex, fileRegex)
+		
+		w.logger.Info().
+			Str("rule", rule.Name).
+			Str("dir", dir).
+			Msg("Started watching directory")
+	}
+	
+	return nil
+}
+
+func (w *Watcher) handleEvents(watcher *fsnotify.Watcher, rule Rule, dirRegex, fileRegex *regexp.Regexp) {
+	for {
+		select {
+		case event, ok := <-watcher.Events:
+			if !ok {
+				return
+			}
+			
+			// Check if file matches criteria
+			if !w.matchesFile(event.Name, rule, dirRegex, fileRegex) {
+				continue
+			}
+			
+			// Check time restrictions
+			if !w.checkTimeRestrictions(rule.TimeRestrictions) {
+				w.logger.Debug().
+					Str("file", event.Name).
+					Msg("File matched but outside time window")
+				continue
+			}
+			
+			// Process file
+			if event.Op&fsnotify.Create == fsnotify.Create || event.Op&fsnotify.Write == fsnotify.Write {
+				w.logger.Info().
+					Str("rule", rule.Name).
+					Str("file", event.Name).
+					Str("event", event.Op.String()).
+					Msg("Processing file")
+				
+				// Wait if configured
+				if rule.TimeRestrictions.ProcessAfterSecs > 0 {
+					time.Sleep(time.Duration(rule.TimeRestrictions.ProcessAfterSecs) * time.Second)
+				}
+				
+				// Check if file is still being written
+				if rule.ProcessingOptions.CheckFileInUse {
+					if w.isFileInUse(event.Name) {
+						w.logger.Debug().Str("file", event.Name).Msg("File is still in use, skipping")
+						continue
+					}
+				}
+				
+				// Process the file
+				go w.processFile(event.Name, rule)
+			}
+			
+		case err, ok := <-watcher.Errors:
+			if !ok {
+				return
+			}
+			w.logger.Error().Err(err).Str("rule", rule.Name).Msg("Watcher error")
+			
+		case <-w.stopChan:
+			return
+		}
+	}
+}
+
+func (w *Watcher) processFile(filePath string, rule Rule) {
+	ops := rule.Operations
+	
+	// Execute pre-processing program
+	if ops.ExecProgBefore != "" {
+		w.executeProgram(ops.ExecProgBefore, filePath)
+	}
+	
+	// Prepare destination path
+	destPath := filePath
+	if ops.CopyToDir != "" {
+		fileName := filepath.Base(filePath)
+		
+		// Apply rename if configured
+		if ops.RenameFileTo != "" {
+			fileName = w.applyRename(fileName, ops.RenameFileTo, ops.InsertTimestamp)
+		}
+		
+		destPath = filepath.Join(ops.CopyToDir, fileName)
+	}
+	
+	// Backup file if configured
+	if ops.BackupToDir != "" {
+		backupPath := filepath.Join(ops.BackupToDir, filepath.Base(filePath))
+		if err := w.copyFile(filePath, backupPath); err != nil {
+			w.logger.Error().Err(err).Str("file", filePath).Msg("Failed to backup file")
+		} else {
+			w.logger.Info().Str("file", filePath).Str("backup", backupPath).Msg("File backed up")
+		}
+	}
+	
+	// Copy or move file
+	if ops.CopyToDir != "" {
+		var err error
+		
+		// Check if destination exists and overwrite setting
+		if !ops.Overwrite && w.fileExists(destPath) {
+			w.logger.Warn().Str("file", filePath).Str("dest", destPath).Msg("Destination exists, skipping")
+			return
+		}
+		
+		// Use temp extension if configured
+		tempPath := destPath
+		if ops.CopyTempExtension != "" {
+			tempPath = destPath + ops.CopyTempExtension
+		}
+		
+		if ops.CopyFileOption == 21 { // Move
+			err = os.Rename(filePath, tempPath)
+		} else { // Copy
+			err = w.copyFile(filePath, tempPath)
+		}
+		
+		if err != nil {
+			w.logger.Error().Err(err).Str("file", filePath).Msg("Failed to process file")
+			if ops.ExecProgError != "" {
+				w.executeProgram(ops.ExecProgError, filePath)
+			}
+			return
+		}
+		
+		// Rename temp file to final name
+		if ops.CopyTempExtension != "" {
+			os.Rename(tempPath, destPath)
+		}
+		
+		// Remove source if configured (and not already moved)
+		if ops.RemoveAfterCopy && ops.CopyFileOption != 21 {
+			os.Remove(filePath)
+		}
+		
+		w.logger.Info().
+			Str("source", filePath).
+			Str("dest", destPath).
+			Msg("File processed successfully")
+	}
+	
+	// Execute post-processing program
+	if ops.ExecProg != "" {
+		w.executeProgram(ops.ExecProg, destPath)
+	}
+	
+	// Delay before next file if configured
+	if rule.ProcessingOptions.DelayNextFile > 0 {
+		time.Sleep(time.Duration(rule.ProcessingOptions.DelayNextFile) * time.Millisecond)
+	}
+}
+
+func (w *Watcher) matchesFile(filePath string, rule Rule, dirRegex, fileRegex *regexp.Regexp) bool {
+	dir := filepath.Dir(filePath)
+	fileName := filepath.Base(filePath)
+	
+	// Check directory regex
+	if dirRegex != nil && !dirRegex.MatchString(dir) {
+		return false
+	}
+	
+	// Check file regex
+	if fileRegex != nil && !fileRegex.MatchString(fileName) {
+		return false
+	}
+	
+	// Check content regex if configured
+	if rule.ContentRegEx != "" {
+		content, err := os.ReadFile(filePath)
+		if err != nil {
+			return false
+		}
+		
+		contentRegex, err := regexp.Compile(rule.ContentRegEx)
+		if err != nil {
+			return false
+		}
+		
+		if !contentRegex.Match(content) {
+			return false
+		}
+	}
+	
+	return true
+}
+
+func (w *Watcher) checkTimeRestrictions(restrictions TimeRestrictions) bool {
+	now := time.Now()
+	
+	// Check day of week
+	if restrictions.WeekDayInterval > 0 {
+		dayMask := 1 << uint(now.Weekday())
+		if restrictions.WeekDayInterval&dayMask == 0 {
+			return false
+		}
+	}
+	
+	// Check time of day
+	currentMinutes := now.Hour()*60 + now.Minute()
+	startMinutes := restrictions.StartHour*60 + restrictions.StartMinute
+	endMinutes := restrictions.EndHour*60 + restrictions.EndMinute
+	
+	if currentMinutes < startMinutes || currentMinutes > endMinutes {
+		return false
+	}
+	
+	return true
+}
+
+func (w *Watcher) isFileInUse(filePath string) bool {
+	file, err := os.OpenFile(filePath, os.O_RDWR|os.O_EXCL, 0)
+	if err != nil {
+		return true
+	}
+	file.Close()
+	return false
+}
+
+func (w *Watcher) copyFile(src, dst string) error {
+	sourceFile, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer sourceFile.Close()
+	
+	// Create destination directory if it doesn't exist
+	destDir := filepath.Dir(dst)
+	if err := os.MkdirAll(destDir, 0755); err != nil {
+		return err
+	}
+	
+	destFile, err := os.Create(dst)
+	if err != nil {
+		return err
+	}
+	defer destFile.Close()
+	
+	_, err = io.Copy(destFile, sourceFile)
+	return err
+}
+
+func (w *Watcher) fileExists(path string) bool {
+	_, err := os.Stat(path)
+	return err == nil
+}
+
+func (w *Watcher) applyRename(fileName, renameTo string, insertTimestamp bool) string {
+	result := renameTo
+	
+	// Replace variables
+	result = strings.ReplaceAll(result, "{filename}", fileName)
+	result = strings.ReplaceAll(result, "{name}", strings.TrimSuffix(fileName, filepath.Ext(fileName)))
+	result = strings.ReplaceAll(result, "{ext}", filepath.Ext(fileName))
+	
+	// Insert timestamp if configured
+	if insertTimestamp {
+		timestamp := time.Now().Format("20060102_150405")
+		result = strings.ReplaceAll(result, "{timestamp}", timestamp)
+		
+		// If no placeholder, append timestamp
+		if !strings.Contains(renameTo, "{timestamp}") {
+			ext := filepath.Ext(result)
+			name := strings.TrimSuffix(result, ext)
+			result = fmt.Sprintf("%s_%s%s", name, timestamp, ext)
+		}
+	}
+	
+	return result
+}
+
+func (w *Watcher) executeProgram(program, filePath string) {
+	// Replace {file} placeholder with actual file path
+	program = strings.ReplaceAll(program, "{file}", filePath)
+	
+	// Check if this is a workflow execution request
+	if strings.HasPrefix(program, "WF:") {
+		workflowName := strings.TrimPrefix(program, "WF:")
+		w.logger.Info().Str("workflow", workflowName).Str("file", filePath).Msg("Executing workflow")
+		
+		if w.workflowExecutor != nil {
+			context := map[string]interface{}{
+				"trigger":   "filewatcher",
+				"file":      filePath,
+				"fileName":  filepath.Base(filePath),
+				"directory": filepath.Dir(filePath),
+			}
+			
+			if err := w.workflowExecutor.ExecuteWorkflow(workflowName, context); err != nil {
+				w.logger.Error().Err(err).Str("workflow", workflowName).Msg("Failed to execute workflow")
+			}
+		} else {
+			w.logger.Warn().Msg("Workflow executor not available")
+		}
+		return
+	}
+	
+	// Execute external program
+	w.logger.Info().Str("program", program).Str("file", filePath).Msg("Executing external program")
+	
+	// Parse command and arguments
+	parts := strings.Fields(program)
+	if len(parts) == 0 {
+		return
+	}
+	
+	cmd := exec.Command(parts[0], parts[1:]...)
+	cmd.Env = append(os.Environ(), fmt.Sprintf("FILE_PATH=%s", filePath))
+	
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		w.logger.Error().
+			Err(err).
+			Str("program", program).
+			Str("output", string(output)).
+			Msg("Program execution failed")
+	} else {
+		w.logger.Info().
+			Str("program", program).
+			Str("output", string(output)).
+			Msg("Program executed successfully")
+	}
+}
+
+func (w *Watcher) findDirectoriesToWatch(dirRegEx string) []string {
+	if dirRegEx == "" {
+		return []string{}
+	}
+	
+	var dirs []string
+	
+	// First, try to interpret as a literal Windows path
+	// Remove any regex flags and anchors
+	testPath := dirRegEx
+	testPath = strings.TrimPrefix(testPath, "(?i)")
+	testPath = strings.TrimPrefix(testPath, "^")
+	testPath = strings.TrimSuffix(testPath, "$")
+	
+	// Check if this looks like a Windows path (contains backslashes)
+	if strings.Contains(testPath, "\\") {
+		// This appears to be a Windows path, not a regex
+		// Unescape any double backslashes
+		testPath = strings.ReplaceAll(testPath, "\\\\", "\\")
+		
+		// Check if directory exists
+		if info, err := os.Stat(testPath); err == nil && info.IsDir() {
+			w.logger.Debug().Str("dir", testPath).Msg("Using direct directory path")
+			return []string{testPath}
+		} else {
+			// Directory doesn't exist, but it's clearly meant to be a path, not a regex
+			w.logger.Warn().
+				Str("path", testPath).
+				Msg("Directory does not exist, skipping")
+			return []string{}
+		}
+	}
+	
+	// Check if this looks like a direct path (not a regex pattern)
+	// If it doesn't contain regex special characters, treat as literal
+	if !strings.Contains(dirRegEx, "*") && !strings.Contains(dirRegEx, "?") && 
+	   !strings.Contains(dirRegEx, "[") && !strings.Contains(dirRegEx, "(") {
+		
+		// Try as direct path
+		if info, err := os.Stat(testPath); err == nil && info.IsDir() {
+			w.logger.Debug().Str("dir", testPath).Msg("Using direct directory path")
+			return []string{testPath}
+		}
+	}
+	
+	// If it's a regex pattern, compile it
+	regex, err := regexp.Compile(dirRegEx)
+	if err != nil {
+		w.logger.Error().Err(err).Str("regex", dirRegEx).Msg("Invalid directory regex")
+		return []string{}
+	}
+	
+	// Define root paths to scan (configurable in future)
+	// For Windows, scan all drive letters; for Unix, start from root
+	var rootPaths []string
+	if runtime.GOOS == "windows" {
+		// Scan common drives
+		for _, drive := range []string{"C:", "D:", "E:", "F:"} {
+			if _, err := os.Stat(drive + "\\"); err == nil {
+				rootPaths = append(rootPaths, drive+"\\")
+			}
+		}
+	} else {
+		rootPaths = []string{"/"}
+	}
+	
+	// Scan for matching directories (with depth limit for performance)
+	maxDepth := 5 // Configurable depth limit
+	for _, root := range rootPaths {
+		w.scanForDirectories(root, regex, &dirs, 0, maxDepth)
+	}
+	
+	w.logger.Info().
+		Str("regex", dirRegEx).
+		Int("found", len(dirs)).
+		Msg("Found directories matching pattern")
+	
+	return dirs
+}
+
+func (w *Watcher) scanForDirectories(path string, regex *regexp.Regexp, dirs *[]string, depth, maxDepth int) {
+	if depth > maxDepth {
+		return
+	}
+	
+	// Check if this directory matches
+	if regex.MatchString(path) {
+		*dirs = append(*dirs, path)
+	}
+	
+	// Read directory contents
+	entries, err := os.ReadDir(path)
+	if err != nil {
+		// Skip directories we can't read
+		return
+	}
+	
+	for _, entry := range entries {
+		if entry.IsDir() {
+			subPath := filepath.Join(path, entry.Name())
+			// Skip system directories to avoid permission issues
+			if strings.Contains(subPath, "$Recycle.Bin") || 
+			   strings.Contains(subPath, "System Volume Information") ||
+			   strings.Contains(subPath, "Windows\\WinSxS") {
+				continue
+			}
+			w.scanForDirectories(subPath, regex, dirs, depth+1, maxDepth)
+		}
+	}
+}

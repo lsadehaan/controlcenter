@@ -1,0 +1,787 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>File Watchers - <%= agent.metadata?.hostname || agent.id %></title>
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    .filewatcher-container {
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+    
+    .rules-toolbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      padding: 15px;
+      background: white;
+      border-radius: 8px;
+    }
+    
+    .rules-list {
+      background: white;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    
+    .rule-item {
+      border-bottom: 1px solid #e0e0e0;
+      padding: 15px;
+      display: flex;
+      align-items: center;
+      transition: background 0.2s;
+    }
+    
+    .rule-item:hover {
+      background: #f8f9fa;
+    }
+    
+    .rule-item:last-child {
+      border-bottom: none;
+    }
+    
+    .rule-status {
+      width: 40px;
+      text-align: center;
+    }
+    
+    .status-indicator {
+      display: inline-block;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: #ccc;
+    }
+    
+    .status-indicator.enabled {
+      background: #4caf50;
+    }
+    
+    .rule-info {
+      flex: 1;
+      margin-left: 15px;
+    }
+    
+    .rule-name {
+      font-weight: bold;
+      font-size: 16px;
+      margin-bottom: 5px;
+    }
+    
+    .rule-details {
+      font-size: 13px;
+      color: #666;
+      display: flex;
+      gap: 20px;
+    }
+    
+    .rule-detail {
+      display: flex;
+      align-items: center;
+    }
+    
+    .rule-detail-icon {
+      margin-right: 5px;
+    }
+    
+    .rule-actions {
+      display: flex;
+      gap: 10px;
+    }
+    
+    /* Rule Editor Modal */
+    .modal {
+      display: none;
+      position: fixed;
+      z-index: 1000;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0,0,0,0.5);
+    }
+    
+    .modal-content {
+      background-color: #fefefe;
+      margin: 50px auto;
+      padding: 0;
+      border-radius: 8px;
+      width: 90%;
+      max-width: 900px;
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+    
+    .modal-header {
+      padding: 20px;
+      background: #f8f9fa;
+      border-bottom: 1px solid #dee2e6;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .modal-body {
+      padding: 20px;
+    }
+    
+    .modal-footer {
+      padding: 15px 20px;
+      background: #f8f9fa;
+      border-top: 1px solid #dee2e6;
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+    }
+    
+    .form-tabs {
+      display: flex;
+      border-bottom: 2px solid #dee2e6;
+      margin-bottom: 20px;
+    }
+    
+    .form-tab {
+      padding: 10px 20px;
+      cursor: pointer;
+      border: none;
+      background: none;
+      font-size: 14px;
+      color: #666;
+      transition: all 0.2s;
+    }
+    
+    .form-tab.active {
+      color: #007bff;
+      border-bottom: 2px solid #007bff;
+      margin-bottom: -2px;
+    }
+    
+    .tab-content {
+      display: none;
+    }
+    
+    .tab-content.active {
+      display: block;
+    }
+    
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 15px;
+    }
+    
+    .form-group {
+      margin-bottom: 15px;
+    }
+    
+    .form-group label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: 500;
+      color: #333;
+      font-size: 13px;
+    }
+    
+    .form-input {
+      width: 100%;
+      padding: 8px 12px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 14px;
+    }
+    
+    .form-input:focus {
+      outline: none;
+      border-color: #007bff;
+      box-shadow: 0 0 0 2px rgba(0,123,255,0.1);
+    }
+    
+    .form-checkbox {
+      margin-right: 8px;
+    }
+    
+    .regex-helper {
+      font-size: 12px;
+      color: #666;
+      margin-top: 3px;
+    }
+    
+    .import-section {
+      padding: 20px;
+      background: #f8f9fa;
+      border-radius: 8px;
+      margin-bottom: 20px;
+    }
+  </style>
+</head>
+<body>
+  <nav class="navbar">
+    <div class="nav-container">
+      <div class="nav-brand">
+        <h1>Control Center</h1>
+      </div>
+      <ul class="nav-menu">
+        <li><a href="/">Dashboard</a></li>
+        <li><a href="/agents" class="active">Agents</a></li>
+        <li><a href="/workflows">Workflows</a></li>
+        <li><a href="/workflow-editor">Editor</a></li>
+        <li><a href="/alerts">Alerts</a></li>
+        <li><a href="/logs">Logs</a></li>
+        <li><a href="/settings">Settings</a></li>
+      </ul>
+    </div>
+  </nav>
+  
+  <main class="main-content">
+    <div class="filewatcher-container">
+      <div class="page-header">
+        <h2>File Watchers - <%= agent.metadata?.hostname || agent.id %></h2>
+        <a href="/agents/<%= agent.id %>" class="btn">Back to Agent</a>
+      </div>
+      
+      <!-- Import Section -->
+      <div class="import-section">
+        <h3>Import Configuration</h3>
+        <p>Import file watcher rules from an existing INI configuration file</p>
+        <input type="file" id="import-file" accept=".ini" style="display: none;">
+        <button class="btn btn-primary" onclick="document.getElementById('import-file').click()">
+          Import INI File
+        </button>
+      </div>
+      
+      <!-- Toolbar -->
+      <div class="rules-toolbar">
+        <div>
+          <button class="btn btn-primary" onclick="createRule()">
+            <span style="margin-right: 5px;">➕</span> New Rule
+          </button>
+          <button class="btn" onclick="exportRules()">
+            <span style="margin-right: 5px;">📥</span> Export Rules
+          </button>
+        </div>
+        <div>
+          <span id="rule-count">0 rules</span>
+        </div>
+      </div>
+      
+      <!-- Rules List -->
+      <div class="rules-list" id="rules-list">
+        <!-- Rules will be populated here -->
+      </div>
+    </div>
+  </main>
+  
+  <!-- Rule Editor Modal -->
+  <div id="rule-modal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="modal-title">New File Watcher Rule</h3>
+        <button class="btn btn-sm" onclick="closeModal()">&times;</button>
+      </div>
+      
+      <div class="modal-body">
+        <!-- Tabs -->
+        <div class="form-tabs">
+          <button class="form-tab active" onclick="switchTab('matching')">Matching</button>
+          <button class="form-tab" onclick="switchTab('operations')">Operations</button>
+          <button class="form-tab" onclick="switchTab('timing')">Timing</button>
+          <button class="form-tab" onclick="switchTab('advanced')">Advanced</button>
+        </div>
+        
+        <!-- Tab Contents -->
+        <div id="matching-tab" class="tab-content active">
+          <div class="form-group">
+            <label>Rule Name *</label>
+            <input type="text" id="rule-name" class="form-input" placeholder="e.g., Process Invoice Files">
+          </div>
+          
+          <div class="form-group">
+            <label>Description</label>
+            <textarea id="rule-description" class="form-input" rows="2" placeholder="Optional description"></textarea>
+          </div>
+          
+          <div class="form-group">
+            <label>
+              <input type="checkbox" id="rule-enabled" class="form-checkbox" checked>
+              Enabled
+            </label>
+          </div>
+          
+          <div class="form-group">
+            <label>Directory Regex Pattern</label>
+            <input type="text" id="dir-regex" class="form-input" placeholder="e.g., (?i)\\Invoices\\Input$">
+            <div class="regex-helper">Use (?i) for case-insensitive matching</div>
+          </div>
+          
+          <div class="form-group">
+            <label>File Regex Pattern</label>
+            <input type="text" id="file-regex" class="form-input" placeholder="e.g., (?i)^INV.*\.pdf$">
+            <div class="regex-helper">^ = start, $ = end, .* = any characters</div>
+          </div>
+          
+          <div class="form-group">
+            <label>Content Regex Pattern (Optional)</label>
+            <input type="text" id="content-regex" class="form-input" placeholder="e.g., INVOICE|RECEIPT">
+            <div class="regex-helper">Match content within the file</div>
+          </div>
+        </div>
+        
+        <div id="operations-tab" class="tab-content">
+          <div class="form-grid">
+            <div class="form-group">
+              <label>Copy/Move To Directory</label>
+              <input type="text" id="copy-to-dir" class="form-input" placeholder="e.g., C:\\Processed">
+            </div>
+            
+            <div class="form-group">
+              <label>Operation Type</label>
+              <select id="copy-option" class="form-input">
+                <option value="21">Move File</option>
+                <option value="22">Copy File</option>
+              </select>
+            </div>
+          </div>
+          
+          <div class="form-grid">
+            <div class="form-group">
+              <label>Rename File To</label>
+              <input type="text" id="rename-to" class="form-input" placeholder="e.g., PROCESSED_{filename}">
+              <div class="regex-helper">Variables: {filename}, {name}, {ext}, {timestamp}</div>
+            </div>
+            
+            <div class="form-group">
+              <label>
+                <input type="checkbox" id="insert-timestamp" class="form-checkbox">
+                Insert Timestamp
+              </label>
+            </div>
+          </div>
+          
+          <div class="form-grid">
+            <div class="form-group">
+              <label>Backup To Directory</label>
+              <input type="text" id="backup-dir" class="form-input" placeholder="e.g., C:\\Backup">
+            </div>
+            
+            <div class="form-group">
+              <label>Temp Extension</label>
+              <input type="text" id="temp-ext" class="form-input" placeholder="e.g., .tmp">
+            </div>
+          </div>
+          
+          <div class="form-grid">
+            <div class="form-group">
+              <label>
+                <input type="checkbox" id="remove-after" class="form-checkbox" checked>
+                Remove After Copy
+              </label>
+            </div>
+            
+            <div class="form-group">
+              <label>
+                <input type="checkbox" id="overwrite" class="form-checkbox" checked>
+                Overwrite Existing Files
+              </label>
+            </div>
+          </div>
+          
+          <h4 style="margin-top: 20px;">External Programs</h4>
+          
+          <div class="form-group">
+            <label>Execute Before Processing</label>
+            <input type="text" id="exec-before" class="form-input" placeholder="e.g., C:\\Scripts\\validate.bat {file}">
+          </div>
+          
+          <div class="form-group">
+            <label>Execute After Processing</label>
+            <input type="text" id="exec-after" class="form-input" placeholder="e.g., C:\\Scripts\\notify.exe {file}">
+          </div>
+          
+          <div class="form-group">
+            <label>Execute On Error</label>
+            <input type="text" id="exec-error" class="form-input" placeholder="e.g., C:\\Scripts\\error.bat {file}">
+          </div>
+        </div>
+        
+        <div id="timing-tab" class="tab-content">
+          <h4>Time Window</h4>
+          <div class="form-grid">
+            <div class="form-group">
+              <label>Start Time</label>
+              <div style="display: flex; gap: 10px;">
+                <input type="number" id="start-hour" class="form-input" min="0" max="23" value="0" style="width: 60px;"> :
+                <input type="number" id="start-minute" class="form-input" min="0" max="59" value="0" style="width: 60px;">
+              </div>
+            </div>
+            
+            <div class="form-group">
+              <label>End Time</label>
+              <div style="display: flex; gap: 10px;">
+                <input type="number" id="end-hour" class="form-input" min="0" max="23" value="23" style="width: 60px;"> :
+                <input type="number" id="end-minute" class="form-input" min="0" max="59" value="59" style="width: 60px;">
+              </div>
+            </div>
+          </div>
+          
+          <h4 style="margin-top: 20px;">Days of Week</h4>
+          <div style="display: flex; gap: 15px; flex-wrap: wrap;">
+            <label><input type="checkbox" class="weekday" value="1" checked> Sunday</label>
+            <label><input type="checkbox" class="weekday" value="2" checked> Monday</label>
+            <label><input type="checkbox" class="weekday" value="4" checked> Tuesday</label>
+            <label><input type="checkbox" class="weekday" value="8" checked> Wednesday</label>
+            <label><input type="checkbox" class="weekday" value="16" checked> Thursday</label>
+            <label><input type="checkbox" class="weekday" value="32" checked> Friday</label>
+            <label><input type="checkbox" class="weekday" value="64" checked> Saturday</label>
+          </div>
+          
+          <h4 style="margin-top: 20px;">Processing Delays</h4>
+          <div class="form-grid">
+            <div class="form-group">
+              <label>Process After (seconds)</label>
+              <input type="number" id="process-after" class="form-input" min="0" value="0">
+              <div class="regex-helper">Wait before processing detected file</div>
+            </div>
+            
+            <div class="form-group">
+              <label>Delay Between Files (ms)</label>
+              <input type="number" id="delay-next" class="form-input" min="0" value="0">
+              <div class="regex-helper">Delay before processing next file</div>
+            </div>
+          </div>
+        </div>
+        
+        <div id="advanced-tab" class="tab-content">
+          <div class="form-group">
+            <label>
+              <input type="checkbox" id="check-in-use" class="form-checkbox" checked>
+              Check if File is In Use
+            </label>
+            <div class="regex-helper">Skip files that are still being written</div>
+          </div>
+          
+          <div class="form-group">
+            <label>
+              <input type="checkbox" id="scan-subdir" class="form-checkbox">
+              Scan Subdirectories
+            </label>
+            <div class="regex-helper">Recursively watch subdirectories</div>
+          </div>
+          
+          <div class="form-grid">
+            <div class="form-group">
+              <label>Max Retries</label>
+              <input type="number" id="max-retries" class="form-input" min="0" value="5">
+            </div>
+            
+            <div class="form-group">
+              <label>Retry Delay (ms)</label>
+              <input type="number" id="retry-delay" class="form-input" min="0" value="1000">
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="modal-footer">
+        <button class="btn" onclick="closeModal()">Cancel</button>
+        <button class="btn btn-primary" onclick="saveRule()">Save Rule</button>
+      </div>
+    </div>
+  </div>
+  
+  <script>
+  let rules = <%= JSON.stringify(fileWatcherRules || []) %>;
+  let currentRuleIndex = -1;
+  
+  function loadRules() {
+    const listEl = document.getElementById('rules-list');
+    const countEl = document.getElementById('rule-count');
+    
+    if (rules.length === 0) {
+      listEl.innerHTML = '<div style="padding: 40px; text-align: center; color: #999;">No file watcher rules configured</div>';
+      countEl.textContent = '0 rules';
+      return;
+    }
+    
+    countEl.textContent = rules.length + ' rule' + (rules.length !== 1 ? 's' : '');
+    
+    listEl.innerHTML = rules.map((rule, index) => `
+      <div class="rule-item">
+        <div class="rule-status">
+          <span class="status-indicator ${rule.enabled ? 'enabled' : ''}"></span>
+        </div>
+        <div class="rule-info">
+          <div class="rule-name">${escapeHtml(rule.name)}</div>
+          <div class="rule-details">
+            <div class="rule-detail">
+              <span class="rule-detail-icon">📁</span>
+              ${escapeHtml(rule.dirRegex || 'Any directory')}
+            </div>
+            <div class="rule-detail">
+              <span class="rule-detail-icon">📄</span>
+              ${escapeHtml(rule.fileRegex || 'Any file')}
+            </div>
+            ${rule.operations.copyToDir ? `
+              <div class="rule-detail">
+                <span class="rule-detail-icon">➡️</span>
+                ${escapeHtml(rule.operations.copyToDir)}
+              </div>
+            ` : ''}
+          </div>
+        </div>
+        <div class="rule-actions">
+          <button class="btn btn-sm" onclick="editRule(${index})">Edit</button>
+          <button class="btn btn-sm" onclick="toggleRule(${index})">${rule.enabled ? 'Disable' : 'Enable'}</button>
+          <button class="btn btn-sm btn-danger" onclick="deleteRule(${index})">Delete</button>
+        </div>
+      </div>
+    `).join('');
+  }
+  
+  function createRule() {
+    currentRuleIndex = -1;
+    document.getElementById('modal-title').textContent = 'New File Watcher Rule';
+    clearForm();
+    document.getElementById('rule-modal').style.display = 'block';
+  }
+  
+  function editRule(index) {
+    currentRuleIndex = index;
+    const rule = rules[index];
+    document.getElementById('modal-title').textContent = 'Edit File Watcher Rule';
+    
+    // Load rule data into form
+    document.getElementById('rule-name').value = rule.name || '';
+    document.getElementById('rule-description').value = rule.description || '';
+    document.getElementById('rule-enabled').checked = rule.enabled !== false;
+    document.getElementById('dir-regex').value = rule.dirRegex || '';
+    document.getElementById('file-regex').value = rule.fileRegex || '';
+    document.getElementById('content-regex').value = rule.contentRegex || '';
+    
+    // Operations
+    const ops = rule.operations || {};
+    document.getElementById('copy-to-dir').value = ops.copyToDir || '';
+    document.getElementById('copy-option').value = ops.copyFileOption || '21';
+    document.getElementById('rename-to').value = ops.renameFileTo || '';
+    document.getElementById('insert-timestamp').checked = ops.insertTimestamp || false;
+    document.getElementById('backup-dir').value = ops.backupToDir || '';
+    document.getElementById('temp-ext').value = ops.copyTempExtension || '';
+    document.getElementById('remove-after').checked = ops.removeAfterCopy !== false;
+    document.getElementById('overwrite').checked = ops.overwrite !== false;
+    document.getElementById('exec-before').value = ops.execProgBefore || '';
+    document.getElementById('exec-after').value = ops.execProg || '';
+    document.getElementById('exec-error').value = ops.execProgError || '';
+    
+    // Timing
+    const time = rule.timeRestrictions || {};
+    document.getElementById('start-hour').value = time.startHour || 0;
+    document.getElementById('start-minute').value = time.startMinute || 0;
+    document.getElementById('end-hour').value = time.endHour || 23;
+    document.getElementById('end-minute').value = time.endMinute || 59;
+    document.getElementById('process-after').value = time.processAfterSecs || 0;
+    
+    // Weekdays
+    const weekday = time.weekDayInterval || 127;
+    document.querySelectorAll('.weekday').forEach(cb => {
+      cb.checked = (weekday & parseInt(cb.value)) > 0;
+    });
+    
+    // Advanced
+    const proc = rule.processingOptions || {};
+    document.getElementById('check-in-use').checked = proc.checkFileInUse !== false;
+    document.getElementById('scan-subdir').checked = proc.scanSubDir || false;
+    document.getElementById('max-retries').value = proc.maxRetries || 5;
+    document.getElementById('retry-delay').value = proc.delayRetry || 1000;
+    document.getElementById('delay-next').value = proc.delayNextFile || 0;
+    
+    document.getElementById('rule-modal').style.display = 'block';
+  }
+  
+  function saveRule() {
+    const rule = {
+      id: currentRuleIndex >= 0 ? rules[currentRuleIndex].id : 'rule_' + Date.now(),
+      name: document.getElementById('rule-name').value,
+      description: document.getElementById('rule-description').value,
+      enabled: document.getElementById('rule-enabled').checked,
+      dirRegex: document.getElementById('dir-regex').value,
+      fileRegex: document.getElementById('file-regex').value,
+      contentRegex: document.getElementById('content-regex').value,
+      operations: {
+        copyToDir: document.getElementById('copy-to-dir').value,
+        copyFileOption: parseInt(document.getElementById('copy-option').value),
+        renameFileTo: document.getElementById('rename-to').value,
+        insertTimestamp: document.getElementById('insert-timestamp').checked,
+        backupToDir: document.getElementById('backup-dir').value,
+        copyTempExtension: document.getElementById('temp-ext').value,
+        removeAfterCopy: document.getElementById('remove-after').checked,
+        overwrite: document.getElementById('overwrite').checked,
+        execProgBefore: document.getElementById('exec-before').value,
+        execProg: document.getElementById('exec-after').value,
+        execProgError: document.getElementById('exec-error').value
+      },
+      timeRestrictions: {
+        startHour: parseInt(document.getElementById('start-hour').value),
+        startMinute: parseInt(document.getElementById('start-minute').value),
+        endHour: parseInt(document.getElementById('end-hour').value),
+        endMinute: parseInt(document.getElementById('end-minute').value),
+        processAfterSecs: parseInt(document.getElementById('process-after').value),
+        weekDayInterval: Array.from(document.querySelectorAll('.weekday:checked'))
+          .reduce((sum, cb) => sum + parseInt(cb.value), 0)
+      },
+      processingOptions: {
+        checkFileInUse: document.getElementById('check-in-use').checked,
+        scanSubDir: document.getElementById('scan-subdir').checked,
+        maxRetries: parseInt(document.getElementById('max-retries').value),
+        delayRetry: parseInt(document.getElementById('retry-delay').value),
+        delayNextFile: parseInt(document.getElementById('delay-next').value)
+      }
+    };
+    
+    if (!rule.name) {
+      alert('Please enter a rule name');
+      return;
+    }
+    
+    if (currentRuleIndex >= 0) {
+      rules[currentRuleIndex] = rule;
+    } else {
+      rules.push(rule);
+    }
+    
+    saveToServer();
+    closeModal();
+    loadRules();
+  }
+  
+  function deleteRule(index) {
+    if (confirm('Are you sure you want to delete this rule?')) {
+      rules.splice(index, 1);
+      saveToServer();
+      loadRules();
+    }
+  }
+  
+  function toggleRule(index) {
+    rules[index].enabled = !rules[index].enabled;
+    saveToServer();
+    loadRules();
+  }
+  
+  function saveToServer() {
+    // Save file watcher rules to agent config
+    fetch('/api/agents/<%= agent.id %>/filewatcher', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ rules })
+    })
+    .then(r => r.json())
+    .then(data => {
+      console.log('File watcher rules saved');
+    })
+    .catch(err => alert('Failed to save rules: ' + err.message));
+  }
+  
+  function closeModal() {
+    document.getElementById('rule-modal').style.display = 'none';
+  }
+  
+  function clearForm() {
+    document.getElementById('rule-name').value = '';
+    document.getElementById('rule-description').value = '';
+    document.getElementById('rule-enabled').checked = true;
+    document.getElementById('dir-regex').value = '';
+    document.getElementById('file-regex').value = '';
+    document.getElementById('content-regex').value = '';
+    // ... clear other fields
+  }
+  
+  function switchTab(tabName) {
+    // Hide all tabs
+    document.querySelectorAll('.tab-content').forEach(tab => {
+      tab.classList.remove('active');
+    });
+    document.querySelectorAll('.form-tab').forEach(tab => {
+      tab.classList.remove('active');
+    });
+    
+    // Show selected tab
+    document.getElementById(tabName + '-tab').classList.add('active');
+    event.target.classList.add('active');
+  }
+  
+  function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+  }
+  
+  // Import INI file
+  document.getElementById('import-file').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    const reader = new FileReader();
+    reader.onload = function(event) {
+      const content = event.target.result;
+      
+      fetch('/api/agents/<%= agent.id %>/filewatcher/import', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ content: content })
+      })
+      .then(r => r.json())
+      .then(data => {
+        if (data.rules) {
+          rules = data.rules;
+          loadRules();
+          // Save the imported rules
+          saveRules();
+          
+          // Show success message
+          const message = `✅ Successfully imported ${data.rules.length} rules from INI file`;
+          console.log(message);
+          
+          // Create a temporary success banner
+          const banner = document.createElement('div');
+          banner.style.cssText = 'position: fixed; top: 20px; right: 20px; background: #4CAF50; color: white; padding: 15px 20px; border-radius: 4px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); z-index: 10000; font-weight: bold;';
+          banner.textContent = message;
+          document.body.appendChild(banner);
+          
+          // Remove banner after 5 seconds
+          setTimeout(() => {
+            banner.remove();
+          }, 5000);
+        }
+      })
+      .catch(err => {
+        console.error('Import failed:', err);
+        const message = `❌ Failed to import: ${err.message}`;
+        
+        // Create error banner
+        const banner = document.createElement('div');
+        banner.style.cssText = 'position: fixed; top: 20px; right: 20px; background: #f44336; color: white; padding: 15px 20px; border-radius: 4px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); z-index: 10000; font-weight: bold;';
+        banner.textContent = message;
+        document.body.appendChild(banner);
+        
+        setTimeout(() => {
+          banner.remove();
+        }, 5000);
+      });
+    };
+    
+    reader.readAsText(file);
+  });
+  
+  function exportRules() {
+    window.location.href = '/api/agents/<%= agent.id %>/filewatcher/export';
+  }
+  
+  // Load rules on page load
+  loadRules();
+  </script>
+</body>
+</html>

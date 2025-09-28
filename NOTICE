@@ -1,0 +1,75 @@
+Control Center - Distributed Automation Platform
+Copyright (C) 2025 Your Organization
+
+This product includes software developed by Your Organization.
+
+DUAL LICENSING NOTICE
+=====================
+
+This software is available under two different licensing options:
+
+1. OPEN SOURCE LICENSE (AGPL-3.0)
+----------------------------------
+For open source use, this software is licensed under the GNU Affero General
+Public License version 3 (AGPL-3.0). You can redistribute it and/or modify it
+under the terms of the AGPL-3.0 as published by the Free Software Foundation.
+
+The full text of the AGPL-3.0 license can be found in the LICENSE file or at:
+https://www.gnu.org/licenses/agpl-3.0.html
+
+Key requirements under AGPL-3.0:
+- Source code must be made available when distributing the software
+- Network use constitutes distribution (SaaS deployments must provide source)
+- Modifications must be released under the same license
+- Copyright and license notices must be preserved
+
+2. COMMERCIAL LICENSE
+---------------------
+For commercial use cases that require:
+- Proprietary modifications without source disclosure
+- SaaS deployment without source code obligations
+- Integration into proprietary software products
+- Professional support and warranty
+
+Please contact sales@your-organization.com for commercial licensing options.
+
+THIRD-PARTY SOFTWARE
+====================
+
+This product includes the following third-party software components:
+
+Node.js Dependencies (Manager):
+- express (MIT License) - Copyright (c) 2009-2014 TJ Holowaychuk
+- bcryptjs (MIT License) - Copyright (c) 2012 Nevins Bartolomeo
+- drawflow (MIT License) - Copyright (c) 2020 Jero Soler
+- ejs (Apache-2.0 License) - Copyright (c) 2012 TJ Holowaychuk
+- jsonwebtoken (MIT License) - Copyright (c) 2015 Auth0, Inc.
+- sqlite3 (BSD-3-Clause) - Copyright (c) MapBox
+- ws (MIT License) - Copyright (c) 2011 Einar Otto Stangvik
+- simple-git (MIT License) - Copyright (c) 2015 Steve King
+- uuid (MIT License) - Copyright (c) 2010-2020 Robert Kieffer
+- ini (ISC License) - Copyright (c) Isaac Z. Schlueter
+
+Go Dependencies (Nodes):
+- golang.org/x/crypto (BSD-3-Clause) - Copyright (c) The Go Authors
+- github.com/gorilla/websocket (BSD-2-Clause) - Copyright (c) 2013 The Gorilla Authors
+- github.com/go-git/go-git/v5 (Apache-2.0) - Copyright (c) go-git Contributors
+- github.com/gliderlabs/ssh (BSD-3-Clause) - Copyright (c) Glider Labs
+- github.com/fsnotify/fsnotify (BSD-3-Clause) - Copyright (c) fsnotify Authors
+
+The complete list of dependencies and their licenses can be found in:
+- manager/package.json and manager/package-lock.json
+- nodes/go.mod and nodes/go.sum
+
+DISCLAIMER
+==========
+
+THIS SOFTWARE IS PROVIDED "AS IS" WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+For questions about licensing, please contact: legal@your-organization.com
