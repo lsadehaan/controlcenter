@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "description": "Control Center Manager - Node.js/Express/EJS scaffold",
+  "license": "AGPL-3.0",
   "scripts": {
     "start": "node src/server.js"
   },
