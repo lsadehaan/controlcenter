@@ -15,6 +15,12 @@ class GitHttpServer {
   }
   
   setupRoutes() {
+    // Middleware to log Git operations
+    this.router.use((req, res, next) => {
+      this.logger.log(`Git HTTP: ${req.method} ${req.path}`);
+      next();
+    });
+    
     // Git Smart HTTP protocol endpoints
     
     // GET /info/refs - Used for fetching refs (discovery)
@@ -134,12 +140,6 @@ class GitHttpServer {
       } else {
         res.status(404).send('Not found');
       }
-    });
-    
-    // Middleware to log Git operations
-    this.router.use((req, res, next) => {
-      this.logger.log(`Git HTTP: ${req.method} ${req.path}`);
-      next();
     });
   }
   

@@ -1,0 +1,295 @@
+# Control Center Kubernetes Deployment
+# Complete deployment for both Manager and Agents
+
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: controlcenter
+
+---
+# Manager Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: controlcenter-manager
+  namespace: controlcenter
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: controlcenter-manager
+  template:
+    metadata:
+      labels:
+        app: controlcenter-manager
+    spec:
+      containers:
+      - name: manager
+        image: ghcr.io/lsadehaan/controlcenter-manager:latest
+        ports:
+        - containerPort: 3000
+          name: web
+        - containerPort: 9418
+          name: git
+        env:
+        - name: NODE_ENV
+          value: "production"
+        volumeMounts:
+        - name: manager-data
+          mountPath: /app/data
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 3000
+          initialDelaySeconds: 30
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 3000
+          initialDelaySeconds: 10
+          periodSeconds: 10
+      volumes:
+      - name: manager-data
+        persistentVolumeClaim:
+          claimName: manager-data-pvc
+
+---
+# Manager Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: controlcenter-manager
+  namespace: controlcenter
+spec:
+  selector:
+    app: controlcenter-manager
+  ports:
+  - name: web
+    port: 3000
+    targetPort: 3000
+  - name: git
+    port: 9418
+    targetPort: 9418
+  type: ClusterIP
+
+---
+# Manager Ingress (configure for your ingress controller)
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: controlcenter-manager
+  namespace: controlcenter
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+spec:
+  ingressClassName: nginx
+  tls:
+  - hosts:
+    - controlcenter.example.com
+    secretName: controlcenter-tls
+  rules:
+  - host: controlcenter.example.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: controlcenter-manager
+            port:
+              number: 3000
+
+---
+# Manager PVC
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: manager-data-pvc
+  namespace: controlcenter
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+  storageClassName: standard
+
+---
+# Agent DaemonSet - Runs on every node
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: controlcenter-agent
+  namespace: controlcenter
+spec:
+  selector:
+    matchLabels:
+      app: controlcenter-agent
+  template:
+    metadata:
+      labels:
+        app: controlcenter-agent
+    spec:
+      hostNetwork: true  # Use host network for better performance
+      hostPID: true      # Access to host processes
+      containers:
+      - name: agent
+        image: ghcr.io/lsadehaan/controlcenter-nodes:latest
+        securityContext:
+          privileged: true  # Required for host access
+          capabilities:
+            add:
+            - SYS_ADMIN
+            - NET_ADMIN
+        env:
+        - name: MANAGER_URL
+          value: "http://controlcenter-manager.controlcenter.svc.cluster.local:3000"
+        - name: LOG_LEVEL
+          value: "info"
+        - name: NODE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        volumeMounts:
+        - name: agent-config
+          mountPath: /home/agent/.controlcenter-agent
+        - name: host-root
+          mountPath: /host
+          readOnly: false
+        - name: docker-sock
+          mountPath: /var/run/docker.sock
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "50m"
+          limits:
+            memory: "256Mi"
+            cpu: "200m"
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 8088
+          initialDelaySeconds: 30
+          periodSeconds: 30
+      volumes:
+      - name: agent-config
+        hostPath:
+          path: /var/lib/controlcenter-agent
+          type: DirectoryOrCreate
+      - name: host-root
+        hostPath:
+          path: /
+      - name: docker-sock
+        hostPath:
+          path: /var/run/docker.sock
+
+---
+# Agent Service (for accessing agent APIs)
+apiVersion: v1
+kind: Service
+metadata:
+  name: controlcenter-agent
+  namespace: controlcenter
+spec:
+  selector:
+    app: controlcenter-agent
+  ports:
+  - name: api
+    port: 8088
+    targetPort: 8088
+  - name: ssh
+    port: 2222
+    targetPort: 2222
+  type: ClusterIP
+
+---
+# ConfigMap for agent registration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: agent-init
+  namespace: controlcenter
+data:
+  register.sh: |
+    #!/bin/sh
+    # Wait for manager to be ready
+    until wget -q -O- http://controlcenter-manager:3000/health; do
+      echo "Waiting for manager..."
+      sleep 5
+    done
+
+    # Register agent if not already registered
+    if [ ! -f /home/agent/.controlcenter-agent/config.json ]; then
+      echo "Registering agent..."
+      /usr/local/bin/agent -token "$REGISTRATION_TOKEN"
+    fi
+
+    # Start agent
+    exec /usr/local/bin/agent
+
+---
+# Secret for registration token (create this with your actual token)
+apiVersion: v1
+kind: Secret
+metadata:
+  name: agent-registration
+  namespace: controlcenter
+type: Opaque
+stringData:
+  token: "YOUR_REGISTRATION_TOKEN_HERE"
+
+---
+# Job-based Agent for specific workflows
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: workflow-processor
+  namespace: controlcenter
+spec:
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+      - name: agent
+        image: ghcr.io/lsadehaan/controlcenter-nodes:latest
+        env:
+        - name: MANAGER_URL
+          value: "http://controlcenter-manager.controlcenter.svc.cluster.local:3000"
+        - name: STANDALONE_MODE
+          value: "true"
+        - name: WORKFLOW_ID
+          value: "batch-processing"
+        volumeMounts:
+        - name: data
+          mountPath: /data
+        command: ["/usr/local/bin/agent"]
+        args: ["-standalone", "-workflow", "batch-processing"]
+      volumes:
+      - name: data
+        persistentVolumeClaim:
+          claimName: workflow-data-pvc
+
+---
+# PVC for workflow data
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: workflow-data-pvc
+  namespace: controlcenter
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 100Gi
+  storageClassName: standard

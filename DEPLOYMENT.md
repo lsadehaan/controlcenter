@@ -8,16 +8,31 @@
 - Internet connectivity
 - Minimum 2GB RAM, 10GB disk space
 
+### Architecture Overview
+
+**Manager**: Can be deployed as Docker container or native Node.js application
+**Agent**: Always deployed as native binary (Go executable) for direct system access
+
 ### One-Line Installation
 
-#### Option 1: Docker Deployment (Recommended)
+#### 1. Deploy Manager (Choose One)
+
+**Docker (Recommended for Manager):**
 ```bash
-curl -fsSL https://raw.githubusercontent.com/lsadehaan/controlcenter/main/deploy/ubuntu-deploy.sh | bash -s -- v0.2.0 docker
+curl -fsSL https://raw.githubusercontent.com/lsadehaan/controlcenter/main/deploy/deploy-manager.sh | bash -s -- docker
 ```
 
-#### Option 2: Native Deployment
+**Native:**
 ```bash
-curl -fsSL https://raw.githubusercontent.com/lsadehaan/controlcenter/main/deploy/ubuntu-deploy.sh | bash -s -- v0.2.0 native
+curl -fsSL https://raw.githubusercontent.com/lsadehaan/controlcenter/main/deploy/deploy-manager.sh | bash -s -- native
+```
+
+#### 2. Deploy Agent (Always Native)
+
+Get a registration token from the Manager UI (http://your-server:3000), then:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/lsadehaan/controlcenter/main/deploy/deploy-agent.sh | bash -s -- YOUR_TOKEN
 ```
 
 ### Manual Installation
@@ -39,9 +54,9 @@ chmod +x ubuntu-deploy.sh
 
 ## Docker Deployment Details
 
-### Using Docker Compose
+### Manager Docker Deployment
 
-1. **Create docker-compose.yml**:
+**Create docker-compose.yml** for Manager only:
 ```yaml
 version: '3.8'
 
@@ -57,21 +72,12 @@ services:
       - ./manager-data:/app/data
     environment:
       - NODE_ENV=production
+    networks:
+      - controlcenter
 
-  node-agent:
-    image: ghcr.io/lsadehaan/controlcenter-nodes:latest
-    container_name: controlcenter-node
-    restart: unless-stopped
-    ports:
-      - "8088:8088"  # Agent API
-      - "2222:2222"  # SSH server
-    volumes:
-      - ./node-data:/home/agent/.controlcenter-agent
-    environment:
-      - MANAGER_URL=http://manager:3000
-      - LOG_LEVEL=info
-    depends_on:
-      - manager
+networks:
+  controlcenter:
+    driver: bridge
 ```
 
 2. **Start the services**:
@@ -84,33 +90,26 @@ docker compose up -d
 docker compose logs -f
 ```
 
-### Using Docker Run
+### Agent Native Deployment
+
+**Agents are always deployed as native binaries** for optimal system access:
 
 ```bash
-# Create network
-docker network create controlcenter
+# Quick install with registration
+wget https://raw.githubusercontent.com/lsadehaan/controlcenter/main/deploy/deploy-agent.sh
+chmod +x deploy-agent.sh
+sudo ./deploy-agent.sh YOUR_REGISTRATION_TOKEN http://manager-ip:3000
 
-# Run Manager
-docker run -d \
-  --name controlcenter-manager \
-  --network controlcenter \
-  -p 3000:3000 \
-  -p 9418:9418 \
-  -v /opt/controlcenter/manager:/app/data \
-  --restart unless-stopped \
-  ghcr.io/lsadehaan/controlcenter-manager:latest
-
-# Run Node Agent
-docker run -d \
-  --name controlcenter-node \
-  --network controlcenter \
-  -p 8088:8088 \
-  -p 2222:2222 \
-  -v /opt/controlcenter/node:/home/agent/.controlcenter-agent \
-  -e MANAGER_URL=http://controlcenter-manager:3000 \
-  --restart unless-stopped \
-  ghcr.io/lsadehaan/controlcenter-nodes:latest
+# Or install without registration (register later)
+sudo ./deploy-agent.sh
 ```
+
+The agent installer:
+- Downloads the Go binary (or builds from source)
+- Creates systemd service
+- Sets up workflow directories in `/var/controlcenter/`
+- Configures firewall rules
+- Runs as dedicated user `controlcenter-agent`
 
 ## Native Deployment Details
 
@@ -205,51 +204,27 @@ sudo systemctl start controlcenter-manager controlcenter-node
 
 ## Kubernetes Deployment
 
-```yaml
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: controlcenter-manager
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: controlcenter-manager
-  template:
-    metadata:
-      labels:
-        app: controlcenter-manager
-    spec:
-      containers:
-      - name: manager
-        image: ghcr.io/lsadehaan/controlcenter-manager:latest
-        ports:
-        - containerPort: 3000
-        - containerPort: 9418
-        volumeMounts:
-        - name: data
-          mountPath: /app/data
-      volumes:
-      - name: data
-        persistentVolumeClaim:
-          claimName: manager-data
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: controlcenter-manager
-spec:
-  selector:
-    app: controlcenter-manager
-  ports:
-  - name: web
-    port: 3000
-    targetPort: 3000
-  - name: git
-    port: 9418
-    targetPort: 9418
-  type: LoadBalancer
+**Note**: In Kubernetes, both Manager and Agent use container images. The Agent container runs with host access for system integration.
+
+### Quick Deploy
+
+```bash
+# Deploy everything
+kubectl apply -f https://raw.githubusercontent.com/lsadehaan/controlcenter/main/deploy/kubernetes/controlcenter-k8s.yaml
+
+# Set registration token
+kubectl create secret generic agent-registration \
+  --from-literal=token=YOUR_TOKEN \
+  -n controlcenter
 ```
+
+### Components
+
+1. **Manager**: Deployment with persistent storage
+2. **Agent DaemonSet**: Runs on every node with host access
+3. **Job Agents**: For batch workflows
+
+See `deploy/kubernetes/controlcenter-k8s.yaml` for complete configuration.
 
 ## Configuration
 

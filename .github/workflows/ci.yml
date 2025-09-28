@@ -208,7 +208,6 @@ jobs:
         with:
           images: |
             ghcr.io/${{ github.repository_owner }}/controlcenter-manager
-            ghcr.io/${{ github.repository_owner }}/controlcenter-nodes
           tags: |
             type=ref,event=branch
             type=ref,event=pr
@@ -231,7 +230,7 @@ jobs:
             org.opencontainers.image.licenses=AGPL-3.0
         continue-on-error: true
 
-      - name: Build and push Nodes Docker image
+      - name: Build and push Agent Docker image (for Kubernetes)
         uses: docker/build-push-action@v5
         with:
           context: ./nodes
@@ -239,9 +238,9 @@ jobs:
           push: true
           tags: |
             ghcr.io/${{ github.repository_owner }}/controlcenter-nodes:latest
-            ghcr.io/${{ github.repository_owner }}/controlcenter-nodes:${{ github.sha }}
+            ghcr.io/${{ github.repository_owner }}/controlcenter-nodes:k8s-${{ github.sha }}
           labels: |
             org.opencontainers.image.source=${{ github.event.repository.html_url }}
-            org.opencontainers.image.description=Control Center Node Agent
+            org.opencontainers.image.description=Control Center Agent - For Kubernetes/Testing only
             org.opencontainers.image.licenses=AGPL-3.0
         continue-on-error: true
