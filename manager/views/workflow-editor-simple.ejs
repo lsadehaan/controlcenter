@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= title %> - Control Center</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/jerosoler/Drawflow/dist/drawflow.min.css">
+  <style>
+    #drawflow {
+      position: relative;
+      width: 100%;
+      height: 600px;
+      border: 1px solid #ddd;
+      background: #f5f5f5;
+      background-size: 20px 20px;
+      background-image: linear-gradient(to right, #e0e0e0 1px, transparent 1px),
+                        linear-gradient(to bottom, #e0e0e0 1px, transparent 1px);
+    }
+    .drawflow-node {
+      background: white;
+      border: 2px solid #333;
+      border-radius: 4px;
+      padding: 10px;
+      min-width: 150px;
+    }
+    .drawflow-node.selected {
+      border-color: #007bff;
+      box-shadow: 0 0 0 2px rgba(0,123,255,0.3);
+    }
+    .node-header {
+      font-weight: bold;
+      margin-bottom: 10px;
+      padding-bottom: 5px;
+      border-bottom: 1px solid #ddd;
+    }
+  </style>
+</head>
+<body>
+  <nav class="navbar">
+    <div class="nav-container">
+      <div class="nav-brand">
+        <h1>Control Center</h1>
+      </div>
+      <ul class="nav-menu">
+        <li><a href="/">Dashboard</a></li>
+        <li><a href="/agents">Agents</a></li>
+        <li><a href="/workflows">Workflows</a></li>
+        <li><a href="/workflow-editor" class="active">Editor</a></li>
+        <li><a href="/alerts">Alerts</a></li>
+        <li><a href="/logs">Logs</a></li>
+        <li><a href="/settings">Settings</a></li>
+      </ul>
+    </div>
+  </nav>
+  
+  <main class="main-content">
+    <div class="container-fluid">
+      <div class="editor-header">
+        <h2>Workflow Editor (Simple Mode)</h2>
+        <div class="editor-controls">
+          <input type="text" id="workflow-name" placeholder="Workflow Name" class="form-input">
+          <button class="btn btn-primary" onclick="saveWorkflow()">Save Workflow</button>
+          <button class="btn" onclick="clearEditor()">Clear</button>
+          <button class="btn" onclick="addTriggerNode()">Add Trigger</button>
+          <button class="btn" onclick="addActionNode()">Add Action</button>
+        </div>
+      </div>
+      
+      <div id="drawflow"></div>
+      
+      <div style="padding: 20px; background: white; margin-top: 20px;">
+        <h3>Instructions:</h3>
+        <ol>
+          <li>Click "Add Trigger" to add a File Trigger node</li>
+          <li>Click "Add Action" to add action nodes (Copy File, Alert, etc.)</li>
+          <li>Connect nodes by dragging from output to input dots</li>
+          <li>Double-click nodes to edit properties</li>
+          <li>Enter a workflow name and click "Save Workflow"</li>
+        </ol>
+      </div>
+    </div>
+  </main>
+  
+  <script src="https://cdn.jsdelivr.net/gh/jerosoler/Drawflow/dist/drawflow.min.js"></script>
+  <script>
+    let editor;
+    let nodeId = 1;
+    let pos_x = 100;
+    let pos_y = 100;
+    
+    // Initialize Drawflow
+    const id = document.getElementById("drawflow");
+    editor = new Drawflow(id);
+    editor.start();
+    
+    function addTriggerNode() {
+      const html = `
+        <div>
+          <div class="node-header">File Trigger</div>
+          <div>Path: <input type="text" df-path placeholder="/watch/folder"></div>
+          <div>Pattern: <input type="text" df-pattern value="*.txt"></div>
+        </div>
+      `;
+      
+      editor.addNode('file-trigger', 0, 1, pos_x, pos_y, 'trigger-node', 
+        { path: '/watch/folder', pattern: '*.txt' }, html);
+      
+      pos_x += 50;
+      pos_y += 50;
+      nodeId++;
+    }
+    
+    function addActionNode() {
+      const actionType = prompt('Enter action type:\n1. copy-file\n2. move-file\n3. alert\n4. run-command', '1');
+      
+      let html = '';
+      let data = {};
+      let nodeName = '';
+      
+      switch(actionType) {
+        case '1':
+          nodeName = 'copy-file';
+          html = `
+            <div>
+              <div class="node-header">Copy File</div>
+              <div>From: <input type="text" df-source></div>
+              <div>To: <input type="text" df-destination></div>
+            </div>
+          `;
+          data = { source: '', destination: '' };
+          break;
+          
+        case '2':
+          nodeName = 'move-file';
+          html = `
+            <div>
+              <div class="node-header">Move File</div>
+              <div>From: <input type="text" df-source></div>
+              <div>To: <input type="text" df-destination></div>
+            </div>
+          `;
+          data = { source: '', destination: '' };
+          break;
+          
+        case '3':
+          nodeName = 'alert';
+          html = `
+            <div>
+              <div class="node-header">Send Alert</div>
+              <div>Level: 
+                <select df-level>
+                  <option value="info">Info</option>
+                  <option value="warning">Warning</option>
+                  <option value="error">Error</option>
+                </select>
+              </div>
+              <div>Message: <input type="text" df-message></div>
+            </div>
+          `;
+          data = { level: 'info', message: '' };
+          break;
+          
+        case '4':
+          nodeName = 'run-command';
+          html = `
+            <div>
+              <div class="node-header">Run Command</div>
+              <div>Command: <input type="text" df-command></div>
+              <div>Args: <input type="text" df-args></div>
+            </div>
+          `;
+          data = { command: '', args: '' };
+          break;
+          
+        default:
+          return;
+      }
+      
+      editor.addNode(nodeName, 1, 1, pos_x, pos_y, 'action-node', data, html);
+      pos_x += 50;
+      pos_y += 50;
+      nodeId++;
+    }
+    
+    function clearEditor() {
+      if (confirm('Clear all nodes?')) {
+        editor.clear();
+        pos_x = 100;
+        pos_y = 100;
+        nodeId = 1;
+      }
+    }
+    
+    function saveWorkflow() {
+      const name = document.getElementById('workflow-name').value;
+      if (!name) {
+        alert('Please enter a workflow name');
+        return;
+      }
+      
+      const exportData = editor.export();
+      const nodes = exportData.drawflow.Home.data;
+      
+      // Find trigger and build workflow structure
+      let trigger = null;
+      const steps = [];
+      
+      for (const [id, node] of Object.entries(nodes)) {
+        if (node.name.includes('trigger')) {
+          trigger = {
+            type: node.name.replace('-trigger', ''),
+            config: node.data
+          };
+        } else {
+          const step = {
+            id: 'step-' + id,
+            type: node.name,
+            name: node.name,
+            config: node.data,
+            next: []
+          };
+          
+          // Get connected nodes
+          if (node.outputs && node.outputs.output_1) {
+            const connections = node.outputs.output_1.connections || [];
+            step.next = connections.map(c => 'step-' + c.node);
+          }
+          
+          steps.push(step);
+        }
+      }
+      
+      if (!trigger) {
+        alert('Please add a trigger node first');
+        return;
+      }
+      
+      const workflow = {
+        id: 'wf-' + Date.now(),
+        name: name,
+        enabled: true,
+        trigger: trigger,
+        steps: steps
+      };
+      
+      // Save via API
+      fetch('/api/workflows', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: name,
+          description: 'Created with visual editor',
+          config: workflow
+        })
+      })
+      .then(r => r.json())
+      .then(data => {
+        alert('Workflow saved! ID: ' + data.id);
+        window.location.href = '/workflows';
+      })
+      .catch(err => {
+        alert('Error saving workflow: ' + err.message);
+      });
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= title %> - Control Center</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <nav class="navbar">
+    <div class="nav-container">
+      <div class="nav-brand">
+        <h1>Control Center</h1>
+      </div>
+      <ul class="nav-menu">
+        <li><a href="/">Dashboard</a></li>
+        <li><a href="/agents" class="active">Agents</a></li>
+        <li><a href="/workflows">Workflows</a></li>
+        <li><a href="/workflow-editor">Editor</a></li>
+        <li><a href="/alerts">Alerts</a></li>
+        <li><a href="/logs">Logs</a></li>
+        <li><a href="/settings">Settings</a></li>
+      </ul>
+    </div>
+  </nav>
+  
+  <main class="main-content">
+    <div class="container">
+      <div class="page-header">
+        <h2>Agents</h2>
+        <button class="btn btn-primary" onclick="generateToken()">Generate Registration Token</button>
+      </div>
+      
+      <div id="token-display" class="token-display" style="display: none;">
+        <h3>Registration Token</h3>
+        <p>Use this token to register a new agent:</p>
+        <code id="token-value"></code>
+        <p class="token-command">Run agent with: <code>./nodes -token <span id="token-cmd"></span></code></p>
+      </div>
+      
+      <div class="agents-grid">
+        <% if (agents.length === 0) { %>
+          <div class="no-data">
+            <p>No agents registered yet</p>
+            <p>Generate a registration token and start an agent to begin</p>
+          </div>
+        <% } else { %>
+          <% agents.forEach(agent => { %>
+            <div class="agent-card <%= agent.status %>">
+              <div class="agent-header">
+                <h3><%= agent.metadata?.hostname || agent.id %></h3>
+                <span class="status-badge <%= agent.status %>"><%= agent.status %></span>
+              </div>
+              <div class="agent-details">
+                <div class="detail-row">
+                  <span class="label">ID:</span>
+                  <span class="value"><%= agent.id %></span>
+                </div>
+                <div class="detail-row">
+                  <span class="label">Platform:</span>
+                  <span class="value"><%= agent.metadata?.platform || 'Unknown' %></span>
+                </div>
+                <div class="detail-row">
+                  <span class="label">Last Heartbeat:</span>
+                  <span class="value"><%= agent.last_seen ? new Date(agent.last_seen).toLocaleString() : 'Never' %></span>
+                </div>
+                <div class="detail-row">
+                  <span class="label">Workflows:</span>
+                  <span class="value"><%= agent.config.workflows ? agent.config.workflows.length : 0 %></span>
+                </div>
+              </div>
+              <div class="agent-actions">
+                <button class="btn btn-sm" onclick="viewAgent('<%= agent.id %>')">View</button>
+                <button class="btn btn-sm" onclick="configureAgent('<%= agent.id %>')">Configure</button>
+                <button class="btn btn-sm btn-danger" onclick="removeAgent('<%= agent.id %>')">Remove</button>
+              </div>
+            </div>
+          <% }) %>
+        <% } %>
+      </div>
+    </div>
+  </main>
+  
+  <footer class="footer">
+    <p>&copy; 2025 Control Center - Distributed Automation Platform</p>
+  </footer>
+  
+  <script>
+  function generateToken() {
+    fetch('/api/tokens', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ expiresIn: 3600000 })
+    })
+    .then(r => r.json())
+    .then(data => {
+      document.getElementById('token-display').style.display = 'block';
+      document.getElementById('token-value').textContent = data.token;
+      document.getElementById('token-cmd').textContent = data.token;
+    })
+    .catch(err => alert('Failed to generate token: ' + err.message));
+  }
+  
+  function viewAgent(id) {
+    window.location.href = `/agents/${id}`;
+  }
+  
+  function configureAgent(id) {
+    window.location.href = `/agents/${id}/configure`;
+  }
+  
+  function removeAgent(id) {
+    if (confirm('Are you sure you want to remove this agent?')) {
+      fetch(`/api/agents/${id}`, {
+        method: 'DELETE'
+      })
+      .then(r => r.json())
+      .then(data => {
+        alert('Agent removed successfully');
+        window.location.reload();
+      })
+      .catch(err => alert('Failed to remove agent: ' + err.message));
+    }
+  }
+  
+  // Auto-refresh agent status
+  setInterval(() => {
+    window.location.reload();
+  }, 10000);
+  </script>
+</body>
+</html>

@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= title %> - Control Center</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    .config-form {
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      max-width: 800px;
+    }
+    .form-section {
+      margin-bottom: 30px;
+    }
+    .form-section h3 {
+      margin-bottom: 15px;
+      color: #333;
+      border-bottom: 2px solid #e0e0e0;
+      padding-bottom: 8px;
+    }
+    .form-group {
+      margin-bottom: 15px;
+    }
+    .form-group label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: 500;
+      color: #555;
+    }
+    .form-input {
+      width: 100%;
+      padding: 8px 12px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 14px;
+    }
+    .form-input:focus {
+      outline: none;
+      border-color: #007bff;
+      box-shadow: 0 0 0 2px rgba(0,123,255,0.1);
+    }
+    textarea.form-input {
+      min-height: 100px;
+      resize: vertical;
+      font-family: monospace;
+      font-size: 13px;
+    }
+    .form-actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 20px;
+    }
+    .ssh-key-list {
+      background: #f8f9fa;
+      padding: 10px;
+      border-radius: 4px;
+      margin-top: 10px;
+    }
+    .ssh-key-item {
+      display: flex;
+      align-items: center;
+      padding: 5px 0;
+    }
+    .ssh-key-item input {
+      flex: 1;
+      margin-right: 10px;
+    }
+    .add-key-btn {
+      margin-top: 10px;
+    }
+    .workflow-list {
+      list-style: none;
+      padding: 0;
+      margin: 10px 0;
+    }
+    .workflow-item {
+      padding: 10px;
+      background: #f8f9fa;
+      border-radius: 4px;
+      margin-bottom: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+  </style>
+</head>
+<body>
+  <nav class="navbar">
+    <div class="nav-container">
+      <div class="nav-brand">
+        <h1>Control Center</h1>
+      </div>
+      <ul class="nav-menu">
+        <li><a href="/">Dashboard</a></li>
+        <li><a href="/agents" class="active">Agents</a></li>
+        <li><a href="/workflows">Workflows</a></li>
+        <li><a href="/workflow-editor">Editor</a></li>
+        <li><a href="/alerts">Alerts</a></li>
+        <li><a href="/logs">Logs</a></li>
+        <li><a href="/settings">Settings</a></li>
+      </ul>
+    </div>
+  </nav>
+  
+  <main class="main-content">
+    <div class="container">
+      <div class="page-header">
+        <h2>Configure Agent</h2>
+        <a href="/agents/<%= agent.id %>" class="btn">Back to Agent</a>
+      </div>
+      
+      <form class="config-form" onsubmit="saveConfig(event)">
+        <div class="form-section">
+          <h3>Basic Settings</h3>
+          <div class="form-group">
+            <label>Agent ID</label>
+            <input type="text" class="form-input" value="<%= agent.id %>" disabled>
+          </div>
+          <div class="form-group">
+            <label>Hostname</label>
+            <input type="text" class="form-input" value="<%= agent.metadata?.hostname || '' %>" disabled>
+          </div>
+        </div>
+        
+        <div class="form-section">
+          <h3>SSH Server Configuration</h3>
+          <div class="form-group">
+            <label>SSH Server Port</label>
+            <input type="number" id="sshServerPort" class="form-input" 
+                   value="<%= agent.config.sshServerPort || 2222 %>" min="1" max="65535">
+          </div>
+          <div class="form-group">
+            <label>Authorized SSH Keys</label>
+            <div id="ssh-keys" class="ssh-key-list">
+              <% const authorizedKeys = agent.config.authorizedSSHKeys || []; %>
+              <% if (authorizedKeys.length === 0) { %>
+                <p style="color: #999;">No authorized keys configured</p>
+              <% } else { %>
+                <% authorizedKeys.forEach((key, index) => { %>
+                  <div class="ssh-key-item">
+                    <input type="text" class="form-input" value="<%= key %>" data-index="<%= index %>">
+                    <button type="button" class="btn btn-sm btn-danger" onclick="removeSSHKey(<%= index %>)">Remove</button>
+                  </div>
+                <% }) %>
+              <% } %>
+            </div>
+            <button type="button" class="btn btn-sm add-key-btn" onclick="addSSHKey()">Add SSH Key</button>
+          </div>
+        </div>
+        
+        <div class="form-section">
+          <h3>Deployed Workflows</h3>
+          <% const workflows = agent.config.workflows || []; %>
+          <% if (workflows.length === 0) { %>
+            <p style="color: #999;">No workflows deployed to this agent</p>
+          <% } else { %>
+            <ul class="workflow-list">
+              <% workflows.forEach(workflow => { %>
+                <li class="workflow-item">
+                  <div>
+                    <strong><%= workflow.name %></strong>
+                    <span style="color: #666; margin-left: 10px;">ID: <%= workflow.id %></span>
+                  </div>
+                  <button type="button" class="btn btn-sm btn-danger" 
+                          onclick="removeWorkflow('<%= workflow.id %>')">Remove</button>
+                </li>
+              <% }) %>
+            </ul>
+          <% } %>
+          <a href="/workflows" class="btn btn-sm">Deploy Workflows</a>
+        </div>
+        
+        <div class="form-section">
+          <h3>Advanced Configuration</h3>
+          <div class="form-group">
+            <label>Config Repository Path</label>
+            <input type="text" id="configRepoPath" class="form-input" 
+                   value="<%= agent.config.configRepoPath || '' %>" 
+                   placeholder="e.g., /path/to/config/repo">
+          </div>
+          <div class="form-group">
+            <label>Custom Configuration (JSON)</label>
+            <textarea id="customConfig" class="form-input" 
+                      placeholder='{"key": "value"}'><%- JSON.stringify(agent.config.custom || {}, null, 2) %></textarea>
+          </div>
+        </div>
+        
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary">Save Configuration</button>
+          <a href="/agents/<%= agent.id %>" class="btn">Cancel</a>
+        </div>
+      </form>
+    </div>
+  </main>
+  
+  <script>
+  // Initialize data from server
+  let sshKeys = [];
+  let workflows = [];
+  
+  try {
+    sshKeys = <%- JSON.stringify(agent.config.authorizedSSHKeys || []) %>;
+    workflows = <%- JSON.stringify(agent.config.workflows || []) %>;
+  } catch (e) {
+    console.error('Failed to parse config data:', e);
+    sshKeys = [];
+    workflows = [];
+  }
+  
+  // Make removeWorkflow available globally
+  window.removeWorkflow = function(workflowId) {
+    console.log('Removing workflow:', workflowId);
+    console.log('Current workflows:', workflows);
+    
+    // Remove from workflows array
+    workflows = workflows.filter(w => w.id !== workflowId);
+    console.log('Updated workflows:', workflows);
+    
+    // Find and remove the UI element
+    const workflowItems = document.querySelectorAll('.workflow-item');
+    workflowItems.forEach(item => {
+      if (item.innerHTML.includes(workflowId)) {
+        item.remove();
+      }
+    });
+    
+    // Check if list is now empty
+    const workflowList = document.querySelector('.workflow-list');
+    if (workflowList && workflowList.children.length === 0) {
+      const section = workflowList.closest('.form-section');
+      const contentDiv = section.querySelector('ul').parentElement;
+      contentDiv.innerHTML = '<p style="color: #999;">No workflows deployed to this agent</p>';
+    }
+    
+    alert('Workflow marked for removal. Click "Save Configuration" to apply changes.');
+  }
+  
+  function addSSHKey() {
+    const keyList = document.getElementById('ssh-keys');
+    const newIndex = sshKeys.length;
+    const div = document.createElement('div');
+    div.className = 'ssh-key-item';
+    div.innerHTML = `
+      <input type="text" class="form-input" placeholder="ssh-rsa AAAA..." data-index="${newIndex}">
+      <button type="button" class="btn btn-sm btn-danger" onclick="removeSSHKey(${newIndex})">Remove</button>
+    `;
+    keyList.appendChild(div);
+    sshKeys.push('');
+  }
+  
+  function removeSSHKey(index) {
+    sshKeys.splice(index, 1);
+    refreshSSHKeys();
+  }
+  
+  function refreshSSHKeys() {
+    const keyList = document.getElementById('ssh-keys');
+    if (sshKeys.length === 0) {
+      keyList.innerHTML = '<p style="color: #999;">No authorized keys configured</p>';
+    } else {
+      keyList.innerHTML = '';
+      sshKeys.forEach((key, index) => {
+        const div = document.createElement('div');
+        div.className = 'ssh-key-item';
+        
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.className = 'form-input';
+        input.value = key;
+        input.setAttribute('data-index', index);
+        
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'btn btn-sm btn-danger';
+        button.textContent = 'Remove';
+        button.onclick = () => removeSSHKey(index);
+        
+        div.appendChild(input);
+        div.appendChild(button);
+        keyList.appendChild(div);
+      });
+    }
+  }
+  
+  
+  function saveConfig(event) {
+    event.preventDefault();
+    
+    // Collect SSH keys from inputs
+    const keyInputs = document.querySelectorAll('#ssh-keys input[type="text"]');
+    const authorizedSSHKeys = Array.from(keyInputs)
+      .map(input => input.value.trim())
+      .filter(key => key.length > 0);
+    
+    // Parse custom config
+    let customConfig = {};
+    try {
+      const customConfigText = document.getElementById('customConfig').value.trim();
+      if (customConfigText) {
+        customConfig = JSON.parse(customConfigText);
+      }
+    } catch (err) {
+      alert('Invalid JSON in custom configuration');
+      return;
+    }
+    
+    const config = {
+      sshServerPort: parseInt(document.getElementById('sshServerPort').value),
+      configRepoPath: document.getElementById('configRepoPath').value,
+      authorizedSSHKeys: authorizedSSHKeys,
+      workflows: workflows,
+      custom: customConfig
+    };
+    
+    fetch('/api/agents/<%= agent.id %>/config', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(config)
+    })
+    .then(r => r.json())
+    .then(data => {
+      if (data.message) {
+        alert(data.message);
+      } else {
+        alert('Configuration saved successfully');
+      }
+      window.location.href = '/agents/<%= agent.id %>';
+    })
+    .catch(err => alert('Failed to save configuration: ' + err.message));
+  }
+  </script>
+</body>
+</html>

@@ -1,0 +1,21 @@
+{
+  "name": "controlcenter-manager",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Control Center Manager - Node.js/Express/EJS scaffold",
+  "scripts": {
+    "start": "node src/server.js"
+  },
+  "dependencies": {
+    "bcryptjs": "^3.0.2",
+    "drawflow": "^0.0.60",
+    "ejs": "^3.1.9",
+    "express": "^4.19.2",
+    "ini": "^5.0.0",
+    "jsonwebtoken": "^9.0.2",
+    "simple-git": "^3.28.0",
+    "sqlite3": "^5.1.7",
+    "uuid": "^13.0.0",
+    "ws": "^8.18.3"
+  }
+}

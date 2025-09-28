@@ -26,15 +26,15 @@
                 ]
               }
             },
-            "pos_x": 200,
-            "pos_y": 169.54165649414062
+            "pos_x": 93,
+            "pos_y": 90
           },
           "2": {
             "id": 2,
             "name": "alert",
             "data": {
               "level": "info",
-              "message": ""
+              "message": "Hello"
             },
             "class": "node-output",
             "html": "\n      <div class=\"node-output\">\n        <div class=\"node-header\">Send Alert</div>\n        <div class=\"node-content\">\n          <small style=\"color: #666;\">alert</small>\n        </div>\n      </div>\n    ",
@@ -50,8 +50,8 @@
               }
             },
             "outputs": {},
-            "pos_x": 553,
-            "pos_y": 99
+            "pos_x": 385,
+            "pos_y": 89
           }
         }
       }
@@ -73,7 +73,7 @@
       "name": "alert",
       "config": {
         "level": "info",
-        "message": ""
+        "message": "Hello"
       },
       "next": []
     }

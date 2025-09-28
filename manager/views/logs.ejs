@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= title %> - Control Center</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <nav class="navbar">
+    <div class="nav-container">
+      <div class="nav-brand">
+        <h1>Control Center</h1>
+      </div>
+      <ul class="nav-menu">
+        <li><a href="/">Dashboard</a></li>
+        <li><a href="/agents">Agents</a></li>
+        <li><a href="/workflows">Workflows</a></li>
+        <li><a href="/workflow-editor">Editor</a></li>
+        <li><a href="/alerts">Alerts</a></li>
+        <li><a href="/logs" class="active">Logs</a></li>
+        <li><a href="/settings">Settings</a></li>
+      </ul>
+    </div>
+  </nav>
+  
+  <main class="main-content">
+    <div class="container">
+      <div class="page-header">
+        <h2>Logs</h2>
+        <div class="filter-controls">
+          <input type="text" id="search-filter" placeholder="Search logs..." onkeyup="filterLogs()">
+          <select id="level-filter" onchange="filterLogs()">
+            <option value="">All Levels</option>
+            <option value="debug">Debug</option>
+            <option value="info">Info</option>
+            <option value="warn">Warning</option>
+            <option value="error">Error</option>
+          </select>
+          <button class="btn" onclick="refreshLogs()">Refresh</button>
+        </div>
+      </div>
+      
+      <div class="logs-viewer">
+        <% if (logs.length === 0) { %>
+          <div class="no-data">
+            <p>No logs yet</p>
+            <p>Agent logs will appear here once they start reporting</p>
+          </div>
+        <% } else { %>
+          <div class="log-entries">
+            <% logs.forEach(log => { %>
+              <div class="log-entry <%= log.level %>" data-level="<%= log.level %>">
+                <span class="log-timestamp"><%= new Date(log.timestamp).toISOString() %></span>
+                <span class="log-level <%= log.level %>"><%= log.level %></span>
+                <span class="log-agent"><%= log.agent_id %></span>
+                <span class="log-message"><%= log.message %></span>
+                <% if (log.metadata && Object.keys(log.metadata).length > 0) { %>
+                  <button class="btn-expand" onclick="toggleMetadata(this)">+</button>
+                  <div class="log-metadata" style="display: none;">
+                    <pre><%= JSON.stringify(log.metadata, null, 2) %></pre>
+                  </div>
+                <% } %>
+              </div>
+            <% }) %>
+          </div>
+        <% } %>
+      </div>
+    </div>
+  </main>
+  
+  <footer class="footer">
+    <p>&copy; 2025 Control Center - Distributed Automation Platform</p>
+  </footer>
+  
+  <script>
+  function filterLogs() {
+    const searchTerm = document.getElementById('search-filter').value.toLowerCase();
+    const levelFilter = document.getElementById('level-filter').value;
+    
+    const entries = document.querySelectorAll('.log-entry');
+    entries.forEach(entry => {
+      const text = entry.textContent.toLowerCase();
+      const level = entry.dataset.level;
+      
+      let show = true;
+      
+      if (searchTerm && !text.includes(searchTerm)) {
+        show = false;
+      }
+      
+      if (levelFilter && level !== levelFilter) {
+        show = false;
+      }
+      
+      entry.style.display = show ? 'flex' : 'none';
+    });
+  }
+  
+  function toggleMetadata(button) {
+    const metadata = button.nextElementSibling;
+    if (metadata.style.display === 'none') {
+      metadata.style.display = 'block';
+      button.textContent = '-';
+    } else {
+      metadata.style.display = 'none';
+      button.textContent = '+';
+    }
+  }
+  
+  function refreshLogs() {
+    window.location.reload();
+  }
+  
+  // Auto-refresh logs every 10 seconds
+  setInterval(() => {
+    refreshLogs();
+  }, 10000);
+  </script>
+</body>
+</html>
