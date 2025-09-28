@@ -3,7 +3,6 @@ package sshserver
 import (
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net"
 	"os"
 	"os/exec"
@@ -24,7 +23,7 @@ type SSHServer struct {
 
 func New(port int, privateKeyPath string, authorizedKeysList []string, logger zerolog.Logger) (*SSHServer, error) {
 	// Load private key
-	privateKeyData, err := ioutil.ReadFile(privateKeyPath)
+	privateKeyData, err := os.ReadFile(privateKeyPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read private key: %w", err)
 	}
@@ -301,7 +300,7 @@ func (s *SSHServer) handleSFTPGet(channel ssh.Channel) {
 	s.logger.Info().Str("file", filePath).Msg("SFTP GET request")
 	
 	// Read file
-	data, err := ioutil.ReadFile(filePath)
+	data, err := os.ReadFile(filePath)
 	if err != nil {
 		s.logger.Error().Err(err).Msg("Failed to read file")
 		channel.Write([]byte{0}) // Error
@@ -370,7 +369,7 @@ func (s *SSHServer) handleSFTPPut(channel ssh.Channel) {
 	}
 	
 	// Write file
-	if err := ioutil.WriteFile(filePath, data, 0644); err != nil {
+	if err := os.WriteFile(filePath, data, 0644); err != nil {
 		s.logger.Error().Err(err).Msg("Failed to write file")
 		channel.Write([]byte{0}) // Error
 		return
