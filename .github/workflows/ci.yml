@@ -8,6 +8,12 @@ on:
   release:
     types: [ created ]
 
+permissions:
+  contents: read
+  packages: write
+  security-events: write
+  actions: read
+
 env:
   GO_VERSION: '>=1.25.1'
   NODE_VERSION: '24'
@@ -17,6 +23,9 @@ jobs:
   security-scan:
     name: Security Scan
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
     steps:
       - uses: actions/checkout@v5
 
@@ -127,6 +136,9 @@ jobs:
     needs: [security-scan, build-manager, build-nodes]
     if: github.event_name == 'release'
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
 
     steps:
       - uses: actions/checkout@v5
