@@ -732,9 +732,21 @@
     const nodeInfo = editor.getNodeFromId(id);
     const data = nodeInfo.data;
     const type = nodeInfo.name;
-    
-    let propertiesHtml = `<h4>${type}</h4>`;
-    
+
+    // Create tabs for properties and inputs
+    let propertiesHtml = `
+      <div class="property-tabs" style="display: flex; gap: 10px; margin-bottom: 15px; border-bottom: 2px solid #dee2e6;">
+        <button class="tab-button" onclick="showPropertiesTab('properties')"
+                style="padding: 8px 16px; background: #007bff; color: white; border: none; border-radius: 4px 4px 0 0; cursor: pointer;"
+                id="properties-tab-btn">Properties</button>
+        <button class="tab-button" onclick="showPropertiesTab('inputs')"
+                style="padding: 8px 16px; background: #e9ecef; color: #495057; border: none; border-radius: 4px 4px 0 0; cursor: pointer;"
+                id="inputs-tab-btn">Available Inputs</button>
+      </div>
+      <div id="properties-tab-content" style="display: block;">
+        <h4>${type}</h4>
+    `;
+
     // Generate property fields based on node type
     const fields = getNodeFields(type);
     fields.forEach(field => {
@@ -746,14 +758,169 @@
         </div>
       `;
     });
-    
+
     propertiesHtml += `
       <button class="btn btn-sm btn-primary" onclick="updateNodeProperties()">Update</button>
+      </div>
+      <div id="inputs-tab-content" style="display: none;">
+        ${generateInputsTab(id)}
+      </div>
     `;
-    
+
     document.getElementById('properties-content').innerHTML = propertiesHtml;
   }
-  
+
+  // Show/hide property tabs
+  function showPropertiesTab(tab) {
+    if (tab === 'properties') {
+      document.getElementById('properties-tab-content').style.display = 'block';
+      document.getElementById('inputs-tab-content').style.display = 'none';
+      document.getElementById('properties-tab-btn').style.background = '#007bff';
+      document.getElementById('properties-tab-btn').style.color = 'white';
+      document.getElementById('inputs-tab-btn').style.background = '#e9ecef';
+      document.getElementById('inputs-tab-btn').style.color = '#495057';
+    } else {
+      document.getElementById('properties-tab-content').style.display = 'none';
+      document.getElementById('inputs-tab-content').style.display = 'block';
+      document.getElementById('properties-tab-btn').style.background = '#e9ecef';
+      document.getElementById('properties-tab-btn').style.color = '#495057';
+      document.getElementById('inputs-tab-btn').style.background = '#007bff';
+      document.getElementById('inputs-tab-btn').style.color = 'white';
+    }
+  }
+
+  // Generate the inputs tab content
+  function generateInputsTab(nodeId) {
+    const nodeInfo = editor.getNodeFromId(nodeId);
+    const nodeType = nodeInfo.name;
+
+    // Get all nodes connected to inputs of this node
+    const inputs = getNodeInputs(nodeId);
+    const outputs = getNodeOutputs(nodeType, nodeInfo.data);
+
+    let html = '<div style="padding: 10px;">';
+    html += '<h5>Available Input Variables</h5>';
+
+    if (inputs.length === 0) {
+      html += '<p style="color: #6c757d; font-style: italic;">No input variables available</p>';
+    } else {
+      html += '<ul style="list-style: none; padding: 0;">';
+      inputs.forEach(variable => {
+        html += `<li style="margin: 8px 0; padding: 8px; background: #f8f9fa; border-radius: 4px; font-family: monospace;">
+          <strong>{{.${variable.name}}}</strong> - ${variable.description}
+        </li>`;
+      });
+      html += '</ul>';
+    }
+
+    html += '<h5 style="margin-top: 20px;">This Node Outputs</h5>';
+    if (outputs.length === 0) {
+      html += '<p style="color: #6c757d; font-style: italic;">This node produces no additional outputs</p>';
+    } else {
+      html += '<ul style="list-style: none; padding: 0;">';
+      outputs.forEach(variable => {
+        html += `<li style="margin: 8px 0; padding: 8px; background: #e8f5e9; border-radius: 4px; font-family: monospace;">
+          <strong>{{.${variable.name}}}</strong> - ${variable.description}
+        </li>`;
+      });
+      html += '</ul>';
+    }
+
+    html += '</div>';
+    return html;
+  }
+
+  // Get inputs available to a node
+  function getNodeInputs(nodeId) {
+    const nodeInfo = editor.getNodeFromId(nodeId);
+    const connections = nodeInfo.inputs.input_1?.connections || [];
+
+    let allInputs = [];
+
+    // Add trigger variables if this is the first node
+    const firstNode = connections.length === 0;
+    if (firstNode) {
+      allInputs = getTriggerVariables();
+    }
+
+    // Collect outputs from all connected input nodes
+    connections.forEach(conn => {
+      const sourceNode = editor.getNodeFromId(conn.node);
+      const sourceOutputs = getNodeOutputs(sourceNode.name, sourceNode.data);
+
+      // Add source outputs to available inputs
+      sourceOutputs.forEach(output => {
+        // Check if variable already exists (avoid duplicates)
+        if (!allInputs.find(v => v.name === output.name)) {
+          allInputs.push(output);
+        }
+      });
+
+      // Recursively get inputs from the source node
+      const sourceInputs = getNodeInputs(conn.node);
+      sourceInputs.forEach(input => {
+        if (!allInputs.find(v => v.name === input.name)) {
+          allInputs.push(input);
+        }
+      });
+    });
+
+    return allInputs;
+  }
+
+  // Get trigger variables (standardized across all trigger types)
+  function getTriggerVariables() {
+    return [
+      { name: 'trigger', description: 'Trigger type (file, filewatcher, schedule, etc.)' },
+      { name: 'file', description: 'Full path to the file (for file-based triggers)' },
+      { name: 'fileName', description: 'Just the filename without path' },
+      { name: 'directory', description: 'Directory containing the file' },
+      { name: 'event', description: 'Event type (CREATE, WRITE, etc.) for file triggers' },
+      { name: 'timestamp', description: 'When the trigger occurred' }
+    ];
+  }
+
+  // Get outputs produced by a node type
+  function getNodeOutputs(nodeType, nodeData) {
+    const outputs = {
+      'copy-file': [
+        { name: 'destinationFile', description: 'Path to the copied file' },
+        { name: 'success', description: 'Whether the copy was successful' }
+      ],
+      'move-file': [
+        { name: 'destinationFile', description: 'Path to the moved file' },
+        { name: 'success', description: 'Whether the move was successful' }
+      ],
+      'delete-file': [
+        { name: 'success', description: 'Whether the deletion was successful' }
+      ],
+      'command': [
+        { name: 'output', description: 'Command output' },
+        { name: 'exitCode', description: 'Command exit code' },
+        { name: 'success', description: 'Whether command succeeded (exit code 0)' }
+      ],
+      'http-request': [
+        { name: 'response', description: 'HTTP response body' },
+        { name: 'statusCode', description: 'HTTP status code' },
+        { name: 'headers', description: 'Response headers' }
+      ],
+      'condition': [
+        { name: 'conditionResult', description: 'Result of the condition (true/false)' }
+      ],
+      'alert': [],
+      'log': [],
+      'wait': [],
+      'file-trigger': [],
+      'schedule-trigger': [],
+      'webhook-trigger': [
+        { name: 'webhookData', description: 'Data received from webhook' },
+        { name: 'webhookHeaders', description: 'Headers from webhook request' }
+      ]
+    };
+
+    return outputs[nodeType] || [];
+  }
+
   function getNodeFields(type) {
     const fieldConfigs = {
       'file-trigger': [

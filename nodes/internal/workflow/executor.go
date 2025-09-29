@@ -193,9 +193,12 @@ func (e *Executor) handleFileTrigger(workflowID string, instance *WorkflowInstan
 					Msg("File trigger activated")
 				
 				e.executeWorkflow(workflowID, instance, map[string]interface{}{
-					"trigger": "file",
-					"file":    event.Name,
-					"event":   event.Op.String(),
+					"trigger":   "file",
+					"file":      event.Name,
+					"fileName":  filepath.Base(event.Name),
+					"directory": filepath.Dir(event.Name),
+					"event":     event.Op.String(),
+					"timestamp": time.Now().Unix(),
 				})
 			}
 			
