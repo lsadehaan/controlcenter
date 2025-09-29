@@ -556,6 +556,13 @@
         outputs: 1,
         data: { path: '', pattern: '*', events: ['create', 'modify'] }
       },
+      'filewatcher-trigger': {
+        name: 'File Watcher Trigger',
+        class: 'node-trigger',
+        inputs: 0,
+        outputs: 1,
+        data: { description: 'Triggered by file watcher rules' }
+      },
       'schedule-trigger': {
         name: 'Schedule Trigger',
         class: 'node-trigger',
@@ -937,59 +944,102 @@
     });
   }
 
-  // Get inputs available to a node
+  // Get inputs available to a node by traversing connected nodes
   function getNodeInputs(nodeId) {
     const nodeInfo = editor.getNodeFromId(nodeId);
     const connections = nodeInfo.inputs.input_1?.connections || [];
 
     let allInputs = [];
+    const visited = new Set(); // Prevent infinite loops
 
-    // Add trigger variables if this is the first node
-    const firstNode = connections.length === 0;
-    if (firstNode) {
-      allInputs = getTriggerVariables();
+    // If no connections, this node doesn't have any inputs yet
+    if (connections.length === 0) {
+      return [];
     }
 
-    // Collect outputs from all connected input nodes
+    // Traverse all connected input nodes
     connections.forEach(conn => {
       const sourceNode = editor.getNodeFromId(conn.node);
-      const sourceOutputs = getNodeOutputs(sourceNode.name, sourceNode.data);
 
-      // Add source outputs to available inputs
+      // Check if this is a trigger node
+      if (sourceNode.name.endsWith('-trigger')) {
+        // Get trigger-specific variables
+        const triggerVars = getTriggerVariablesForType(sourceNode.name);
+        triggerVars.forEach(variable => {
+          if (!allInputs.find(v => v.name === variable.name)) {
+            allInputs.push(variable);
+          }
+        });
+      }
+
+      // Get outputs from the connected node
+      const sourceOutputs = getNodeOutputs(sourceNode.name, sourceNode.data);
       sourceOutputs.forEach(output => {
-        // Check if variable already exists (avoid duplicates)
         if (!allInputs.find(v => v.name === output.name)) {
           allInputs.push(output);
         }
       });
 
-      // Recursively get inputs from the source node
-      const sourceInputs = getNodeInputs(conn.node);
-      sourceInputs.forEach(input => {
-        if (!allInputs.find(v => v.name === input.name)) {
-          allInputs.push(input);
-        }
-      });
+      // Recursively get inputs from the source node (avoiding cycles)
+      if (!visited.has(conn.node)) {
+        visited.add(conn.node);
+        const sourceInputs = getNodeInputsRecursive(conn.node, visited);
+        sourceInputs.forEach(input => {
+          if (!allInputs.find(v => v.name === input.name)) {
+            allInputs.push(input);
+          }
+        });
+      }
     });
 
     return allInputs;
   }
 
-  // Get trigger variables based on the actual trigger type in the workflow
-  function getTriggerVariables() {
-    // Find the trigger node in the workflow
-    const nodes = editor.export().drawflow.Home.data;
-    let triggerType = null;
+  // Recursive helper to traverse the node graph
+  function getNodeInputsRecursive(nodeId, visited) {
+    const nodeInfo = editor.getNodeFromId(nodeId);
+    const connections = nodeInfo.inputs.input_1?.connections || [];
 
-    for (const nodeId in nodes) {
-      const node = nodes[nodeId];
-      if (node.name.endsWith('-trigger')) {
-        triggerType = node.name;
-        break;
+    let allInputs = [];
+
+    connections.forEach(conn => {
+      if (!visited.has(conn.node)) {
+        visited.add(conn.node);
+        const sourceNode = editor.getNodeFromId(conn.node);
+
+        // Check if this is a trigger node
+        if (sourceNode.name.endsWith('-trigger')) {
+          const triggerVars = getTriggerVariablesForType(sourceNode.name);
+          triggerVars.forEach(variable => {
+            if (!allInputs.find(v => v.name === variable.name)) {
+              allInputs.push(variable);
+            }
+          });
+        }
+
+        // Get outputs from this node
+        const sourceOutputs = getNodeOutputs(sourceNode.name, sourceNode.data);
+        sourceOutputs.forEach(output => {
+          if (!allInputs.find(v => v.name === output.name)) {
+            allInputs.push(output);
+          }
+        });
+
+        // Continue traversing
+        const nestedInputs = getNodeInputsRecursive(conn.node, visited);
+        nestedInputs.forEach(input => {
+          if (!allInputs.find(v => v.name === input.name)) {
+            allInputs.push(input);
+          }
+        });
       }
-    }
+    });
 
-    // Return variables based on trigger type
+    return allInputs;
+  }
+
+  // Get trigger variables for a specific trigger type
+  function getTriggerVariablesForType(triggerType) {
     if (triggerType === 'file-trigger' || triggerType === 'filewatcher-trigger') {
       return [
         { name: 'trigger', description: 'Trigger type (file or filewatcher)' },
@@ -1014,11 +1064,30 @@
       ];
     } else {
       // No trigger or unknown trigger - for workflows meant to be called
-      return [
-        { name: 'trigger', description: 'How the workflow was triggered' },
-        { name: 'timestamp', description: 'When the workflow started' }
-      ];
+      return [];
     }
+  }
+
+  // Legacy function for compatibility
+  function getTriggerVariables() {
+    // Find all trigger nodes in the workflow
+    const nodes = editor.export().drawflow.Home.data;
+    const triggers = [];
+
+    for (const nodeId in nodes) {
+      const node = nodes[nodeId];
+      if (node.name.endsWith('-trigger')) {
+        triggers.push(node.name);
+      }
+    }
+
+    // If there's exactly one trigger, return its variables
+    if (triggers.length === 1) {
+      return getTriggerVariablesForType(triggers[0]);
+    }
+
+    // Multiple or no triggers - return empty
+    return [];
   }
 
   // Node type definitions with outputs
