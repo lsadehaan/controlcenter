@@ -655,6 +655,8 @@ func (a *Agent) handleCommand(payload json.RawMessage) {
 						"error": "Failed to load config from git",
 					})
 				} else if gitConfig != nil {
+					updated := false
+
 					// Update workflows from git config
 					if workflows, ok := gitConfig["workflows"].([]interface{}); ok {
 						a.config.Workflows = []config.Workflow{}
@@ -666,20 +668,57 @@ func (a *Agent) handleCommand(payload json.RawMessage) {
 								}
 							}
 						}
-						
+						updated = true
+					}
+
+					// Update fileWatcherSettings from git config
+					if fwSettings, ok := gitConfig["fileWatcherSettings"].(map[string]interface{}); ok {
+						if settingsData, err := json.Marshal(fwSettings); err == nil {
+							var settings config.FileWatcherSettings
+							if err := json.Unmarshal(settingsData, &settings); err == nil {
+								a.config.FileWatcherSettings = settings
+								a.logger.Info().
+									Str("scanDir", settings.ScanDir).
+									Bool("scanSubDir", settings.ScanSubDir).
+									Msg("Updated file watcher settings from git")
+								updated = true
+
+								// Update file watcher with new settings
+								if a.fileWatcher != nil {
+									a.fileWatcher.SetGlobalSettings(settings.ScanDir, settings.ScanSubDir)
+								}
+							}
+						}
+					}
+
+					// Update fileWatcherRules from git config
+					if fwRules, ok := gitConfig["fileWatcherRules"].([]interface{}); ok {
+						a.loadFileWatcherRulesFromGit(fwRules)
+						updated = true
+					}
+
+					if updated {
 						// Save the updated config locally
 						if a.configPath != "" {
 							if err := a.config.Save(a.configPath); err != nil {
 								a.logger.Error().Err(err).Msg("Failed to save config after git update")
 							}
 						}
-						
+
 						// Reload workflows
 						a.reloadWorkflows()
-						
-						a.logger.Info().Int("count", len(a.config.Workflows)).Msg("Loaded workflows from git")
+
+						a.logger.Info().
+							Int("workflows", len(a.config.Workflows)).
+							Msg("Loaded configuration from git")
 						a.wsClient.SendStatus("git-pulled", map[string]interface{}{
 							"workflows": len(a.config.Workflows),
+							"fileWatcherSettings": a.config.FileWatcherSettings,
+						})
+					} else {
+						a.logger.Info().Msg("No updates found in git config")
+						a.wsClient.SendStatus("git-pulled", map[string]interface{}{
+							"message": "No updates",
 						})
 					}
 				} else {
@@ -882,17 +921,47 @@ func (a *Agent) saveLocalAlert(alert map[string]interface{}) {
 	}
 }
 
+func (a *Agent) loadFileWatcherRulesFromGit(rulesInterface []interface{}) {
+	if a.fileWatcher == nil {
+		return
+	}
+
+	var rules []filewatcher.Rule
+	for _, r := range rulesInterface {
+		if ruleData, err := json.Marshal(r); err == nil {
+			var rule filewatcher.Rule
+			if err := json.Unmarshal(ruleData, &rule); err == nil {
+				rules = append(rules, rule)
+			}
+		}
+	}
+
+	if len(rules) > 0 {
+		a.logger.Info().Int("count", len(rules)).Msg("Loading file watcher rules from git")
+		a.fileWatcher.UpdateRules(rules)
+		go a.fileWatcher.Start()
+	}
+}
+
 func (a *Agent) loadFileWatcherRules() {
 	if a.fileWatcher == nil {
 		return
 	}
-	
+
+	// Set global settings if available
+	if a.config.FileWatcherSettings.ScanDir != "" {
+		a.fileWatcher.SetGlobalSettings(
+			a.config.FileWatcherSettings.ScanDir,
+			a.config.FileWatcherSettings.ScanSubDir,
+		)
+	}
+
 	// Stop existing watcher
 	a.fileWatcher.Stop()
-	
+
 	// Load rules from git config if available
 	var rules []filewatcher.Rule
-	
+
 	if a.gitSync != nil {
 		gitConfig, err := a.gitSync.LoadAgentConfig()
 		if err == nil && gitConfig != nil {
