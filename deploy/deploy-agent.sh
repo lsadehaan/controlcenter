@@ -95,27 +95,20 @@ download_agent() {
         chmod +x agent
         echo -e "${GREEN}✓ Agent binary downloaded from release${NC}"
     else
-        echo -e "${YELLOW}Release not found, building from source...${NC}"
-
-        # Install Go if needed
-        if ! command -v go &> /dev/null; then
-            echo -e "${YELLOW}Installing Go...${NC}"
-            wget -q https://go.dev/dl/go1.25.1.linux-amd64.tar.gz
-            tar -C /usr/local -xzf go1.25.1.linux-amd64.tar.gz
-            rm go1.25.1.linux-amd64.tar.gz
-            export PATH=$PATH:/usr/local/go/bin
-        fi
-
-        # Build from source
-        cd /tmp
-        rm -rf controlcenter
-        git clone https://github.com/lsadehaan/controlcenter.git
-        cd controlcenter/nodes
-        go build -o agent .
-        mv agent $AGENT_DIR/
-        cd $AGENT_DIR
-        chmod +x agent
-        echo -e "${GREEN}✓ Agent binary built from source${NC}"
+        echo -e "${RED}Error: No release binary found for version ${RELEASE_VERSION}${NC}"
+        echo -e "${RED}The release binaries have not been built yet.${NC}"
+        echo ""
+        echo "Please either:"
+        echo "  1. Wait for the CI/CD pipeline to build the binaries"
+        echo "  2. Check https://github.com/lsadehaan/controlcenter/releases for available versions"
+        echo "  3. Build from source manually:"
+        echo ""
+        echo "     git clone https://github.com/lsadehaan/controlcenter.git"
+        echo "     cd controlcenter/nodes"
+        echo "     go build -o agent ."
+        echo "     sudo mv agent /opt/controlcenter/agent/"
+        echo ""
+        exit 1
     fi
 }
 
