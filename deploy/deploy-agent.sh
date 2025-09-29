@@ -196,8 +196,11 @@ register_agent() {
 
     echo -e "${YELLOW}Registering agent with manager...${NC}"
 
-    # Run registration as the agent user
-    if sudo -u $AGENT_USER $AGENT_DIR/agent -token "$REGISTRATION_TOKEN" -register-only; then
+    # Run registration as the agent user with environment
+    if sudo -u $AGENT_USER \
+        AGENT_CONFIG_DIR="$AGENT_DIR/.controlcenter-agent" \
+        MANAGER_URL="$MANAGER_URL" \
+        $AGENT_DIR/agent -token "$REGISTRATION_TOKEN" -manager-url "$MANAGER_URL" -register-only; then
         echo -e "${GREEN}✓ Agent registered successfully${NC}"
     else
         echo -e "${RED}Failed to register agent. Please check the token and manager URL.${NC}"
