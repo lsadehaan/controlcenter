@@ -82,6 +82,23 @@ deploy_docker() {
     docker stop controlcenter-manager 2>/dev/null || true
     docker rm controlcenter-manager 2>/dev/null || true
 
+    # Check if image exists, if not build locally
+    if ! docker pull ghcr.io/lsadehaan/controlcenter-manager:latest 2>/dev/null; then
+        echo -e "${YELLOW}Docker image not found in registry. Building locally...${NC}"
+
+        # Clone repository if needed
+        if [ ! -d "/tmp/controlcenter" ]; then
+            cd /tmp
+            git clone https://github.com/lsadehaan/controlcenter.git
+        fi
+
+        # Build Docker image locally
+        cd /tmp/controlcenter/manager
+        docker build -t ghcr.io/lsadehaan/controlcenter-manager:latest .
+
+        echo -e "${GREEN}✓ Docker image built locally${NC}"
+    fi
+
     # Create docker-compose.yml
     cat > /tmp/docker-compose.yml << EOF
 version: '3.8'
@@ -117,9 +134,8 @@ EOF
     # Create network if not exists
     docker network create controlcenter 2>/dev/null || true
 
-    # Pull and start container
+    # Start container (image already pulled or built)
     cd $DATA_DIR
-    docker compose pull
     docker compose up -d
 
     echo -e "${GREEN}✓ Manager Docker deployment complete${NC}"
