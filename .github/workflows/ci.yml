@@ -161,10 +161,16 @@ jobs:
             cd $dir
             if [[ "$platform" == "windows-latest" ]]; then
               zip ../../agent-windows-${{ github.event.release.tag_name }}.zip agent.exe
+              # Also create unversioned name for 'latest' downloads
+              cp ../../agent-windows-${{ github.event.release.tag_name }}.zip ../../agent-windows.zip
             elif [[ "$platform" == "macos-latest" ]]; then
               tar -czf ../../agent-macos-${{ github.event.release.tag_name }}.tar.gz agent
+              # Also create unversioned name for 'latest' downloads
+              cp ../../agent-macos-${{ github.event.release.tag_name }}.tar.gz ../../agent-macos.tar.gz
             else
               tar -czf ../../agent-linux-${{ github.event.release.tag_name }}.tar.gz agent
+              # Also create unversioned name for 'latest' downloads
+              cp ../../agent-linux-${{ github.event.release.tag_name }}.tar.gz ../../agent-linux.tar.gz
             fi
             cd ../..
           done
@@ -174,8 +180,12 @@ jobs:
         with:
           files: |
             manager-*.tar.gz
-            agent-*.tar.gz
-            agent-*.zip
+            agent-linux-*.tar.gz
+            agent-linux.tar.gz
+            agent-windows-*.zip
+            agent-windows.zip
+            agent-macos-*.tar.gz
+            agent-macos.tar.gz
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
