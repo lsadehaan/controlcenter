@@ -22,9 +22,14 @@ type Rule struct {
 	Name              string            `json:"name"`
 	Enabled           bool              `json:"enabled"`
 	Description       string            `json:"description"`
-	
+
+	// Watch Mode Configuration
+	WatchMode         string            `json:"watchMode"`         // "absolute" or "pattern" (default: "absolute" for backward compat)
+
 	// Matching criteria
-	DirRegEx          string            `json:"dirRegex"`          // Regex for directory path
+	// In pattern mode: DirRegEx is used to find directories under agent's ScanDir
+	// In absolute mode: DirRegEx is the direct path to watch (backward compatible)
+	DirRegEx          string            `json:"dirRegex"`          // Regex for directory path or pattern
 	FileRegEx         string            `json:"fileRegex"`         // Regex for filename
 	ContentRegEx      string            `json:"contentRegex"`      // Regex for file content
 	
@@ -89,6 +94,8 @@ type Watcher struct {
 	stopChan         chan struct{}
 	stopped          bool
 	workflowExecutor WorkflowExecutor
+	scanDir          string  // Global root directory for pattern mode
+	scanSubDir       bool    // Global recursive flag for pattern mode
 }
 
 // WorkflowExecutor interface for executing workflows
@@ -105,6 +112,18 @@ func NewWatcher(logger zerolog.Logger, executor WorkflowExecutor) *Watcher {
 		stopChan:         make(chan struct{}),
 		workflowExecutor: executor,
 	}
+}
+
+// SetGlobalSettings updates the global file watcher settings
+func (w *Watcher) SetGlobalSettings(scanDir string, scanSubDir bool) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	w.scanDir = scanDir
+	w.scanSubDir = scanSubDir
+	w.logger.Info().
+		Str("scanDir", scanDir).
+		Bool("scanSubDir", scanSubDir).
+		Msg("Updated global file watcher settings")
 }
 
 // LoadRules loads file watching rules
@@ -169,47 +188,85 @@ func (w *Watcher) startWatchingRule(rule Rule) error {
 	// Compile regex patterns
 	var dirRegex, fileRegex *regexp.Regexp
 	var err error
-	
-	if rule.DirRegEx != "" {
-		dirRegex, err = regexp.Compile(rule.DirRegEx)
-		if err != nil {
-			return fmt.Errorf("invalid directory regex: %w", err)
-		}
+
+	// Default to absolute mode for backward compatibility
+	if rule.WatchMode == "" {
+		rule.WatchMode = "absolute"
 	}
-	
+
 	if rule.FileRegEx != "" {
 		fileRegex, err = regexp.Compile(rule.FileRegEx)
 		if err != nil {
 			return fmt.Errorf("invalid file regex: %w", err)
 		}
 	}
-	
-	// Find directories to watch
-	dirsToWatch := w.findDirectoriesToWatch(rule.DirRegEx)
-	
+
+	var dirsToWatch []string
+
+	switch rule.WatchMode {
+	case "pattern":
+		// Pattern mode: scan agent's ScanDir for directories matching DirRegEx
+		if w.scanDir == "" {
+			w.logger.Error().Str("rule", rule.Name).Msg("Pattern mode requires agent ScanDir to be set")
+			return fmt.Errorf("pattern mode requires agent ScanDir to be configured")
+		}
+
+		if rule.DirRegEx != "" {
+			dirRegex, err = regexp.Compile(rule.DirRegEx)
+			if err != nil {
+				return fmt.Errorf("invalid directory regex: %w", err)
+			}
+		}
+
+		// Find directories under agent's ScanDir that match DirRegEx
+		dirsToWatch = w.findMatchingDirectories(w.scanDir, dirRegex)
+
+	case "absolute":
+		fallthrough
+	default:
+		// Absolute mode (backward compatible): use DirRegEx as direct path
+		dirsToWatch = w.findDirectoriesToWatch(rule.DirRegEx)
+		// In absolute mode, we still compile dirRegex for path validation in handleEvents
+		if rule.DirRegEx != "" {
+			// Try to compile as regex, but if it fails, treat as literal path
+			dirRegex, _ = regexp.Compile(rule.DirRegEx)
+		}
+	}
+
 	for _, dir := range dirsToWatch {
 		watcher, err := fsnotify.NewWatcher()
 		if err != nil {
 			return fmt.Errorf("failed to create watcher: %w", err)
 		}
-		
+
+		// Add the directory to watch
 		err = watcher.Add(dir)
 		if err != nil {
 			watcher.Close()
 			return fmt.Errorf("failed to watch directory %s: %w", dir, err)
 		}
-		
+
+		// If agent's ScanSubDir is true in pattern mode, add all subdirectories recursively
+		if rule.WatchMode == "pattern" && w.scanSubDir {
+			err = w.addSubdirsRecursive(watcher, dir)
+			if err != nil {
+				w.logger.Warn().Err(err).Str("dir", dir).Msg("Failed to add some subdirectories")
+			}
+		}
+
 		w.watchers[rule.ID + ":" + dir] = watcher
-		
+
 		// Start goroutine to handle events for this watcher
 		go w.handleEvents(watcher, rule, dirRegex, fileRegex)
-		
+
 		w.logger.Info().
 			Str("rule", rule.Name).
+			Str("mode", rule.WatchMode).
 			Str("dir", dir).
+			Bool("recursive", w.scanSubDir).
 			Msg("Started watching directory")
 	}
-	
+
 	return nil
 }
 
@@ -639,4 +696,130 @@ func (w *Watcher) scanForDirectories(path string, regex *regexp.Regexp, dirs *[]
 			w.scanForDirectories(subPath, regex, dirs, depth+1, maxDepth)
 		}
 	}
+}
+
+// findMatchingDirectories finds directories under rootPath that match the given regex
+func (w *Watcher) findMatchingDirectories(rootPath string, regex *regexp.Regexp) []string {
+	if regex == nil {
+		// If no regex specified, return the root path itself
+		return []string{rootPath}
+	}
+
+	var matchedDirs []string
+	maxDepth := 10 // Reasonable depth limit to prevent excessive scanning
+
+	// Walk the directory tree starting from rootPath
+	err := w.walkDirectory(rootPath, func(path string, info os.FileInfo) error {
+		if !info.IsDir() {
+			return nil
+		}
+
+		// Get relative path from root for matching
+		relPath, err := filepath.Rel(rootPath, path)
+		if err != nil {
+			return nil
+		}
+
+		// Convert to forward slashes for consistent matching
+		relPath = filepath.ToSlash(relPath)
+
+		// Check if this relative path matches the regex
+		// Handle both forward slash and backslash patterns
+		if regex.MatchString(relPath) ||
+		   regex.MatchString("/" + relPath) ||
+		   regex.MatchString("\\\\" + strings.ReplaceAll(relPath, "/", "\\\\")) {
+			matchedDirs = append(matchedDirs, path)
+			w.logger.Debug().
+				Str("path", path).
+				Str("relPath", relPath).
+				Msg("Directory matched pattern")
+		}
+
+		return nil
+	}, maxDepth)
+
+	if err != nil {
+		w.logger.Warn().Err(err).Str("rootPath", rootPath).Msg("Error scanning directories")
+	}
+
+	w.logger.Info().
+		Str("rootPath", rootPath).
+		Int("matchedCount", len(matchedDirs)).
+		Msg("Found matching directories")
+
+	return matchedDirs
+}
+
+// walkDirectory walks a directory tree up to maxDepth
+func (w *Watcher) walkDirectory(root string, fn func(string, os.FileInfo) error, maxDepth int) error {
+	return w.walkDirectoryRecursive(root, fn, 0, maxDepth)
+}
+
+func (w *Watcher) walkDirectoryRecursive(path string, fn func(string, os.FileInfo) error, currentDepth, maxDepth int) error {
+	if currentDepth > maxDepth {
+		return nil
+	}
+
+	info, err := os.Stat(path)
+	if err != nil {
+		return err
+	}
+
+	// Call the function for this path
+	if err := fn(path, info); err != nil {
+		return err
+	}
+
+	if !info.IsDir() {
+		return nil
+	}
+
+	entries, err := os.ReadDir(path)
+	if err != nil {
+		// Skip directories we can't read
+		return nil
+	}
+
+	for _, entry := range entries {
+		subPath := filepath.Join(path, entry.Name())
+
+		// Skip system directories
+		if strings.Contains(subPath, "$Recycle.Bin") ||
+		   strings.Contains(subPath, "System Volume Information") ||
+		   strings.Contains(subPath, "Windows\\WinSxS") ||
+		   strings.HasPrefix(entry.Name(), ".") {
+			continue
+		}
+
+		if entry.IsDir() {
+			if err := w.walkDirectoryRecursive(subPath, fn, currentDepth+1, maxDepth); err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
+// addSubdirsRecursive adds all subdirectories of a path to the watcher
+func (w *Watcher) addSubdirsRecursive(watcher *fsnotify.Watcher, root string) error {
+	return filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return nil // Skip paths with errors
+		}
+
+		if info.IsDir() && path != root {
+			if err := watcher.Add(path); err != nil {
+				w.logger.Warn().
+					Err(err).
+					Str("path", path).
+					Msg("Failed to add subdirectory to watcher")
+			} else {
+				w.logger.Debug().
+					Str("path", path).
+					Msg("Added subdirectory to watcher")
+			}
+		}
+		return nil
+	})
 }

@@ -25,7 +25,10 @@
       "Bash(git pull:*)",
       "Bash(./agent.exe -recover-backup latest)",
       "WebSearch",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Bash(gh run list:*)",
+      "Bash(git tag:*)",
+      "Bash(gh release create:*)"
     ],
     "deny": [],
     "ask": [],

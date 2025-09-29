@@ -22,7 +22,16 @@ type Config struct {
 	SSHServerPort    int      `json:"sshServerPort"`
 	AuthorizedSSHKeys []string `json:"authorizedSshKeys"`
 	Workflows        []Workflow `json:"workflows"`
+
+	// File Watcher Global Settings
+	FileWatcherSettings FileWatcherSettings `json:"fileWatcherSettings,omitempty"`
+
 	Extra            map[string]interface{} `json:"extra,omitempty"`
+}
+
+type FileWatcherSettings struct {
+	ScanDir    string `json:"scanDir"`    // Root directory for pattern-based watching
+	ScanSubDir bool   `json:"scanSubDir"` // Whether to recursively watch matched directories
 }
 
 type Workflow struct {
@@ -80,33 +89,35 @@ func (c *Config) Save(path string) error {
 
 	// Create a copy without the mutex for marshaling
 	toSave := struct {
-		AgentID           string                 `json:"agentId"`
-		ManagerURL        string                 `json:"managerUrl"`
-		RegistrationToken string                 `json:"registrationToken,omitempty"`
-		Registered        bool                   `json:"registered"`
-		SSHPrivateKeyPath string                 `json:"sshPrivateKeyPath"`
-		SSHPublicKeyPath  string                 `json:"sshPublicKeyPath"`
-		ConfigRepoPath    string                 `json:"configRepoPath"`
-		StateFilePath     string                 `json:"stateFilePath"`
-		LogFilePath       string                 `json:"logFilePath"`
-		SSHServerPort     int                    `json:"sshServerPort"`
-		AuthorizedSSHKeys []string               `json:"authorizedSshKeys"`
-		Workflows         []Workflow             `json:"workflows"`
-		Extra             map[string]interface{} `json:"extra,omitempty"`
+		AgentID             string                 `json:"agentId"`
+		ManagerURL          string                 `json:"managerUrl"`
+		RegistrationToken   string                 `json:"registrationToken,omitempty"`
+		Registered          bool                   `json:"registered"`
+		SSHPrivateKeyPath   string                 `json:"sshPrivateKeyPath"`
+		SSHPublicKeyPath    string                 `json:"sshPublicKeyPath"`
+		ConfigRepoPath      string                 `json:"configRepoPath"`
+		StateFilePath       string                 `json:"stateFilePath"`
+		LogFilePath         string                 `json:"logFilePath"`
+		SSHServerPort       int                    `json:"sshServerPort"`
+		AuthorizedSSHKeys   []string               `json:"authorizedSshKeys"`
+		Workflows           []Workflow             `json:"workflows"`
+		FileWatcherSettings FileWatcherSettings    `json:"fileWatcherSettings,omitempty"`
+		Extra               map[string]interface{} `json:"extra,omitempty"`
 	}{
-		AgentID:           c.AgentID,
-		ManagerURL:        c.ManagerURL,
-		RegistrationToken: c.RegistrationToken,
-		Registered:        c.Registered,
-		SSHPrivateKeyPath: c.SSHPrivateKeyPath,
-		SSHPublicKeyPath:  c.SSHPublicKeyPath,
-		ConfigRepoPath:    c.ConfigRepoPath,
-		StateFilePath:     c.StateFilePath,
-		LogFilePath:       c.LogFilePath,
-		SSHServerPort:     c.SSHServerPort,
-		AuthorizedSSHKeys: c.AuthorizedSSHKeys,
-		Workflows:         c.Workflows,
-		Extra:             c.Extra,
+		AgentID:             c.AgentID,
+		ManagerURL:          c.ManagerURL,
+		RegistrationToken:   c.RegistrationToken,
+		Registered:          c.Registered,
+		SSHPrivateKeyPath:   c.SSHPrivateKeyPath,
+		SSHPublicKeyPath:    c.SSHPublicKeyPath,
+		ConfigRepoPath:      c.ConfigRepoPath,
+		StateFilePath:       c.StateFilePath,
+		LogFilePath:         c.LogFilePath,
+		SSHServerPort:       c.SSHServerPort,
+		AuthorizedSSHKeys:   c.AuthorizedSSHKeys,
+		Workflows:           c.Workflows,
+		FileWatcherSettings: c.FileWatcherSettings,
+		Extra:               c.Extra,
 	}
 
 	data, err := json.MarshalIndent(toSave, "", "  ")
@@ -146,6 +157,7 @@ func (c *Config) Reload(path string) error {
 	c.SSHServerPort = tempCfg.SSHServerPort
 	c.AuthorizedSSHKeys = tempCfg.AuthorizedSSHKeys
 	c.Workflows = tempCfg.Workflows
+	c.FileWatcherSettings = tempCfg.FileWatcherSettings
 	c.Extra = tempCfg.Extra
 	
 	return nil
