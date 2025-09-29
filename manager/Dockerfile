@@ -3,6 +3,11 @@
 
 FROM node:24-alpine AS base
 
+# Link to repository for package visibility
+LABEL org.opencontainers.image.source="https://github.com/lsadehaan/controlcenter"
+LABEL org.opencontainers.image.description="Control Center Manager - Web UI and API"
+LABEL org.opencontainers.image.licenses="AGPL-3.0"
+
 # Install dependencies for git operations
 RUN apk add --no-cache git openssh-client
 

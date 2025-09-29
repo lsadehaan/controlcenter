@@ -4,6 +4,11 @@
 
 FROM golang:1.25-alpine AS builder
 
+# Link to repository for package visibility
+LABEL org.opencontainers.image.source="https://github.com/lsadehaan/controlcenter"
+LABEL org.opencontainers.image.description="Control Center Agent - For Kubernetes/Testing only"
+LABEL org.opencontainers.image.licenses="AGPL-3.0"
+
 RUN apk add --no-cache git
 
 WORKDIR /build
