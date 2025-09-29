@@ -233,6 +233,22 @@ func (w *Watcher) startWatchingRule(rule Rule) error {
 		}
 	}
 
+	if len(dirsToWatch) == 0 {
+		w.logger.Warn().
+			Str("rule", rule.Name).
+			Str("mode", rule.WatchMode).
+			Str("dirRegEx", rule.DirRegEx).
+			Str("scanDir", w.scanDir).
+			Msg("No directories found to watch - check permissions and pattern")
+		return nil
+	}
+
+	w.logger.Info().
+		Str("rule", rule.Name).
+		Int("dirsFound", len(dirsToWatch)).
+		Strs("directories", dirsToWatch).
+		Msg("Found directories to watch")
+
 	for _, dir := range dirsToWatch {
 		watcher, err := fsnotify.NewWatcher()
 		if err != nil {
@@ -263,6 +279,8 @@ func (w *Watcher) startWatchingRule(rule Rule) error {
 			Str("rule", rule.Name).
 			Str("mode", rule.WatchMode).
 			Str("dir", dir).
+			Str("dirRegex", rule.DirRegEx).
+			Str("fileRegex", rule.FileRegEx).
 			Bool("recursive", w.scanSubDir).
 			Msg("Started watching directory")
 	}
@@ -280,6 +298,10 @@ func (w *Watcher) handleEvents(watcher *fsnotify.Watcher, rule Rule, dirRegex, f
 			
 			// Check if file matches criteria
 			if !w.matchesFile(event.Name, rule, dirRegex, fileRegex) {
+				w.logger.Debug().
+					Str("file", event.Name).
+					Str("rule", rule.Name).
+					Msg("File did not match criteria")
 				continue
 			}
 			
@@ -297,7 +319,9 @@ func (w *Watcher) handleEvents(watcher *fsnotify.Watcher, rule Rule, dirRegex, f
 					Str("rule", rule.Name).
 					Str("file", event.Name).
 					Str("event", event.Op.String()).
-					Msg("Processing file")
+					Str("dirRegex", rule.DirRegEx).
+					Str("fileRegex", rule.FileRegEx).
+					Msg("File matched! Processing file")
 				
 				// Wait if configured
 				if rule.TimeRestrictions.ProcessAfterSecs > 0 {
@@ -702,8 +726,14 @@ func (w *Watcher) scanForDirectories(path string, regex *regexp.Regexp, dirs *[]
 func (w *Watcher) findMatchingDirectories(rootPath string, regex *regexp.Regexp) []string {
 	if regex == nil {
 		// If no regex specified, return the root path itself
+		w.logger.Info().Str("rootPath", rootPath).Msg("No regex specified, watching root path only")
 		return []string{rootPath}
 	}
+
+	w.logger.Info().
+		Str("rootPath", rootPath).
+		Str("regex", regex.String()).
+		Msg("Scanning for directories matching pattern")
 
 	var matchedDirs []string
 	maxDepth := 10 // Reasonable depth limit to prevent excessive scanning
@@ -714,25 +744,41 @@ func (w *Watcher) findMatchingDirectories(rootPath string, regex *regexp.Regexp)
 			return nil
 		}
 
+		// Skip the root path itself in matching
+		if path == rootPath {
+			return nil
+		}
+
 		// Get relative path from root for matching
 		relPath, err := filepath.Rel(rootPath, path)
 		if err != nil {
 			return nil
 		}
 
+		// Also try matching just the directory name
+		dirName := filepath.Base(path)
+
 		// Convert to forward slashes for consistent matching
 		relPath = filepath.ToSlash(relPath)
 
-		// Check if this relative path matches the regex
-		// Handle both forward slash and backslash patterns
+		w.logger.Debug().
+			Str("path", path).
+			Str("relPath", relPath).
+			Str("dirName", dirName).
+			Str("regex", regex.String()).
+			Msg("Checking directory against pattern")
+
+		// Check if this relative path or directory name matches the regex
 		if regex.MatchString(relPath) ||
+		   regex.MatchString(dirName) ||
 		   regex.MatchString("/" + relPath) ||
 		   regex.MatchString("\\\\" + strings.ReplaceAll(relPath, "/", "\\\\")) {
 			matchedDirs = append(matchedDirs, path)
-			w.logger.Debug().
+			w.logger.Info().
 				Str("path", path).
 				Str("relPath", relPath).
-				Msg("Directory matched pattern")
+				Str("dirName", dirName).
+				Msg("Directory MATCHED pattern")
 		}
 
 		return nil
@@ -762,7 +808,9 @@ func (w *Watcher) walkDirectoryRecursive(path string, fn func(string, os.FileInf
 
 	info, err := os.Stat(path)
 	if err != nil {
-		return err
+		// Log permission errors but continue scanning
+		w.logger.Warn().Err(err).Str("path", path).Msg("Cannot access path, skipping")
+		return nil  // Don't propagate error, just skip this path
 	}
 
 	// Call the function for this path
@@ -776,7 +824,8 @@ func (w *Watcher) walkDirectoryRecursive(path string, fn func(string, os.FileInf
 
 	entries, err := os.ReadDir(path)
 	if err != nil {
-		// Skip directories we can't read
+		// Log but continue - don't stop the entire scan
+		w.logger.Warn().Err(err).Str("path", path).Msg("Cannot read directory contents, skipping")
 		return nil
 	}
 
@@ -792,9 +841,8 @@ func (w *Watcher) walkDirectoryRecursive(path string, fn func(string, os.FileInf
 		}
 
 		if entry.IsDir() {
-			if err := w.walkDirectoryRecursive(subPath, fn, currentDepth+1, maxDepth); err != nil {
-				return err
-			}
+			// Continue even if subdirectory fails
+			w.walkDirectoryRecursive(subPath, fn, currentDepth+1, maxDepth)
 		}
 	}
 
