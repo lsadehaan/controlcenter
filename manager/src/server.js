@@ -60,7 +60,7 @@ app.set('view engine', 'ejs');
 const server = http.createServer(app);
 
 // Initialize WebSocket server
-const wsServer = new WebSocketServer(server, db, console);
+const wsServer = new WebSocketServer(server, db, console, gitServer);
 
 // API routes
 app.use('/api', apiRoutes(db, wsServer, gitServer));

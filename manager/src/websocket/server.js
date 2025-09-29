@@ -4,10 +4,11 @@ const WebSocket = require('ws');
 const { v4: uuidv4 } = require('uuid');
 
 class WebSocketServer {
-  constructor(server, db, logger) {
+  constructor(server, db, logger, gitServer) {
     this.wss = new WebSocket.Server({ server, path: '/ws' });
     this.db = db;
     this.logger = logger || console;
+    this.gitServer = gitServer;
     this.clients = new Map(); // agentId -> WebSocket
     
     this.setupHandlers();
@@ -86,7 +87,7 @@ class WebSocketServer {
 
   async handleRegistration(ws, agentId, payload) {
     const { publicKey, token, hostname, platform } = payload;
-    
+
     // Validate token
     const isValid = await this.db.validateToken(token);
     if (!isValid) {
@@ -97,7 +98,7 @@ class WebSocketServer {
       ws.close();
       return;
     }
-    
+
     // Register agent
     await this.db.registerAgent({
       id: agentId,
@@ -105,20 +106,41 @@ class WebSocketServer {
       platform,
       publicKey
     });
-    
+
     // Mark token as used
     await this.db.useToken(token, agentId);
-    
+
+    // Initialize agent config in Git repository
+    if (this.gitServer) {
+      const initialConfig = {
+        agentId,
+        hostname,
+        platform,
+        fileWatcherSettings: {
+          scanDir: '',
+          scanSubDir: false
+        },
+        fileWatcherRules: [],
+        workflows: []
+      };
+      try {
+        await this.gitServer.saveAgentConfig(agentId, initialConfig);
+        this.logger.log(`Initialized Git config for agent ${agentId}`);
+      } catch (err) {
+        this.logger.error(`Failed to save initial agent config to Git: ${err.message}`);
+      }
+    }
+
     // Associate WebSocket with agent
     ws.agentId = agentId;
     this.clients.set(agentId, ws);
-    
+
     // Send success response
     ws.send(JSON.stringify({
       type: 'registration',
       payload: { success: true, agentId }
     }));
-    
+
     this.logger.log(`Agent registered: ${agentId} from ${hostname}`);
   }
 
@@ -148,13 +170,39 @@ class WebSocketServer {
     
     // Update agent status
     await this.db.updateAgentStatus(agentId, 'online', Date.now());
-    
+
     // Update metadata if hostname or platform changed
     const metadata = JSON.parse(agent.metadata || '{}');
     if (metadata.hostname !== hostname || metadata.platform !== platform) {
       metadata.hostname = hostname;
       metadata.platform = platform;
       await this.db.updateAgentMetadata(agentId, metadata);
+    }
+
+    // Ensure agent config exists in Git repository
+    if (this.gitServer) {
+      try {
+        const gitConfig = await this.gitServer.getAgentConfig(agentId);
+        if (!gitConfig) {
+          // Create initial config if it doesn't exist
+          const agentConfig = JSON.parse(agent.config || '{}');
+          const initialConfig = {
+            agentId,
+            hostname: metadata.hostname || hostname,
+            platform: metadata.platform || platform,
+            fileWatcherSettings: agentConfig.fileWatcherSettings || {
+              scanDir: '',
+              scanSubDir: false
+            },
+            fileWatcherRules: agentConfig.fileWatcherRules || [],
+            workflows: agentConfig.workflows || []
+          };
+          await this.gitServer.saveAgentConfig(agentId, initialConfig);
+          this.logger.log(`Created missing Git config for agent ${agentId}`);
+        }
+      } catch (err) {
+        this.logger.error(`Failed to ensure Git config for agent ${agentId}: ${err.message}`);
+      }
     }
     
     // Associate WebSocket with agent
