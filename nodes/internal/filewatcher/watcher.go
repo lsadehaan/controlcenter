@@ -586,15 +586,20 @@ func (w *Watcher) executeProgram(program, filePath string) {
 	
 	// Execute external program
 	w.logger.Info().Str("program", program).Str("file", filePath).Msg("Executing external program")
-	
-	// Parse command and arguments
-	parts := strings.Fields(program)
-	if len(parts) == 0 {
-		return
+
+	// Use shell to execute the command for proper handling of pipes, redirects, etc.
+	var cmd *exec.Cmd
+	if runtime.GOOS == "windows" {
+		cmd = exec.Command("cmd", "/C", program)
+	} else {
+		// On Unix, use sh -c to execute the command
+		cmd = exec.Command("sh", "-c", program)
 	}
-	
-	cmd := exec.Command(parts[0], parts[1:]...)
-	cmd.Env = append(os.Environ(), fmt.Sprintf("FILE_PATH=%s", filePath))
+	cmd.Env = append(os.Environ(),
+		fmt.Sprintf("FILE=%s", filePath),
+		fmt.Sprintf("FILE_PATH=%s", filePath),  // Keep for backward compatibility
+		fmt.Sprintf("FILE_NAME=%s", filepath.Base(filePath)),
+		fmt.Sprintf("FILE_DIR=%s", filepath.Dir(filePath)))
 	
 	output, err := cmd.CombinedOutput()
 	if err != nil {
