@@ -78,13 +78,18 @@ deploy_docker() {
     # Create directories
     sudo mkdir -p $DATA_DIR/data
 
+    # Fix permissions for Docker container (runs as UID 1001)
+    echo -e "${YELLOW}Setting proper permissions for data directory...${NC}"
+    sudo chown -R 1001:1001 $DATA_DIR/data
+    sudo chmod -R 755 $DATA_DIR/data
+    echo -e "${GREEN}✓ Permissions set for container user${NC}"
+
     # Stop existing container if any
     docker stop controlcenter-manager 2>/dev/null || true
     docker rm controlcenter-manager 2>/dev/null || true
 
-    # Create docker-compose.yml
+    # Create docker-compose.yml (without deprecated version field)
     cat > /tmp/docker-compose.yml << EOF
-version: '3.8'
 
 services:
   manager:
