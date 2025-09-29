@@ -85,6 +85,13 @@ type ProcessingOptions struct {
 	ScanSubDir        bool   `json:"scanSubDir"`
 }
 
+// ProcessingFile tracks a file being processed
+type ProcessingFile struct {
+	path      string
+	startTime time.Time
+	endTime   time.Time
+}
+
 // Watcher manages file watching rules
 type Watcher struct {
 	mu               sync.Mutex
@@ -96,6 +103,7 @@ type Watcher struct {
 	workflowExecutor WorkflowExecutor
 	scanDir          string  // Global root directory for pattern mode
 	scanSubDir       bool    // Global recursive flag for pattern mode
+	processingFiles  sync.Map // map[string]*ProcessingFile - thread-safe map of files being processed
 }
 
 // WorkflowExecutor interface for executing workflows
@@ -105,13 +113,18 @@ type WorkflowExecutor interface {
 
 // NewWatcher creates a new file watcher
 func NewWatcher(logger zerolog.Logger, executor WorkflowExecutor) *Watcher {
-	return &Watcher{
+	w := &Watcher{
 		rules:            []Rule{},
 		watchers:         make(map[string]*fsnotify.Watcher),
 		logger:           logger.With().Str("component", "filewatcher").Logger(),
 		stopChan:         make(chan struct{}),
 		workflowExecutor: executor,
 	}
+
+	// Start cleanup goroutine for processed files
+	go w.cleanupProcessedFiles()
+
+	return w
 }
 
 // SetGlobalSettings updates the global file watcher settings
@@ -315,6 +328,15 @@ func (w *Watcher) handleEvents(watcher *fsnotify.Watcher, rule Rule, dirRegex, f
 			
 			// Process file
 			if event.Op&fsnotify.Create == fsnotify.Create || event.Op&fsnotify.Write == fsnotify.Write {
+				// Check if file is already being processed or was recently processed
+				if w.isFileBeingProcessed(event.Name) {
+					w.logger.Debug().
+						Str("file", event.Name).
+						Str("rule", rule.Name).
+						Msg("File is being processed or in cooldown period, skipping")
+					continue
+				}
+
 				w.logger.Info().
 					Str("rule", rule.Name).
 					Str("file", event.Name).
@@ -322,12 +344,12 @@ func (w *Watcher) handleEvents(watcher *fsnotify.Watcher, rule Rule, dirRegex, f
 					Str("dirRegex", rule.DirRegEx).
 					Str("fileRegex", rule.FileRegEx).
 					Msg("File matched! Processing file")
-				
+
 				// Wait if configured
 				if rule.TimeRestrictions.ProcessAfterSecs > 0 {
 					time.Sleep(time.Duration(rule.TimeRestrictions.ProcessAfterSecs) * time.Second)
 				}
-				
+
 				// Check if file is still being written
 				if rule.ProcessingOptions.CheckFileInUse {
 					if w.isFileInUse(event.Name) {
@@ -335,7 +357,10 @@ func (w *Watcher) handleEvents(watcher *fsnotify.Watcher, rule Rule, dirRegex, f
 						continue
 					}
 				}
-				
+
+				// Mark file as being processed
+				w.markFileProcessing(event.Name)
+
 				// Process the file
 				go w.processFile(event.Name, rule)
 			}
@@ -353,6 +378,9 @@ func (w *Watcher) handleEvents(watcher *fsnotify.Watcher, rule Rule, dirRegex, f
 }
 
 func (w *Watcher) processFile(filePath string, rule Rule) {
+	// Ensure we mark the file as done processing when this function exits
+	defer w.markFileProcessed(filePath)
+
 	ops := rule.Operations
 	
 	// Execute pre-processing program
@@ -875,4 +903,65 @@ func (w *Watcher) addSubdirsRecursive(watcher *fsnotify.Watcher, root string) er
 		}
 		return nil
 	})
+}
+
+// isFileBeingProcessed checks if a file is currently being processed or in cooldown
+func (w *Watcher) isFileBeingProcessed(filePath string) bool {
+	if val, exists := w.processingFiles.Load(filePath); exists {
+		pf := val.(*ProcessingFile)
+		// If still processing (endTime is zero) or in cooldown period
+		if pf.endTime.IsZero() || time.Since(pf.endTime) < 30*time.Second {
+			return true
+		}
+	}
+	return false
+}
+
+// markFileProcessing marks a file as currently being processed
+func (w *Watcher) markFileProcessing(filePath string) {
+	w.processingFiles.Store(filePath, &ProcessingFile{
+		path:      filePath,
+		startTime: time.Now(),
+	})
+	w.logger.Debug().Str("file", filePath).Msg("Marked file as processing")
+}
+
+// markFileProcessed marks a file as done processing
+func (w *Watcher) markFileProcessed(filePath string) {
+	if val, exists := w.processingFiles.Load(filePath); exists {
+		pf := val.(*ProcessingFile)
+		pf.endTime = time.Now()
+		w.processingFiles.Store(filePath, pf)
+		w.logger.Debug().
+			Str("file", filePath).
+			Dur("duration", pf.endTime.Sub(pf.startTime)).
+			Msg("Marked file as processed")
+	}
+}
+
+// cleanupProcessedFiles periodically removes old processed files from the map
+func (w *Watcher) cleanupProcessedFiles() {
+	ticker := time.NewTicker(10 * time.Second)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ticker.C:
+			count := 0
+			w.processingFiles.Range(func(key, value interface{}) bool {
+				pf := value.(*ProcessingFile)
+				// Remove files that have been processed and are past the cooldown period
+				if !pf.endTime.IsZero() && time.Since(pf.endTime) > 30*time.Second {
+					w.processingFiles.Delete(key)
+					count++
+				}
+				return true
+			})
+			if count > 0 {
+				w.logger.Debug().Int("count", count).Msg("Cleaned up processed files from tracking")
+			}
+		case <-w.stopChan:
+			return
+		}
+	}
 }
