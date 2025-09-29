@@ -419,20 +419,41 @@
           </div>
           
           <h4 style="margin-top: 20px;">External Programs</h4>
-          
+
           <div class="form-group">
-            <label>Execute Before Processing</label>
-            <input type="text" id="exec-before" class="form-input" placeholder="e.g., C:\\Scripts\\validate.bat {file}">
+            <label>
+              Execute Before Processing
+              <input type="checkbox" id="exec-before-workflow" style="margin-left: 10px;" onchange="toggleWorkflowMode('exec-before')">
+              <span style="font-size: 12px; margin-left: 5px;">Use Workflow</span>
+            </label>
+            <input type="text" id="exec-before" class="form-input" placeholder="e.g., echo 'processing' >> {file}" style="display: block;">
+            <select id="exec-before-select" class="form-input" style="display: none;">
+              <option value="">-- Select Workflow --</option>
+            </select>
           </div>
-          
+
           <div class="form-group">
-            <label>Execute After Processing</label>
-            <input type="text" id="exec-after" class="form-input" placeholder="e.g., C:\\Scripts\\notify.exe {file}">
+            <label>
+              Execute After Processing
+              <input type="checkbox" id="exec-after-workflow" style="margin-left: 10px;" onchange="toggleWorkflowMode('exec-after')">
+              <span style="font-size: 12px; margin-left: 5px;">Use Workflow</span>
+            </label>
+            <input type="text" id="exec-after" class="form-input" placeholder="e.g., /usr/bin/notify-send 'File processed'" style="display: block;">
+            <select id="exec-after-select" class="form-input" style="display: none;">
+              <option value="">-- Select Workflow --</option>
+            </select>
           </div>
-          
+
           <div class="form-group">
-            <label>Execute On Error</label>
-            <input type="text" id="exec-error" class="form-input" placeholder="e.g., C:\\Scripts\\error.bat {file}">
+            <label>
+              Execute On Error
+              <input type="checkbox" id="exec-error-workflow" style="margin-left: 10px;" onchange="toggleWorkflowMode('exec-error')">
+              <span style="font-size: 12px; margin-left: 5px;">Use Workflow</span>
+            </label>
+            <input type="text" id="exec-error" class="form-input" placeholder="e.g., mv {file} /error/folder/" style="display: block;">
+            <select id="exec-error-select" class="form-input" style="display: none;">
+              <option value="">-- Select Workflow --</option>
+            </select>
           </div>
         </div>
         
@@ -516,6 +537,9 @@
   </div>
   
   <script>
+  // Initialize agent workflows from config
+  const agentWorkflows = <%- JSON.stringify((agent && agent.config && agent.config.workflows) ? agent.config.workflows : []) %>;
+
   // Initialize file watcher configuration
   let rules = <%- JSON.stringify(fileWatcherRules || []) %>;
   let currentRuleIndex = -1;
@@ -527,6 +551,82 @@
   } catch(e) {
     console.error('Failed to parse global settings:', e);
     globalSettings = {};
+  }
+
+  // Populate workflow dropdowns
+  function populateWorkflowDropdowns() {
+    const dropdowns = ['exec-before-select', 'exec-after-select', 'exec-error-select'];
+    dropdowns.forEach(id => {
+      const select = document.getElementById(id);
+      if (select) {
+        // Clear existing options except the first one
+        while (select.options.length > 1) {
+          select.remove(1);
+        }
+        // Add workflows
+        if (agentWorkflows && agentWorkflows.length > 0) {
+          agentWorkflows.forEach(workflow => {
+            const option = document.createElement('option');
+            option.value = workflow.name || workflow.id;
+            option.textContent = workflow.name || workflow.id;
+            select.appendChild(option);
+          });
+        }
+      }
+    });
+  }
+
+  // Toggle between command input and workflow dropdown
+  function toggleWorkflowMode(fieldPrefix) {
+    const checkbox = document.getElementById(fieldPrefix + '-workflow');
+    const textInput = document.getElementById(fieldPrefix);
+    const selectInput = document.getElementById(fieldPrefix + '-select');
+
+    if (checkbox.checked) {
+      textInput.style.display = 'none';
+      selectInput.style.display = 'block';
+    } else {
+      textInput.style.display = 'block';
+      selectInput.style.display = 'none';
+    }
+  }
+
+  // Initialize dropdowns on page load
+  document.addEventListener('DOMContentLoaded', function() {
+    populateWorkflowDropdowns();
+  });
+
+  // Helper function to set external program field value
+  function handleExternalProgramField(fieldPrefix, value) {
+    const checkbox = document.getElementById(fieldPrefix + '-workflow');
+    const textInput = document.getElementById(fieldPrefix);
+    const selectInput = document.getElementById(fieldPrefix + '-select');
+
+    if (value && value.startsWith('WF:')) {
+      // It's a workflow reference
+      checkbox.checked = true;
+      textInput.style.display = 'none';
+      selectInput.style.display = 'block';
+      selectInput.value = value.substring(3); // Remove 'WF:' prefix
+    } else {
+      // It's a regular command
+      checkbox.checked = false;
+      textInput.style.display = 'block';
+      selectInput.style.display = 'none';
+      textInput.value = value;
+    }
+  }
+
+  // Helper function to get external program value
+  function getExternalProgramValue(fieldPrefix) {
+    const checkbox = document.getElementById(fieldPrefix + '-workflow');
+    if (checkbox.checked) {
+      const selectInput = document.getElementById(fieldPrefix + '-select');
+      return selectInput.value ? 'WF:' + selectInput.value : '';
+    } else {
+      const textInput = document.getElementById(fieldPrefix);
+      return textInput.value;
+    }
   }
   
   function loadGlobalSettings() {
@@ -648,9 +748,11 @@
     document.getElementById('temp-ext').value = ops.copyTempExtension || '';
     document.getElementById('remove-after').checked = ops.removeAfterCopy !== false;
     document.getElementById('overwrite').checked = ops.overwrite !== false;
-    document.getElementById('exec-before').value = ops.execProgBefore || '';
-    document.getElementById('exec-after').value = ops.execProg || '';
-    document.getElementById('exec-error').value = ops.execProgError || '';
+
+    // Handle external programs (check for workflow format)
+    handleExternalProgramField('exec-before', ops.execProgBefore || '');
+    handleExternalProgramField('exec-after', ops.execProg || '');
+    handleExternalProgramField('exec-error', ops.execProgError || '');
     
     // Timing
     const time = rule.timeRestrictions || {};
@@ -696,9 +798,9 @@
         copyTempExtension: document.getElementById('temp-ext').value,
         removeAfterCopy: document.getElementById('remove-after').checked,
         overwrite: document.getElementById('overwrite').checked,
-        execProgBefore: document.getElementById('exec-before').value,
-        execProg: document.getElementById('exec-after').value,
-        execProgError: document.getElementById('exec-error').value
+        execProgBefore: getExternalProgramValue('exec-before'),
+        execProg: getExternalProgramValue('exec-after'),
+        execProgError: getExternalProgramValue('exec-error')
       },
       timeRestrictions: {
         startHour: parseInt(document.getElementById('start-hour').value),
