@@ -28,7 +28,9 @@
       "Bash(git push:*)",
       "Bash(gh run list:*)",
       "Bash(git tag:*)",
-      "Bash(gh release create:*)"
+      "Bash(gh release create:*)",
+      "Bash(gh api:*)",
+      "Bash(gh run view:*)"
     ],
     "deny": [],
     "ask": [],

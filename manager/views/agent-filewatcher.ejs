@@ -516,9 +516,18 @@
   </div>
   
   <script>
-  let rules = <%= JSON.stringify(fileWatcherRules || []) %>;
+  // Initialize file watcher configuration
+  let rules = <%- JSON.stringify(fileWatcherRules || []) %>;
   let currentRuleIndex = -1;
-  let globalSettings = <%= JSON.stringify(agent.fileWatcherSettings || {}) %>;
+
+  // Initialize global settings with proper fallback
+  let globalSettings = {};
+  try {
+    globalSettings = <%- JSON.stringify((agent && agent.fileWatcherSettings) ? agent.fileWatcherSettings : {}) %>;
+  } catch(e) {
+    console.error('Failed to parse global settings:', e);
+    globalSettings = {};
+  }
   
   function loadGlobalSettings() {
     // Load global settings into the UI
