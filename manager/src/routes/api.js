@@ -257,12 +257,14 @@ module.exports = (db, wsServer, gitServer) => {
   router.put('/agents/:id/config', async (req, res) => {
     try {
       const agent = await db.getAgent(req.params.id);
-      
+
       if (!agent) {
         return res.status(404).json({ error: 'Agent not found' });
       }
-      
-      const newConfig = req.body;
+
+      // Merge the new config with existing config
+      const existingConfig = JSON.parse(agent.config || '{}');
+      const newConfig = { ...existingConfig, ...req.body };
       
       // Update agent config in database
       await db.run('UPDATE agents SET config = ? WHERE id = ?', [JSON.stringify(newConfig), req.params.id]);

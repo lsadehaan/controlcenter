@@ -242,6 +242,27 @@
         <a href="/agents/<%= agent.id %>" class="btn">Back to Agent</a>
       </div>
       
+      <!-- Global Settings Section -->
+      <div class="import-section" style="margin-bottom: 20px;">
+        <h3>Global File Watcher Settings</h3>
+        <p>These settings apply to all pattern-based file watcher rules</p>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 15px;">
+          <div>
+            <label style="display: block; margin-bottom: 5px; font-weight: 500;">Root Scan Directory</label>
+            <input type="text" id="global-scan-dir" class="form-input" placeholder="e.g., \\192.168.9.36\Connect or C:\Watch" style="width: 100%;">
+            <small style="color: #666;">Base directory for pattern-mode rules</small>
+          </div>
+          <div>
+            <label style="display: block; margin-bottom: 5px; font-weight: 500;">
+              <input type="checkbox" id="global-scan-subdir" style="margin-right: 5px;">
+              Recursive Watch (ScanSubDir)
+            </label>
+            <small style="color: #666;">When enabled, watches matched directories and all their subdirectories</small>
+          </div>
+        </div>
+        <button class="btn btn-primary" onclick="saveGlobalSettings()" style="margin-top: 15px;">Save Global Settings</button>
+      </div>
+
       <!-- Import Section -->
       <div class="import-section">
         <h3>Import Configuration</h3>
@@ -309,11 +330,20 @@
               Enabled
             </label>
           </div>
-          
+
           <div class="form-group">
-            <label>Directory Regex Pattern</label>
-            <input type="text" id="dir-regex" class="form-input" placeholder="e.g., (?i)\\Invoices\\Input$">
-            <div class="regex-helper">Use (?i) for case-insensitive matching</div>
+            <label>Watch Mode</label>
+            <select id="watch-mode" class="form-input" onchange="updateWatchModeUI()">
+              <option value="absolute">Absolute Path (Direct folder specification)</option>
+              <option value="pattern">Pattern Mode (Use global ScanDir + regex)</option>
+            </select>
+            <div class="regex-helper">Pattern mode uses the global ScanDir as base and matches subdirectories</div>
+          </div>
+
+          <div class="form-group">
+            <label id="dir-regex-label">Directory Path/Pattern</label>
+            <input type="text" id="dir-regex" class="form-input" placeholder="e.g., C:\\Watch or (?i)\\Invoices\\Input$">
+            <div class="regex-helper" id="dir-regex-helper">In absolute mode: full path; In pattern mode: regex to match under ScanDir</div>
           </div>
           
           <div class="form-group">
@@ -461,15 +491,9 @@
             </label>
             <div class="regex-helper">Skip files that are still being written</div>
           </div>
-          
-          <div class="form-group">
-            <label>
-              <input type="checkbox" id="scan-subdir" class="form-checkbox">
-              Scan Subdirectories
-            </label>
-            <div class="regex-helper">Recursively watch subdirectories</div>
-          </div>
-          
+
+          <!-- Note: scanSubDir is now a global setting -->
+
           <div class="form-grid">
             <div class="form-group">
               <label>Max Retries</label>
@@ -494,7 +518,50 @@
   <script>
   let rules = <%= JSON.stringify(fileWatcherRules || []) %>;
   let currentRuleIndex = -1;
+  let globalSettings = <%= JSON.stringify(agent.fileWatcherSettings || {}) %>;
   
+  function loadGlobalSettings() {
+    // Load global settings into the UI
+    document.getElementById('global-scan-dir').value = globalSettings.scanDir || '';
+    document.getElementById('global-scan-subdir').checked = globalSettings.scanSubDir || false;
+  }
+
+  function saveGlobalSettings() {
+    globalSettings = {
+      scanDir: document.getElementById('global-scan-dir').value,
+      scanSubDir: document.getElementById('global-scan-subdir').checked
+    };
+
+    // Save to server
+    fetch('/api/agents/<%= agent.id %>/config', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ fileWatcherSettings: globalSettings })
+    })
+    .then(r => r.json())
+    .then(data => {
+      alert('Global settings saved successfully');
+    })
+    .catch(err => alert('Failed to save global settings: ' + err.message));
+  }
+
+  function updateWatchModeUI() {
+    const watchMode = document.getElementById('watch-mode').value;
+    const dirRegexLabel = document.getElementById('dir-regex-label');
+    const dirRegexHelper = document.getElementById('dir-regex-helper');
+    const dirRegexInput = document.getElementById('dir-regex');
+
+    if (watchMode === 'pattern') {
+      dirRegexLabel.textContent = 'Directory Pattern';
+      dirRegexHelper.textContent = 'Regex pattern to match subdirectories under ' + (globalSettings.scanDir || 'ScanDir');
+      dirRegexInput.placeholder = 'e.g., (?i)\\\\Invoices\\\\Input$';
+    } else {
+      dirRegexLabel.textContent = 'Directory Path';
+      dirRegexHelper.textContent = 'Full path to the directory to watch';
+      dirRegexInput.placeholder = 'e.g., C:\\\\Watch or \\\\\\\\server\\\\share\\\\folder';
+    }
+  }
+
   function loadRules() {
     const listEl = document.getElementById('rules-list');
     const countEl = document.getElementById('rule-count');
@@ -517,7 +584,7 @@
           <div class="rule-details">
             <div class="rule-detail">
               <span class="rule-detail-icon">📁</span>
-              ${escapeHtml(rule.dirRegex || 'Any directory')}
+              ${rule.watchMode === 'pattern' ? '<span title="Pattern Mode">🔍</span> ' : ''}${escapeHtml(rule.dirRegex || 'Any directory')}
             </div>
             <div class="rule-detail">
               <span class="rule-detail-icon">📄</span>
@@ -556,6 +623,8 @@
     document.getElementById('rule-name').value = rule.name || '';
     document.getElementById('rule-description').value = rule.description || '';
     document.getElementById('rule-enabled').checked = rule.enabled !== false;
+    document.getElementById('watch-mode').value = rule.watchMode || 'absolute';
+    updateWatchModeUI();
     document.getElementById('dir-regex').value = rule.dirRegex || '';
     document.getElementById('file-regex').value = rule.fileRegex || '';
     document.getElementById('content-regex').value = rule.contentRegex || '';
@@ -591,7 +660,7 @@
     // Advanced
     const proc = rule.processingOptions || {};
     document.getElementById('check-in-use').checked = proc.checkFileInUse !== false;
-    document.getElementById('scan-subdir').checked = proc.scanSubDir || false;
+    // scanSubDir is now a global setting, no need to load it here
     document.getElementById('max-retries').value = proc.maxRetries || 5;
     document.getElementById('retry-delay').value = proc.delayRetry || 1000;
     document.getElementById('delay-next').value = proc.delayNextFile || 0;
@@ -605,6 +674,7 @@
       name: document.getElementById('rule-name').value,
       description: document.getElementById('rule-description').value,
       enabled: document.getElementById('rule-enabled').checked,
+      watchMode: document.getElementById('watch-mode').value,
       dirRegex: document.getElementById('dir-regex').value,
       fileRegex: document.getElementById('file-regex').value,
       contentRegex: document.getElementById('content-regex').value,
@@ -632,7 +702,7 @@
       },
       processingOptions: {
         checkFileInUse: document.getElementById('check-in-use').checked,
-        scanSubDir: document.getElementById('scan-subdir').checked,
+        // scanSubDir is now a global setting
         maxRetries: parseInt(document.getElementById('max-retries').value),
         delayRetry: parseInt(document.getElementById('retry-delay').value),
         delayNextFile: parseInt(document.getElementById('delay-next').value)
@@ -691,6 +761,8 @@
     document.getElementById('rule-name').value = '';
     document.getElementById('rule-description').value = '';
     document.getElementById('rule-enabled').checked = true;
+    document.getElementById('watch-mode').value = 'absolute';
+    updateWatchModeUI();
     document.getElementById('dir-regex').value = '';
     document.getElementById('file-regex').value = '';
     document.getElementById('content-regex').value = '';
@@ -780,8 +852,9 @@
     window.location.href = '/api/agents/<%= agent.id %>/filewatcher/export';
   }
   
-  // Load rules on page load
+  // Load rules and global settings on page load
   loadRules();
+  loadGlobalSettings();
   </script>
 </body>
 </html>

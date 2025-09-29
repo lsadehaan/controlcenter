@@ -130,12 +130,13 @@ app.get('/agents/:id/filewatcher', async (req, res) => {
     
     const agentConfig = JSON.parse(agent.config || '{}');
     
-    res.render('agent-filewatcher', { 
+    res.render('agent-filewatcher', {
       title: `File Watchers: ${agent.metadata?.hostname || agent.id}`,
       agent: {
         ...agent,
         config: agentConfig,
-        metadata: JSON.parse(agent.metadata || '{}')
+        metadata: JSON.parse(agent.metadata || '{}'),
+        fileWatcherSettings: agentConfig.fileWatcherSettings || {}
       },
       fileWatcherRules: agentConfig.fileWatcherRules || []
     });
