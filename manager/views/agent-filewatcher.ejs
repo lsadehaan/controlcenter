@@ -563,13 +563,27 @@
         while (select.options.length > 1) {
           select.remove(1);
         }
-        // Add workflows
+        // Add workflows that are suitable for file watchers
         if (agentWorkflows && agentWorkflows.length > 0) {
           agentWorkflows.forEach(workflow => {
-            const option = document.createElement('option');
-            option.value = workflow.name || workflow.id;
-            option.textContent = workflow.name || workflow.id;
-            select.appendChild(option);
+            // Check if workflow has a suitable trigger
+            const config = workflow.config || workflow;
+            let isSuitable = false;
+
+            if (config.trigger) {
+              // Has a trigger - only show if it's filewatcher-trigger
+              isSuitable = config.trigger.type === 'filewatcher';
+            } else {
+              // No trigger - can be called directly
+              isSuitable = true;
+            }
+
+            if (isSuitable) {
+              const option = document.createElement('option');
+              option.value = workflow.name || workflow.id;
+              option.textContent = workflow.name || workflow.id;
+              select.appendChild(option);
+            }
           });
         }
       }

@@ -10,8 +10,9 @@
     /* Editor Layout */
     .editor-layout {
       display: flex;
-      gap: 15px;
+      gap: 0;
       margin-top: 20px;
+      height: 650px;
     }
     .node-palette {
       width: 220px;
@@ -55,20 +56,30 @@
       opacity: 0.5;
     }
     .properties-panel {
-      width: 280px;
+      width: 350px;
+      min-width: 250px;
+      max-width: 600px;
       background: white;
       border: 1px solid #ddd;
       border-radius: 8px;
-      padding: 15px;
-      max-height: 600px;
+      padding: 0;
+      height: 100%;
       overflow-y: auto;
+      flex-shrink: 0;
     }
-    .properties-panel h3 {
-      margin: 0 0 15px 0;
-      color: #333;
-      font-size: 16px;
-      border-bottom: 2px solid #e0e0e0;
-      padding-bottom: 8px;
+    /* Splitter */
+    .splitter {
+      width: 8px;
+      background: transparent;
+      cursor: col-resize;
+      position: relative;
+      flex-shrink: 0;
+    }
+    .splitter:hover {
+      background: #e9ecef;
+    }
+    .splitter:active {
+      background: #dee2e6;
     }
     .property-field {
       margin-bottom: 15px;
@@ -354,6 +365,9 @@
           <div class="palette-item" draggable="true" data-node="file-trigger">
             <i class="icon">📁</i> File Trigger
           </div>
+          <div class="palette-item" draggable="true" data-node="filewatcher-trigger">
+            <i class="icon">👁️</i> File Watcher Trigger
+          </div>
           <div class="palette-item" draggable="true" data-node="schedule-trigger">
             <i class="icon">⏰</i> Schedule Trigger
           </div>
@@ -427,11 +441,12 @@
         </div>
         
         <div id="drawflow"></div>
-        
-        <div class="properties-panel">
-          <h3>Properties</h3>
-          <div id="properties-content">
-            <p class="no-selection">Select a node to edit properties</p>
+
+        <div class="splitter" id="splitter"></div>
+
+        <div class="properties-panel" id="properties-panel">
+          <div id="properties-content" style="height: 100%; padding: 15px;">
+            <p class="no-selection" style="text-align: center; color: #6c757d; margin-top: 50px;">Select a node to edit properties</p>
           </div>
         </div>
       </div>
@@ -463,7 +478,10 @@
     
     // Force a reflow to ensure proper positioning
     container.offsetHeight;
-    
+
+    // Initialize splitter functionality
+    initSplitter();
+
     // Handle drag and drop with fixed positioning
     const paletteItems = document.querySelectorAll('.palette-item');
     paletteItems.forEach(item => {
@@ -884,6 +902,41 @@
     });
   }
 
+  // Initialize splitter for resizing panels
+  function initSplitter() {
+    const splitter = document.getElementById('splitter');
+    const drawflow = document.getElementById('drawflow');
+    const propertiesPanel = document.getElementById('properties-panel');
+    const editorLayout = document.querySelector('.editor-layout');
+
+    let isResizing = false;
+
+    splitter.addEventListener('mousedown', (e) => {
+      isResizing = true;
+      document.body.style.cursor = 'col-resize';
+      e.preventDefault();
+    });
+
+    document.addEventListener('mousemove', (e) => {
+      if (!isResizing) return;
+
+      const layoutRect = editorLayout.getBoundingClientRect();
+      const newDrawflowWidth = e.clientX - layoutRect.left - 220 - 8; // Subtract palette width and splitter
+      const newPanelWidth = layoutRect.width - newDrawflowWidth - 220 - 8;
+
+      // Enforce minimum and maximum widths
+      if (newPanelWidth >= 250 && newPanelWidth <= 600 && newDrawflowWidth >= 300) {
+        drawflow.style.flex = `1 1 ${newDrawflowWidth}px`;
+        propertiesPanel.style.width = `${newPanelWidth}px`;
+      }
+    });
+
+    document.addEventListener('mouseup', () => {
+      isResizing = false;
+      document.body.style.cursor = '';
+    });
+  }
+
   // Get inputs available to a node
   function getNodeInputs(nodeId) {
     const nodeInfo = editor.getNodeFromId(nodeId);
@@ -922,57 +975,211 @@
     return allInputs;
   }
 
-  // Get trigger variables (standardized across all trigger types)
+  // Get trigger variables based on the actual trigger type in the workflow
   function getTriggerVariables() {
-    return [
-      { name: 'trigger', description: 'Trigger type (file, filewatcher, schedule, etc.)' },
-      { name: 'file', description: 'Full path to the file (for file-based triggers)' },
-      { name: 'fileName', description: 'Just the filename without path' },
-      { name: 'directory', description: 'Directory containing the file' },
-      { name: 'event', description: 'Event type (CREATE, WRITE, etc.) for file triggers' },
-      { name: 'timestamp', description: 'When the trigger occurred' }
-    ];
+    // Find the trigger node in the workflow
+    const nodes = editor.export().drawflow.Home.data;
+    let triggerType = null;
+
+    for (const nodeId in nodes) {
+      const node = nodes[nodeId];
+      if (node.name.endsWith('-trigger')) {
+        triggerType = node.name;
+        break;
+      }
+    }
+
+    // Return variables based on trigger type
+    if (triggerType === 'file-trigger' || triggerType === 'filewatcher-trigger') {
+      return [
+        { name: 'trigger', description: 'Trigger type (file or filewatcher)' },
+        { name: 'file', description: 'Full path to the file' },
+        { name: 'fileName', description: 'Just the filename without path' },
+        { name: 'directory', description: 'Directory containing the file' },
+        { name: 'event', description: 'Event type (CREATE, WRITE, etc.)' },
+        { name: 'timestamp', description: 'When the trigger occurred' }
+      ];
+    } else if (triggerType === 'schedule-trigger') {
+      return [
+        { name: 'trigger', description: 'Trigger type (schedule)' },
+        { name: 'timestamp', description: 'When the trigger occurred' },
+        { name: 'scheduledTime', description: 'The scheduled execution time' }
+      ];
+    } else if (triggerType === 'webhook-trigger') {
+      return [
+        { name: 'trigger', description: 'Trigger type (webhook)' },
+        { name: 'webhookData', description: 'Data received from webhook' },
+        { name: 'webhookHeaders', description: 'Headers from webhook request' },
+        { name: 'timestamp', description: 'When the trigger occurred' }
+      ];
+    } else {
+      // No trigger or unknown trigger - for workflows meant to be called
+      return [
+        { name: 'trigger', description: 'How the workflow was triggered' },
+        { name: 'timestamp', description: 'When the workflow started' }
+      ];
+    }
   }
 
-  // Get outputs produced by a node type
-  function getNodeOutputs(nodeType, nodeData) {
-    const outputs = {
-      'copy-file': [
+  // Node type definitions with outputs
+  const NodeTypes = {
+    // Triggers
+    'file-trigger': {
+      outputs: []  // Trigger outputs are handled separately
+    },
+    'filewatcher-trigger': {
+      outputs: []  // Trigger outputs are handled separately
+    },
+    'schedule-trigger': {
+      outputs: []  // Trigger outputs are handled separately
+    },
+    'webhook-trigger': {
+      outputs: []  // Trigger outputs are handled separately
+    },
+
+    // File operations
+    'copy-file': {
+      outputs: [
         { name: 'destinationFile', description: 'Path to the copied file' },
         { name: 'success', description: 'Whether the copy was successful' }
-      ],
-      'move-file': [
+      ]
+    },
+    'move-file': {
+      outputs: [
         { name: 'destinationFile', description: 'Path to the moved file' },
         { name: 'success', description: 'Whether the move was successful' }
-      ],
-      'delete-file': [
+      ]
+    },
+    'delete-file': {
+      outputs: [
         { name: 'success', description: 'Whether the deletion was successful' }
-      ],
-      'command': [
+      ]
+    },
+    'rename-file': {
+      outputs: [
+        { name: 'newFile', description: 'Path to the renamed file' },
+        { name: 'success', description: 'Whether the rename was successful' }
+      ]
+    },
+    'archive-file': {
+      outputs: [
+        { name: 'archivePath', description: 'Path to the created archive' },
+        { name: 'success', description: 'Whether the archive was created successfully' }
+      ]
+    },
+    'extract-archive': {
+      outputs: [
+        { name: 'extractPath', description: 'Path where files were extracted' },
+        { name: 'fileCount', description: 'Number of files extracted' },
+        { name: 'success', description: 'Whether extraction was successful' }
+      ]
+    },
+
+    // System actions
+    'command': {
+      outputs: [
         { name: 'output', description: 'Command output' },
         { name: 'exitCode', description: 'Command exit code' },
         { name: 'success', description: 'Whether command succeeded (exit code 0)' }
-      ],
-      'http-request': [
+      ]
+    },
+    'run-command': {
+      outputs: [
+        { name: 'output', description: 'Command output' },
+        { name: 'exitCode', description: 'Command exit code' },
+        { name: 'success', description: 'Whether command succeeded' }
+      ]
+    },
+    'run-script': {
+      outputs: [
+        { name: 'output', description: 'Script output' },
+        { name: 'exitCode', description: 'Script exit code' },
+        { name: 'success', description: 'Whether script succeeded' }
+      ]
+    },
+    'ssh-command': {
+      outputs: [
+        { name: 'output', description: 'SSH command output' },
+        { name: 'exitCode', description: 'Remote command exit code' },
+        { name: 'success', description: 'Whether SSH command succeeded' }
+      ]
+    },
+    'send-file': {
+      outputs: [
+        { name: 'remotePath', description: 'Path on remote server' },
+        { name: 'bytesTransferred', description: 'Number of bytes transferred' },
+        { name: 'success', description: 'Whether file transfer succeeded' }
+      ]
+    },
+
+    // Integration
+    'http-request': {
+      outputs: [
         { name: 'response', description: 'HTTP response body' },
         { name: 'statusCode', description: 'HTTP status code' },
         { name: 'headers', description: 'Response headers' }
-      ],
-      'condition': [
-        { name: 'conditionResult', description: 'Result of the condition (true/false)' }
-      ],
-      'alert': [],
-      'log': [],
-      'wait': [],
-      'file-trigger': [],
-      'schedule-trigger': [],
-      'webhook-trigger': [
-        { name: 'webhookData', description: 'Data received from webhook' },
-        { name: 'webhookHeaders', description: 'Headers from webhook request' }
       ]
-    };
+    },
+    'database-query': {
+      outputs: [
+        { name: 'results', description: 'Query results' },
+        { name: 'rowCount', description: 'Number of rows affected/returned' },
+        { name: 'success', description: 'Whether query succeeded' }
+      ]
+    },
+    'send-email': {
+      outputs: [
+        { name: 'messageId', description: 'Email message ID' },
+        { name: 'success', description: 'Whether email was sent' }
+      ]
+    },
+    'slack-message': {
+      outputs: [
+        { name: 'messageId', description: 'Slack message ID' },
+        { name: 'channel', description: 'Channel where message was sent' },
+        { name: 'success', description: 'Whether message was sent' }
+      ]
+    },
 
-    return outputs[nodeType] || [];
+    // Logic
+    'condition': {
+      outputs: [
+        { name: 'conditionResult', description: 'Result of the condition (true/false)' }
+      ]
+    },
+    'loop': {
+      outputs: [
+        { name: 'currentItem', description: 'Current item being processed' },
+        { name: 'currentIndex', description: 'Current loop index' },
+        { name: 'totalItems', description: 'Total number of items' }
+      ]
+    },
+
+    // Platform
+    'alert': {
+      outputs: []  // Alerts don't produce outputs
+    },
+    'log': {
+      outputs: []  // Logs don't produce outputs
+    },
+    'wait': {
+      outputs: []  // Wait doesn't produce outputs
+    },
+    'javascript': {
+      outputs: [
+        { name: 'result', description: 'JavaScript execution result' },
+        { name: 'success', description: 'Whether execution succeeded' }
+      ]
+    }
+  };
+
+  // Get outputs produced by a node type
+  function getNodeOutputs(nodeType, nodeData) {
+    const nodeDefinition = NodeTypes[nodeType];
+    if (nodeDefinition && nodeDefinition.outputs) {
+      return nodeDefinition.outputs;
+    }
+    return [];
   }
 
   function getNodeFields(type) {
@@ -980,6 +1187,10 @@
       'file-trigger': [
         { key: 'path', label: 'Watch Path', type: 'text' },
         { key: 'pattern', label: 'File Pattern', type: 'text', default: '*' }
+      ],
+      'filewatcher-trigger': [
+        { key: 'description', label: 'Description', type: 'text',
+          placeholder: 'This workflow is designed to be called from file watchers' }
       ],
       'schedule-trigger': [
         { key: 'cron', label: 'Cron Expression', type: 'text', default: '0 * * * *' }
