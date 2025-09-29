@@ -744,7 +744,6 @@
                 id="inputs-tab-btn">Available Inputs</button>
       </div>
       <div id="properties-tab-content" style="display: block;">
-        <h4>${type}</h4>
     `;
 
     // Generate property fields based on node type
@@ -804,30 +803,85 @@
     if (inputs.length === 0) {
       html += '<p style="color: #6c757d; font-style: italic;">No input variables available</p>';
     } else {
-      html += '<ul style="list-style: none; padding: 0;">';
+      html += `<table style="width: 100%; border-collapse: collapse;">
+        <thead>
+          <tr style="border-bottom: 2px solid #dee2e6;">
+            <th style="text-align: left; padding: 8px;">Variable</th>
+            <th style="text-align: left; padding: 8px;">Description</th>
+            <th style="width: 60px; text-align: center; padding: 8px;">Copy</th>
+          </tr>
+        </thead>
+        <tbody>`;
       inputs.forEach(variable => {
-        html += `<li style="margin: 8px 0; padding: 8px; background: #f8f9fa; border-radius: 4px; font-family: monospace;">
-          <strong>{{.${variable.name}}}</strong> - ${variable.description}
-        </li>`;
+        const varString = `{{.${variable.name}}}`;
+        html += `
+          <tr style="border-bottom: 1px solid #e9ecef;">
+            <td style="padding: 8px; font-family: monospace; font-weight: bold;">${varString}</td>
+            <td style="padding: 8px; color: #6c757d;">${variable.description}</td>
+            <td style="padding: 8px; text-align: center;">
+              <button onclick="copyToClipboard('${varString}')"
+                      style="padding: 4px 8px; background: #007bff; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 12px;"
+                      onmouseover="this.style.background='#0056b3'"
+                      onmouseout="this.style.background='#007bff'">
+                📋
+              </button>
+            </td>
+          </tr>`;
       });
-      html += '</ul>';
+      html += '</tbody></table>';
     }
 
     html += '<h5 style="margin-top: 20px;">This Node Outputs</h5>';
     if (outputs.length === 0) {
       html += '<p style="color: #6c757d; font-style: italic;">This node produces no additional outputs</p>';
     } else {
-      html += '<ul style="list-style: none; padding: 0;">';
+      html += `<table style="width: 100%; border-collapse: collapse;">
+        <thead>
+          <tr style="border-bottom: 2px solid #dee2e6;">
+            <th style="text-align: left; padding: 8px;">Variable</th>
+            <th style="text-align: left; padding: 8px;">Description</th>
+            <th style="width: 60px; text-align: center; padding: 8px;">Copy</th>
+          </tr>
+        </thead>
+        <tbody>`;
       outputs.forEach(variable => {
-        html += `<li style="margin: 8px 0; padding: 8px; background: #e8f5e9; border-radius: 4px; font-family: monospace;">
-          <strong>{{.${variable.name}}}</strong> - ${variable.description}
-        </li>`;
+        const varString = `{{.${variable.name}}}`;
+        html += `
+          <tr style="border-bottom: 1px solid #e9ecef;">
+            <td style="padding: 8px; font-family: monospace; font-weight: bold; color: #28a745;">${varString}</td>
+            <td style="padding: 8px; color: #6c757d;">${variable.description}</td>
+            <td style="padding: 8px; text-align: center;">
+              <button onclick="copyToClipboard('${varString}')"
+                      style="padding: 4px 8px; background: #28a745; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 12px;"
+                      onmouseover="this.style.background='#218838'"
+                      onmouseout="this.style.background='#28a745'">
+                📋
+              </button>
+            </td>
+          </tr>`;
       });
-      html += '</ul>';
+      html += '</tbody></table>';
     }
 
     html += '</div>';
     return html;
+  }
+
+  // Copy text to clipboard
+  function copyToClipboard(text) {
+    navigator.clipboard.writeText(text).then(() => {
+      // Show brief feedback
+      const btn = event.target;
+      const originalText = btn.innerHTML;
+      btn.innerHTML = '✓';
+      btn.style.background = '#28a745';
+      setTimeout(() => {
+        btn.innerHTML = originalText;
+      }, 1000);
+    }).catch(err => {
+      console.error('Failed to copy:', err);
+      alert('Failed to copy to clipboard');
+    });
   }
 
   // Get inputs available to a node
