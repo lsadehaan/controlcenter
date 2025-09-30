@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Node Positioning Test</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 20px;
+      font-family: Arial, sans-serif;
+    }
+    .test-container {
+      border: 2px solid #333;
+      width: 800px;
+      height: 600px;
+      position: relative;
+      margin: 20px auto;
+      overflow: hidden;
+    }
+    .test-canvas {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      background: #f0f0f0;
+    }
+    .test-node {
+      position: absolute;
+      width: 10px;
+      height: 10px;
+      background: red;
+      border-radius: 50%;
+    }
+    .controls {
+      text-align: center;
+      margin: 20px;
+    }
+    .results {
+      margin: 20px auto;
+      width: 800px;
+      padding: 10px;
+      background: #f9f9f9;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Node Drop Position Test</h1>
+  <div class="controls">
+    <button onclick="setZoom(0.5)">Zoom 0.5x</button>
+    <button onclick="setZoom(1)">Zoom 1x</button>
+    <button onclick="setZoom(2)">Zoom 2x</button>
+    <button onclick="setPan(-100, -100)">Pan -100,-100</button>
+    <button onclick="setPan(0, 0)">Pan 0,0</button>
+    <button onclick="setPan(100, 100)">Pan 100,100</button>
+  </div>
+
+  <div class="test-container" id="container">
+    <div class="test-canvas" id="canvas"></div>
+  </div>
+
+  <div class="results" id="results">
+    <h3>Test Results:</h3>
+    <div>Current zoom: <span id="zoom">1</span></div>
+    <div>Current pan: <span id="pan">0, 0</span></div>
+    <div>Last click client: <span id="client">-</span></div>
+    <div>Last click relative: <span id="relative">-</span></div>
+    <div>Last click calculated: <span id="calculated">-</span></div>
+    <div>Expected position: <span id="expected">-</span></div>
+    <div>Status: <span id="status">Click on the canvas to test</span></div>
+  </div>
+
+  <script>
+    let zoom = 1;
+    let canvas_x = 0;
+    let canvas_y = 0;
+
+    const container = document.getElementById('container');
+    const canvas = document.getElementById('canvas');
+
+    function setZoom(z) {
+      zoom = z;
+      updateCanvas();
+      document.getElementById('zoom').textContent = zoom;
+    }
+
+    function setPan(x, y) {
+      canvas_x = x;
+      canvas_y = y;
+      updateCanvas();
+      document.getElementById('pan').textContent = `${canvas_x}, ${canvas_y}`;
+    }
+
+    function updateCanvas() {
+      canvas.style.transform = `translate(${canvas_x}px, ${canvas_y}px) scale(${zoom})`;
+      canvas.style.transformOrigin = '0 0';
+    }
+
+    container.addEventListener('click', (e) => {
+      // Get mouse position
+      const clientX = e.clientX;
+      const clientY = e.clientY;
+
+      // Calculate position using the fixed formula
+      const rect = container.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      const pos_x = (x - canvas_x) / zoom;
+      const pos_y = (y - canvas_y) / zoom;
+
+      // Add visual marker
+      const marker = document.createElement('div');
+      marker.className = 'test-node';
+      marker.style.left = pos_x + 'px';
+      marker.style.top = pos_y + 'px';
+      canvas.appendChild(marker);
+
+      // Update results
+      document.getElementById('client').textContent = `${clientX}, ${clientY}`;
+      document.getElementById('relative').textContent = `${x.toFixed(2)}, ${y.toFixed(2)}`;
+      document.getElementById('calculated').textContent = `${pos_x.toFixed(2)}, ${pos_y.toFixed(2)}`;
+
+      // Calculate expected position (where the user clicked in canvas coordinates)
+      const expectedX = (clientX - rect.left - canvas_x) / zoom;
+      const expectedY = (clientY - rect.top - canvas_y) / zoom;
+      document.getElementById('expected').textContent = `${expectedX.toFixed(2)}, ${expectedY.toFixed(2)}`;
+
+      // Check if position is correct (within 1px tolerance)
+      const isCorrect = Math.abs(pos_x - expectedX) < 1 && Math.abs(pos_y - expectedY) < 1;
+      const status = document.getElementById('status');
+      if (isCorrect) {
+        status.textContent = '✅ Position calculation is correct!';
+        status.style.color = 'green';
+      } else {
+        status.textContent = `❌ Position mismatch! Difference: ${Math.abs(pos_x - expectedX).toFixed(2)}px, ${Math.abs(pos_y - expectedY).toFixed(2)}px`;
+        status.style.color = 'red';
+      }
+    });
+
+    // Initialize
+    updateCanvas();
+  </script>
+</body>
+</html>

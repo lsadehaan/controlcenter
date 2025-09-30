@@ -595,12 +595,23 @@
       e.preventDefault();
       const nodeType = e.dataTransfer.getData('node-type');
       if (nodeType) {
-        // Use Drawflow's position calculation
-        const pos_x = e.clientX * (editor.precanvas.clientWidth / (editor.precanvas.clientWidth * editor.zoom)) - 
-                      (editor.precanvas.getBoundingClientRect().x * (editor.precanvas.clientWidth / (editor.precanvas.clientWidth * editor.zoom)));
-        const pos_y = e.clientY * (editor.precanvas.clientHeight / (editor.precanvas.clientHeight * editor.zoom)) - 
-                      (editor.precanvas.getBoundingClientRect().y * (editor.precanvas.clientHeight / (editor.precanvas.clientHeight * editor.zoom)));
-        
+        // Get mouse position relative to the page
+        const mouse_x = e.pageX;
+        const mouse_y = e.pageY;
+
+        // Get container position relative to the page (including scroll)
+        const rect = container.getBoundingClientRect();
+        const container_x = rect.left + window.pageXOffset;
+        const container_y = rect.top + window.pageYOffset;
+
+        // Calculate position relative to container
+        let pos_x = mouse_x - container_x;
+        let pos_y = mouse_y - container_y;
+
+        // Adjust for zoom and pan
+        pos_x = (pos_x - editor.canvas_x);
+        pos_y = (pos_y - editor.canvas_y);
+
         addNode(nodeType, pos_x, pos_y);
       }
     });
@@ -810,7 +821,7 @@
     if (!config) return;
     
     const nodeId = (nodeIdCounter++);
-    
+
     // Special handling for condition nodes with multiple outputs
     let nodeContent = `<small style="color: #666;">${type}</small>`;
     if (type === 'condition') {
@@ -830,7 +841,7 @@
         </div>
       `;
     }
-    
+
     const html = `
       <div class="${config.class}">
         <div class="node-header">${config.name}</div>
@@ -839,19 +850,21 @@
         </div>
       </div>
     `;
-    
+
+    // Use type as the name but store the type in data for later reference
+    // This allows multiple nodes of the same type
+    const nodeData = {...config.data, nodeType: type};
+
     editor.addNode(
-      type,
+      type,  // This is the "name" parameter in Drawflow
       config.inputs,
       config.outputs,
       pos_x,
       pos_y,
       config.class,
-      config.data,
+      nodeData,
       html
     );
-    
-    console.log('Added node:', type, 'at', pos_x, pos_y);
   }
   
   function showNodeProperties(id) {
@@ -945,7 +958,7 @@
             <td style="padding: 8px; font-family: monospace; font-weight: bold;">${varString}</td>
             <td style="padding: 8px; color: #6c757d;">${variable.description}</td>
             <td style="padding: 8px; text-align: center;">
-              <button onclick="copyToClipboard('${varString}')"
+              <button onclick="copyToClipboard('${varString}', event)"
                       style="padding: 4px 8px; background: #007bff; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 12px;"
                       onmouseover="this.style.background='#0056b3'"
                       onmouseout="this.style.background='#007bff'">
@@ -977,7 +990,7 @@
             <td style="padding: 8px; font-family: monospace; font-weight: bold; color: #28a745;">${varString}</td>
             <td style="padding: 8px; color: #6c757d;">${variable.description}</td>
             <td style="padding: 8px; text-align: center;">
-              <button onclick="copyToClipboard('${varString}')"
+              <button onclick="copyToClipboard('${varString}', event)"
                       style="padding: 4px 8px; background: #28a745; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 12px;"
                       onmouseover="this.style.background='#218838'"
                       onmouseout="this.style.background='#28a745'">
@@ -994,16 +1007,22 @@
   }
 
   // Copy text to clipboard
-  function copyToClipboard(text) {
+  function copyToClipboard(text, event) {
+    // Get the button element
+    const btn = event ? event.target : document.activeElement;
+
     navigator.clipboard.writeText(text).then(() => {
-      // Show brief feedback
-      const btn = event.target;
-      const originalText = btn.innerHTML;
-      btn.innerHTML = '✓';
-      btn.style.background = '#28a745';
-      setTimeout(() => {
-        btn.innerHTML = originalText;
-      }, 1000);
+      // Show brief feedback if we have a button reference
+      if (btn && btn.tagName === 'BUTTON') {
+        const originalText = btn.innerHTML;
+        const originalBg = btn.style.background;
+        btn.innerHTML = '✓';
+        btn.style.background = '#28a745';
+        setTimeout(() => {
+          btn.innerHTML = originalText;
+          btn.style.background = originalBg;
+        }, 1000);
+      }
     }).catch(err => {
       console.error('Failed to copy:', err);
       alert('Failed to copy to clipboard');
