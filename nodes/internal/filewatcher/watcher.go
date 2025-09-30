@@ -161,18 +161,31 @@ func (w *Watcher) UpdateRules(rules []Rule) {
 
 // Start begins watching based on configured rules
 func (w *Watcher) Start() error {
+	w.mu.Lock()
+	// Check if we're already running
+	if !w.stopped {
+		w.mu.Unlock()
+		w.logger.Warn().Msg("File watcher is already running, stopping first")
+		w.Stop()
+		w.mu.Lock()
+	}
+	// Reset the stopped flag and create new stop channel
+	w.stopped = false
+	w.stopChan = make(chan struct{})
+	w.mu.Unlock()
+
 	for _, rule := range w.rules {
 		if !rule.Enabled {
 			w.logger.Debug().Str("rule", rule.Name).Msg("Skipping disabled rule")
 			continue
 		}
-		
+
 		if err := w.startWatchingRule(rule); err != nil {
 			w.logger.Error().Err(err).Str("rule", rule.Name).Msg("Failed to start watching rule")
 			continue
 		}
 	}
-	
+
 	return nil
 }
 
@@ -263,6 +276,15 @@ func (w *Watcher) startWatchingRule(rule Rule) error {
 		Msg("Found directories to watch")
 
 	for _, dir := range dirsToWatch {
+		// Check if we already have a watcher for this directory
+		w.mu.Lock()
+		if _, exists := w.watchers[dir]; exists {
+			w.mu.Unlock()
+			w.logger.Debug().Str("dir", dir).Msg("Watcher already exists for directory, skipping")
+			continue
+		}
+		w.mu.Unlock()
+
 		watcher, err := fsnotify.NewWatcher()
 		if err != nil {
 			return fmt.Errorf("failed to create watcher: %w", err)

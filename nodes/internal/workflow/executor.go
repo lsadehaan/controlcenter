@@ -1,6 +1,7 @@
 package workflow
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -9,6 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"text/template"
 	"time"
 
 	"github.com/fsnotify/fsnotify"
@@ -135,6 +137,11 @@ func (e *Executor) handleTrigger(workflowID string, instance *WorkflowInstance) 
 		e.logger.Info().
 			Str("workflow", workflowID).
 			Msg("Manual trigger - workflow will only run when triggered manually")
+	case "filewatcher":
+		// File watcher trigger - workflows are invoked by the file watcher component
+		e.logger.Info().
+			Str("workflow", workflowID).
+			Msg("File watcher trigger - workflow will be triggered by file watcher rules")
 	case "":
 		e.logger.Warn().
 			Str("workflow", workflowID).
@@ -330,17 +337,27 @@ func (e *Executor) executeStep(step config.Step, context map[string]interface{})
 		Str("type", step.Type).
 		Msg("Executing step")
 
+	// Process config values with template substitution
+	processedConfig := make(map[string]interface{})
+	for key, value := range step.Config {
+		if strValue, ok := value.(string); ok {
+			processedConfig[key] = e.processTemplate(strValue, context)
+		} else {
+			processedConfig[key] = value
+		}
+	}
+
 	switch step.Type {
 	case "move-file":
-		return e.executeMoveFile(step.Config)
+		return e.executeMoveFile(processedConfig)
 	case "copy-file":
-		return e.executeCopyFile(step.Config)
+		return e.executeCopyFile(processedConfig)
 	case "delete-file":
-		return e.executeDeleteFile(step.Config)
+		return e.executeDeleteFile(processedConfig)
 	case "run-command":
-		return e.executeCommand(step.Config)
+		return e.executeCommand(processedConfig)
 	case "alert":
-		return e.executeAlert(step.Config)
+		return e.executeAlert(processedConfig)
 	default:
 		return fmt.Errorf("unknown step type: %s", step.Type)
 	}
@@ -472,22 +489,42 @@ func (e *Executor) executeCommand(config map[string]interface{}) error {
 func (e *Executor) executeAlert(config map[string]interface{}) error {
 	level, _ := config["level"].(string)
 	message, _ := config["message"].(string)
-	
+
 	if message == "" {
 		return fmt.Errorf("alert requires message")
 	}
-	
+
 	e.logger.Info().
 		Str("level", level).
 		Str("message", message).
 		Msg("Alert generated")
-	
+
 	// Send alert to manager via alert channel
 	if e.alertHandler != nil {
 		e.alertHandler(level, message, config)
 	}
-	
+
 	return nil
+}
+
+// processTemplate applies template substitution to a string using context variables
+func (e *Executor) processTemplate(text string, context map[string]interface{}) string {
+	// Create template
+	tmpl, err := template.New("text").Parse(text)
+	if err != nil {
+		e.logger.Warn().Err(err).Str("text", text).Msg("Failed to parse template")
+		return text
+	}
+
+	// Execute template
+	var buf bytes.Buffer
+	err = tmpl.Execute(&buf, context)
+	if err != nil {
+		e.logger.Warn().Err(err).Str("text", text).Msg("Failed to execute template")
+		return text
+	}
+
+	return buf.String()
 }
 
 func matchPattern(name, pattern string) bool {
