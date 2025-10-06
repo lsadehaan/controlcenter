@@ -254,8 +254,30 @@ func (w *Watcher) startWatchingRule(rule Rule) error {
 		dirsToWatch = w.findDirectoriesToWatch(rule.DirRegEx)
 		// In absolute mode, we still compile dirRegex for path validation in handleEvents
 		if rule.DirRegEx != "" {
-			// Try to compile as regex, but if it fails, treat as literal path
-			dirRegex, _ = regexp.Compile(rule.DirRegEx)
+			// Normalize the path for regex matching:
+			// If it looks like a literal path (not a regex), make trailing slash optional
+			normalizedRegex := rule.DirRegEx
+			if !strings.Contains(normalizedRegex, "(") && !strings.Contains(normalizedRegex, "[") {
+				// This looks like a literal path, not a regex pattern
+				// Remove trailing slash if present and make it optional
+				normalizedRegex = strings.TrimSuffix(normalizedRegex, "/")
+				normalizedRegex = strings.TrimSuffix(normalizedRegex, "\\")
+				// Escape special regex characters for literal matching
+				normalizedRegex = regexp.QuoteMeta(normalizedRegex)
+				// Make trailing slash optional
+				normalizedRegex = normalizedRegex + "/?$"
+			}
+			// Try to compile as regex
+			dirRegex, err = regexp.Compile(normalizedRegex)
+			if err != nil {
+				w.logger.Warn().
+					Err(err).
+					Str("rule", rule.Name).
+					Str("dirRegex", rule.DirRegEx).
+					Str("normalizedRegex", normalizedRegex).
+					Msg("Failed to compile directory regex, skipping directory validation")
+				dirRegex = nil
+			}
 		}
 	}
 
@@ -569,15 +591,31 @@ func (w *Watcher) processFile(filePath string, rule Rule) {
 func (w *Watcher) matchesFile(filePath string, rule Rule, dirRegex, fileRegex *regexp.Regexp) bool {
 	dir := filepath.Dir(filePath)
 	fileName := filepath.Base(filePath)
-	
+
 	// Check directory regex
-	if dirRegex != nil && !dirRegex.MatchString(dir) {
-		return false
+	if dirRegex != nil {
+		matched := dirRegex.MatchString(dir)
+		w.logger.Debug().
+			Str("dir", dir).
+			Str("dirRegex", dirRegex.String()).
+			Bool("matched", matched).
+			Msg("Directory regex check")
+		if !matched {
+			return false
+		}
 	}
-	
+
 	// Check file regex
-	if fileRegex != nil && !fileRegex.MatchString(fileName) {
-		return false
+	if fileRegex != nil {
+		matched := fileRegex.MatchString(fileName)
+		w.logger.Debug().
+			Str("fileName", fileName).
+			Str("fileRegex", fileRegex.String()).
+			Bool("matched", matched).
+			Msg("File regex check")
+		if !matched {
+			return false
+		}
 	}
 	
 	// Check content regex if configured
