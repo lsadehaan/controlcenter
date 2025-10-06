@@ -93,6 +93,15 @@ create_user() {
     fi
 }
 
+# Stop existing service if running
+stop_existing_service() {
+    if systemctl is-active --quiet controlcenter-agent 2>/dev/null; then
+        echo -e "${YELLOW}Stopping existing agent service...${NC}"
+        systemctl stop controlcenter-agent
+        echo -e "${GREEN}✓ Service stopped${NC}"
+    fi
+}
+
 # Download agent binary
 download_agent() {
     echo -e "${YELLOW}Downloading agent binary...${NC}"
@@ -368,6 +377,7 @@ main() {
     check_root
     install_dependencies
     create_user
+    stop_existing_service
     download_agent
     configure_agent
     setup_workflow_dirs
