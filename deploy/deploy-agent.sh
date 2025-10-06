@@ -83,15 +83,13 @@ download_agent() {
 
     # Determine download URL
     if [ "$RELEASE_VERSION" == "latest" ]; then
-        DOWNLOAD_URL="https://github.com/lsadehaan/controlcenter/releases/latest/download/agent-linux.tar.gz"
+        DOWNLOAD_URL="https://github.com/lsadehaan/controlcenter/releases/latest/download/agent-linux-amd64"
     else
-        DOWNLOAD_URL="https://github.com/lsadehaan/controlcenter/releases/download/${RELEASE_VERSION}/agent-linux-${RELEASE_VERSION}.tar.gz"
+        DOWNLOAD_URL="https://github.com/lsadehaan/controlcenter/releases/download/${RELEASE_VERSION}/agent-linux-amd64"
     fi
 
     # Try to download release binary
-    if wget -q -O agent.tar.gz "$DOWNLOAD_URL" 2>/dev/null; then
-        tar -xzf agent.tar.gz
-        rm agent.tar.gz
+    if wget -q -O agent "$DOWNLOAD_URL" 2>/dev/null; then
         chmod +x agent
         echo -e "${GREEN}✓ Agent binary downloaded from release${NC}"
     else
