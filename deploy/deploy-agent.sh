@@ -11,7 +11,7 @@ YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
 # Configuration
-REGISTRATION_TOKEN="${1:-${GITHUB_TOKEN}}"
+REGISTRATION_TOKEN="${1:-${AGENT_TOKEN}}"
 MANAGER_URL="${2}"
 AGENT_DIR="${AGENT_DIR:-/opt/controlcenter/agent}"
 AGENT_USER="${AGENT_USER:-controlcenter-agent}"
@@ -25,8 +25,11 @@ prompt_for_inputs() {
     if [ -z "$REGISTRATION_TOKEN" ]; then
         echo -e "${YELLOW}No registration token provided.${NC}"
         echo -e "You can set it via:"
-        echo -e "  - GITHUB_TOKEN environment variable"
+        echo -e "  - AGENT_TOKEN environment variable"
         echo -e "  - Pass as first argument: $0 YOUR_TOKEN"
+        echo ""
+        echo -e "${YELLOW}Get a registration token from Manager UI:${NC}"
+        echo -e "  ${MANAGER_URL}/agents -> Generate Token"
         echo ""
         read -p "Enter registration token (or press Enter to skip): " REGISTRATION_TOKEN
     fi
