@@ -99,28 +99,56 @@ mkdir -p C:\temp\watch C:\temp\backup C:\temp\processed
 
 ## Implementation Status
 
-### ✅ Completed
-- Agent registration and token validation
-- WebSocket heartbeat system
-- Visual workflow editor (Drawflow.js)
-- Basic workflow executor with step types
-- SSH server in agents (port 2222)
-- Git configuration sync
-- Alert forwarding to manager
-- SQLite database with full schema
+### ✅ Completed (v0.5.3)
+- **Core Infrastructure**
+  - Agent registration and token validation
+  - WebSocket heartbeat system with reconnection
+  - Git configuration sync with automatic backups
+  - SSH server in agents (port 2222)
+  - SQLite database with full schema
+  - Alert forwarding to manager with WebSocket
+
+- **File Watcher System**
+  - Pattern-based file watching (ScanDir + regex patterns)
+  - Absolute path file watching (backward compatible)
+  - File processing guards (30-second cooldown)
+  - External program execution
+  - Workflow triggering from file events
+  - Duplicate event prevention (fixed in v0.5.3)
+
+- **Workflow System**
+  - Visual workflow editor (Drawflow.js) with drag-and-drop
+  - Canvas navigation (pan/zoom)
+  - Template variable substitution ({{.fileName}}, etc.)
+  - Filewatcher trigger type support
+  - Available inputs tab showing context variables
+  - Node connection traversal for variable propagation
+
+- **Workflow Step Types (Implemented)**
+  - File operations: move-file, copy-file, delete-file
+  - Command execution: run-command
+  - Alerts: alert (with template support)
+  - All steps support template variable substitution
 
 ### ⚠️ Partially Implemented
-- File triggers (code exists, needs testing)
-- Scheduled triggers (basic intervals work, no cron)
-- Remote SSH commands (server ready, workflow integration pending)
-- SFTP file transfers (basic support only)
+- **Workflow Steps (UI exists, backend stub)**
+  - rename-file, archive-file, extract-archive
+  - run-script, ssh-command, send-file (SFTP)
+  - http-request, database-query
+  - send-email, slack-message
+  - condition, loop, javascript
+
+- **Triggers**
+  - Scheduled triggers (basic intervals work, no cron)
+  - File triggers (standalone - not via file watcher)
+  - Webhook triggers (UI only)
 
 ### ❌ Not Implemented
-- JavaScript execution step (goja integration)
-- Webhook triggers
-- Full cron scheduling
+- JavaScript execution step (requires goja integration)
+- Full cron scheduling syntax
 - Agent-to-agent key distribution
 - Log shipping integration
+- Workflow step implementations for UI-defined types (see above)
 
 ## API Reference
 
@@ -194,12 +222,17 @@ GET    /api/tokens                    # List active tokens
 }
 ```
 
-### Available Step Types
+### Implemented Step Types
 - **File Operations**: `copy-file`, `move-file`, `delete-file`
-- **Execution**: `command` (local), `ssh-command` (remote)
-- **Network**: `sftp-send`, `http-request`
-- **Platform**: `alert` (send to manager)
-- **Logic**: `condition`, `for-each`
+- **Execution**: `run-command` (local shell command)
+- **Platform**: `alert` (send to manager with template support)
+
+### Step Types Defined in UI (Not Yet Implemented)
+- **File Operations**: `rename-file`, `archive-file`, `extract-archive`
+- **Execution**: `run-script`, `ssh-command` (remote)
+- **Network**: `send-file` (SFTP), `http-request`, `database-query`
+- **Communication**: `send-email`, `slack-message`
+- **Logic**: `condition`, `loop`, `javascript`
 
 ## Key Files & Locations
 
@@ -279,8 +312,57 @@ GET    /api/tokens                    # List active tokens
 - **github.com/fsnotify/fsnotify**: File system monitoring
 - **golang.org/x/crypto**: SSH implementation
 
-## Future Roadmap (from Blueprint)
+## Recent Fixes & Improvements
 
-**Phase 2**: Local workflows & UI enhancements
-**Phase 3**: Full distributed features (SSH/SFTP between agents)
-**Phase 4**: Observability, metrics, and polish
+### v0.5.3 (Latest)
+- **Fixed duplicate file processing**: Files were being processed twice due to multiple watchers
+- **Fixed workflow trigger recognition**: Added support for 'filewatcher' trigger type
+- **Fixed variable substitution**: Template variables like {{.fileName}} now work in all workflow steps
+- **Improved watcher lifecycle**: Proper start/stop management prevents duplicate event handlers
+
+### v0.5.2
+- **Fixed workflow editor**: Node drag-and-drop positioning now works correctly
+- **Fixed copy button**: Template variable copy buttons now work without errors
+
+### v0.5.1
+- **Workflow editor improvements**: Canvas navigation (pan/zoom), resizable panels
+- **File watcher trigger**: Special trigger type for file watcher-invoked workflows
+- **Inputs tab**: Shows available template variables for each workflow node
+
+## Known Issues & Limitations
+
+### Current Limitations
+1. **Template substitution**: Only processes top-level string values (nested objects/arrays in config need recursive processing)
+2. **Code duplication**: Workflow executor has significant repeated code (refactoring to interface-based design recommended)
+3. **Step implementations**: Many step types defined in UI have no backend implementation (return "not implemented" errors)
+4. **Error handling**: File watcher errors can cause workflows to fail silently
+5. **Workflow editor**: Node drop positioning has minor inconsistencies with canvas transform
+
+### Workarounds
+- For nested config values needing templates, use top-level strings or external programs
+- Use `run-command` step for unimplemented functionality
+- Check agent logs for file watcher errors
+- Use zoom reset before dropping nodes for consistent positioning
+
+## Future Roadmap
+
+### Immediate Priorities
+1. **Refactor workflow executor**: Move to interface-based step design to eliminate code duplication
+2. **Implement missing step types**: Start with ssh-command, http-request, condition
+3. **Improve template processing**: Add recursive template substitution for nested configs
+4. **Add cron syntax**: Support full cron expressions for scheduled triggers
+
+### Phase 2: Local workflows & UI enhancements
+- Workflow debugging and testing tools
+- Better error reporting and logging
+- Workflow templates and examples
+
+### Phase 3: Full distributed features
+- Agent-to-agent SSH communication
+- SFTP file transfers between agents
+- Distributed workflow orchestration
+
+### Phase 4: Observability, metrics, and polish
+- Metrics collection and dashboards
+- Log aggregation and search
+- Performance optimization
