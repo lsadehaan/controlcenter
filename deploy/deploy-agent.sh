@@ -11,8 +11,8 @@ YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
 # Configuration
-REGISTRATION_TOKEN="${1}"
-MANAGER_URL="${2:-http://localhost:3000}"
+REGISTRATION_TOKEN="${1:-${GITHUB_TOKEN}}"
+MANAGER_URL="${2}"
 AGENT_DIR="${AGENT_DIR:-/opt/controlcenter/agent}"
 AGENT_USER="${AGENT_USER:-controlcenter-agent}"
 API_PORT="${API_PORT:-8088}"
@@ -20,7 +20,27 @@ SSH_PORT="${SSH_PORT:-2222}"
 LOG_LEVEL="${LOG_LEVEL:-info}"
 RELEASE_VERSION="${RELEASE_VERSION:-latest}"
 
+# Prompt for missing parameters
+prompt_for_inputs() {
+    if [ -z "$REGISTRATION_TOKEN" ]; then
+        echo -e "${YELLOW}No registration token provided.${NC}"
+        echo -e "You can set it via:"
+        echo -e "  - GITHUB_TOKEN environment variable"
+        echo -e "  - Pass as first argument: $0 YOUR_TOKEN"
+        echo ""
+        read -p "Enter registration token (or press Enter to skip): " REGISTRATION_TOKEN
+    fi
+
+    if [ -z "$MANAGER_URL" ]; then
+        echo -e "${YELLOW}No manager URL provided.${NC}"
+        read -p "Enter manager URL [http://localhost:3000]: " MANAGER_URL
+        MANAGER_URL="${MANAGER_URL:-http://localhost:3000}"
+    fi
+}
+
 echo -e "${GREEN}Control Center Agent Deployment${NC}"
+echo "================================="
+prompt_for_inputs
 echo "Manager URL: $MANAGER_URL"
 echo "Agent Directory: $AGENT_DIR"
 echo "================================="
