@@ -110,28 +110,46 @@ download_agent() {
     mkdir -p $AGENT_DIR
     cd $AGENT_DIR
 
-    # Construct download URL
+    # Construct download URL - try direct binary first, then tar.gz
     if [ "$RELEASE_VERSION" = "latest" ]; then
-        DOWNLOAD_URL="https://github.com/lsadehaan/controlcenter/releases/latest/download/agent-linux-amd64"
+        DOWNLOAD_URL_DIRECT="https://github.com/lsadehaan/controlcenter/releases/latest/download/agent-linux-amd64"
+        DOWNLOAD_URL_TAR="https://github.com/lsadehaan/controlcenter/releases/latest/download/agent-linux.tar.gz"
     else
-        DOWNLOAD_URL="https://github.com/lsadehaan/controlcenter/releases/download/${RELEASE_VERSION}/agent-linux-amd64"
+        DOWNLOAD_URL_DIRECT="https://github.com/lsadehaan/controlcenter/releases/download/${RELEASE_VERSION}/agent-linux-amd64"
+        DOWNLOAD_URL_TAR="https://github.com/lsadehaan/controlcenter/releases/download/${RELEASE_VERSION}/agent-linux-${RELEASE_VERSION}.tar.gz"
     fi
 
-    echo -e "${YELLOW}Downloading from: $DOWNLOAD_URL${NC}"
-
-    # Download the binary
-    if curl -fsSL -o agent "$DOWNLOAD_URL"; then
+    # Try direct binary first (for manually created releases)
+    echo -e "${YELLOW}Attempting direct binary download...${NC}"
+    if curl -fsSL -o agent "$DOWNLOAD_URL_DIRECT" 2>/dev/null; then
         chmod +x agent
         echo -e "${GREEN}✓ Agent binary downloaded successfully${NC}"
-    else
-        echo -e "${RED}Error: Download failed${NC}"
-        echo ""
-        echo "Please check:"
-        echo "  1. Release exists: https://github.com/lsadehaan/controlcenter/releases"
-        echo "  2. Try specific version: RELEASE_VERSION=v0.6.1 bash $0"
-        echo ""
-        exit 1
+        return 0
     fi
+
+    # Try tar.gz format (for CI/CD releases)
+    echo -e "${YELLOW}Attempting tar.gz download from CI/CD build...${NC}"
+    if curl -fsSL -o agent.tar.gz "$DOWNLOAD_URL_TAR" 2>/dev/null; then
+        tar -xzf agent.tar.gz
+        rm agent.tar.gz
+        chmod +x agent
+        echo -e "${GREEN}✓ Agent binary extracted successfully${NC}"
+        return 0
+    fi
+
+    # Both failed
+    echo -e "${RED}Error: Download failed${NC}"
+    echo ""
+    echo "Tried:"
+    echo "  1. $DOWNLOAD_URL_DIRECT"
+    echo "  2. $DOWNLOAD_URL_TAR"
+    echo ""
+    echo "Please check:"
+    echo "  1. Release exists: https://github.com/lsadehaan/controlcenter/releases"
+    echo "  2. Try specific version: RELEASE_VERSION=v0.6.1 bash $0"
+    echo "  3. Wait for CI/CD to finish building binaries"
+    echo ""
+    exit 1
 }
 
 # Configure agent
