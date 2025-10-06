@@ -101,33 +101,30 @@ download_agent() {
     mkdir -p $AGENT_DIR
     cd $AGENT_DIR
 
-    # Determine download URL
-    if [ "$RELEASE_VERSION" == "latest" ]; then
-        # Fetch the latest release tag from GitHub API
-        echo -e "${YELLOW}Fetching latest release version...${NC}"
-        LATEST_TAG=$(curl -s https://api.github.com/repos/lsadehaan/controlcenter/releases/latest | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
-
-        if [ -z "$LATEST_TAG" ]; then
-            echo -e "${RED}Error: Could not determine latest release version${NC}"
-            echo -e "${YELLOW}Trying direct download...${NC}"
-            DOWNLOAD_URL="https://github.com/lsadehaan/controlcenter/releases/latest/download/agent-linux-amd64"
-        else
-            echo -e "${GREEN}Latest version: $LATEST_TAG${NC}"
-            DOWNLOAD_URL="https://github.com/lsadehaan/controlcenter/releases/download/${LATEST_TAG}/agent-linux-amd64"
-        fi
+    # Determine which release to fetch
+    if [ "$RELEASE_VERSION" = "latest" ]; then
+        echo -e "${YELLOW}Fetching latest release...${NC}"
+        RELEASE_API_URL="https://api.github.com/repos/lsadehaan/controlcenter/releases/latest"
     else
-        DOWNLOAD_URL="https://github.com/lsadehaan/controlcenter/releases/download/${RELEASE_VERSION}/agent-linux-amd64"
+        echo -e "${YELLOW}Fetching version $RELEASE_VERSION...${NC}"
+        RELEASE_API_URL="https://api.github.com/repos/lsadehaan/controlcenter/releases/tags/$RELEASE_VERSION"
     fi
 
-    echo -e "${YELLOW}Downloading from: $DOWNLOAD_URL${NC}"
+    # Fetch release info and extract the Linux binary download URL
+    DOWNLOAD_URL=$(curl -sL \
+        -H "Accept: application/vnd.github+json" \
+        -H "X-GitHub-Api-Version: 2022-11-28" \
+        "$RELEASE_API_URL" | \
+        grep '"browser_download_url":.*agent-linux-amd64"' | \
+        sed -E 's/.*"browser_download_url": "([^"]+)".*/\1/')
 
-    # Try to download release binary
-    if wget -q -O agent "$DOWNLOAD_URL" 2>/dev/null; then
-        chmod +x agent
-        echo -e "${GREEN}✓ Agent binary downloaded from release${NC}"
-    else
-        echo -e "${RED}Error: No release binary found for version ${RELEASE_VERSION}${NC}"
-        echo -e "${RED}Download URL: $DOWNLOAD_URL${NC}"
+    if [ -z "$DOWNLOAD_URL" ]; then
+        echo -e "${RED}Error: Could not find Linux binary in release${NC}"
+        echo -e "${YELLOW}Available assets:${NC}"
+        curl -sL \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "$RELEASE_API_URL" | grep '"name":' | head -10
         echo ""
         echo "Please either:"
         echo "  1. Check https://github.com/lsadehaan/controlcenter/releases for available versions"
@@ -139,6 +136,21 @@ download_agent() {
         echo "     go build -o agent ."
         echo "     sudo mv agent /opt/controlcenter/agent/"
         echo ""
+        exit 1
+    fi
+
+    # Extract version for display
+    VERSION_TAG=$(echo "$DOWNLOAD_URL" | grep -oP '/download/\K[^/]+')
+    echo -e "${GREEN}Version: $VERSION_TAG${NC}"
+    echo -e "${YELLOW}Downloading from: $DOWNLOAD_URL${NC}"
+
+    # Download the binary
+    if curl -fsSL -o agent "$DOWNLOAD_URL"; then
+        chmod +x agent
+        echo -e "${GREEN}✓ Agent binary downloaded successfully${NC}"
+    else
+        echo -e "${RED}Error: Download failed${NC}"
+        echo -e "${RED}Download URL: $DOWNLOAD_URL${NC}"
         exit 1
     fi
 }
