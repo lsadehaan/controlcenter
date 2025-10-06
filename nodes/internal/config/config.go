@@ -26,7 +26,18 @@ type Config struct {
 	// File Watcher Global Settings
 	FileWatcherSettings FileWatcherSettings `json:"fileWatcherSettings,omitempty"`
 
+	// Log Management Settings
+	LogSettings LogSettings `json:"logSettings,omitempty"`
+
 	Extra            map[string]interface{} `json:"extra,omitempty"`
+}
+
+type LogSettings struct {
+	Level        string `json:"level"`        // Log level: debug, info, warn, error (default: info)
+	MaxSizeMB    int    `json:"maxSizeMB"`    // Max size before rotation (default: 100MB)
+	MaxAgeDays   int    `json:"maxAgeDays"`   // Max days to retain logs (default: 30)
+	MaxBackups   int    `json:"maxBackups"`   // Max number of old log files (default: 5)
+	Compress     bool   `json:"compress"`     // Compress rotated logs (default: true)
 }
 
 type FileWatcherSettings struct {
@@ -44,8 +55,9 @@ type Workflow struct {
 }
 
 type Trigger struct {
-	Type     string                 `json:"type"`
-	Config   map[string]interface{} `json:"config"`
+	Type       string                 `json:"type"`
+	Config     map[string]interface{} `json:"config"`
+	StartSteps []string               `json:"startSteps,omitempty"`
 }
 
 type Step struct {
