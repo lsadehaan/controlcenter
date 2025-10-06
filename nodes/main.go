@@ -786,6 +786,63 @@ func (a *Agent) handleCommand(payload json.RawMessage) {
 				"error": "Git sync not initialized",
 			})
 		}
+	case "set-log-level":
+		// Get level from command payload (could be in Args or directly in command)
+		var level string
+		if cmd.Args != nil {
+			if levelVal, ok := cmd.Args["level"].(string); ok {
+				level = levelVal
+			}
+		}
+		// Also check if level was passed directly in the command struct
+		if level == "" {
+			// Parse the full payload to check for level field
+			var fullCmd struct {
+				Command string `json:"command"`
+				Level   string `json:"level"`
+			}
+			if err := json.Unmarshal(payload, &fullCmd); err == nil && fullCmd.Level != "" {
+				level = fullCmd.Level
+			}
+		}
+
+		if level == "" {
+			a.logger.Error().Msg("No log level specified in set-log-level command")
+			a.wsClient.SendStatus("error", map[string]interface{}{
+				"command": "set-log-level",
+				"error": "No log level specified",
+			})
+			return
+		}
+
+		// Parse and set the log level
+		var newLevel zerolog.Level
+		switch strings.ToLower(level) {
+		case "debug":
+			newLevel = zerolog.DebugLevel
+		case "info":
+			newLevel = zerolog.InfoLevel
+		case "warn", "warning":
+			newLevel = zerolog.WarnLevel
+		case "error":
+			newLevel = zerolog.ErrorLevel
+		default:
+			a.logger.Error().Str("level", level).Msg("Invalid log level")
+			a.wsClient.SendStatus("error", map[string]interface{}{
+				"command": "set-log-level",
+				"error": fmt.Sprintf("Invalid log level: %s", level),
+			})
+			return
+		}
+
+		// Update the log level
+		*a.logLevel = newLevel
+		a.logger = a.logger.Level(newLevel)
+
+		a.logger.Info().Str("level", level).Msg("🔧 Log level changed")
+		a.wsClient.SendStatus("log-level-set", map[string]interface{}{
+			"level": level,
+		})
 	default:
 		a.logger.Warn().Str("command", cmd.Command).Msg("Unknown command")
 	}
