@@ -48,6 +48,7 @@ type Agent struct {
 	config       *config.Config
 	identity     *identity.Identity
 	wsClient     *websocket.Client
+	wsConnected  bool  // Track WebSocket connection state
 	gitSync      *gitsync.GitSync
 	executor     *workflow.Executor
 	sshServer    *sshserver.SSHServer
@@ -514,8 +515,9 @@ func (a *Agent) startHealthEndpoint() {
 }
 
 func (a *Agent) handleConnect() {
+	a.wsConnected = true
 	a.logger.Info().Msg("Connected to manager")
-	
+
 	if a.config.Registered {
 		// Already registered, just send a reconnection message with our ID and public key
 		if err := a.wsClient.SendReconnection(a.identity.PublicKey); err != nil {
@@ -536,7 +538,8 @@ func (a *Agent) handleConnect() {
 }
 
 func (a *Agent) handleDisconnect() {
-	a.logger.Warn().Msg("Disconnected from manager")
+	a.wsConnected = false
+	a.logger.Warn().Msg("Disconnected from manager - will attempt reconnection")
 }
 
 func (a *Agent) handleMessage(msgType websocket.MessageType, payload json.RawMessage) {
@@ -920,7 +923,7 @@ func (a *Agent) sendAlert(level, message string, details map[string]interface{})
 		"agent_id":  a.config.AgentID,
 	}
 
-	if a.wsClient == nil {
+	if a.wsClient == nil || !a.wsConnected {
 		// In standalone mode or disconnected - save alerts locally
 		a.logger.Warn().
 			Str("level", level).
