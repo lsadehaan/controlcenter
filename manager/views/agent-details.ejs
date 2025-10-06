@@ -154,6 +154,17 @@
 
       <!-- Overview Tab -->
       <div id="overview-tab" class="tab-content active">
+        <!-- Agent Commands -->
+        <div class="metric-card" style="margin-bottom: 20px;">
+          <h4>Agent Commands</h4>
+          <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px;">
+            <button class="btn" onclick="sendCommand('reload-config')">Reload Config</button>
+            <button class="btn" onclick="sendCommand('git-pull')">Git Pull</button>
+            <button class="btn" onclick="sendCommand('reload-filewatcher')">Reload File Watcher</button>
+          </div>
+          <div id="command-result" style="margin-top: 10px; padding: 10px; display: none; border-radius: 4px;"></div>
+        </div>
+
         <div class="metric-card">
           <h4>Agent Information</h4>
           <div class="metric-row">
@@ -462,6 +473,39 @@
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
+  }
+
+  async function sendCommand(command) {
+    const resultDiv = document.getElementById('command-result');
+    resultDiv.style.display = 'block';
+    resultDiv.style.background = '#fff3cd';
+    resultDiv.style.color = '#856404';
+    resultDiv.textContent = `Sending ${command} command...`;
+
+    try {
+      const response = await fetch(`/api/agents/${agentId}/command`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ command })
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        resultDiv.style.background = '#d4edda';
+        resultDiv.style.color = '#155724';
+        resultDiv.textContent = `✓ Command ${command} sent successfully`;
+        setTimeout(() => resultDiv.style.display = 'none', 5000);
+      } else {
+        resultDiv.style.background = '#f8d7da';
+        resultDiv.style.color = '#721c24';
+        resultDiv.textContent = `✗ Failed: ${data.error || 'Unknown error'}`;
+      }
+    } catch (error) {
+      resultDiv.style.background = '#f8d7da';
+      resultDiv.style.color = '#721c24';
+      resultDiv.textContent = `✗ Error: ${error.message}`;
+    }
   }
   </script>
 </body>
