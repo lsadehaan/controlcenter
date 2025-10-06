@@ -148,6 +148,8 @@
         <button class="tab" onclick="switchTab('logs')">Logs</button>
         <button class="tab" onclick="switchTab('workflows')">Workflows</button>
         <button class="tab" onclick="switchTab('metrics')">Metrics</button>
+        <a href="/agents/<%= agent.id %>/filewatcher" class="tab" style="text-decoration: none;">File Watchers</a>
+        <a href="/agents/<%= agent.id %>/configure" class="tab" style="text-decoration: none;">Configure</a>
       </div>
 
       <!-- Overview Tab -->
