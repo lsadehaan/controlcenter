@@ -116,16 +116,16 @@ func (s *Server) handleLogs(w http.ResponseWriter, r *http.Request) {
 		lineNum++
 		line := scanner.Text()
 
+		// Skip empty lines
+		if strings.TrimSpace(line) == "" {
+			continue
+		}
+
 		// Parse JSON log line (zerolog format)
 		var logData map[string]interface{}
 		if err := json.Unmarshal([]byte(line), &logData); err != nil {
-			// Not JSON, treat as plain text
-			allLogs = append(allLogs, LogEntry{
-				Timestamp: time.Now().Format(time.RFC3339),
-				Level:     "info",
-				Message:   line,
-				LineNum:   lineNum,
-			})
+			// Not JSON - skip non-JSON log lines to avoid showing incorrect timestamps
+			// Old logs that aren't in zerolog JSON format will be ignored
 			continue
 		}
 
