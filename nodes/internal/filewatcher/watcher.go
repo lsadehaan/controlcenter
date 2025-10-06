@@ -330,32 +330,46 @@ func (w *Watcher) handleEvents(watcher *fsnotify.Watcher, rule Rule, dirRegex, f
 			if !ok {
 				return
 			}
-			
+
+			// Log ALL file events at INFO level for troubleshooting
+			w.logger.Info().
+				Str("file", event.Name).
+				Str("event", event.Op.String()).
+				Str("rule", rule.Name).
+				Msg("📂 File event detected")
+
 			// Check if file matches criteria
 			if !w.matchesFile(event.Name, rule, dirRegex, fileRegex) {
-				w.logger.Debug().
+				w.logger.Info().
 					Str("file", event.Name).
 					Str("rule", rule.Name).
-					Msg("File did not match criteria")
+					Str("fileRegex", rule.FileRegEx).
+					Str("dirRegex", rule.DirRegEx).
+					Msg("❌ File did not match criteria")
 				continue
 			}
-			
+
+			w.logger.Info().
+				Str("file", event.Name).
+				Str("rule", rule.Name).
+				Msg("✅ File matched criteria")
+
 			// Check time restrictions
 			if !w.checkTimeRestrictions(rule.TimeRestrictions) {
-				w.logger.Debug().
+				w.logger.Info().
 					Str("file", event.Name).
-					Msg("File matched but outside time window")
+					Msg("⏰ File matched but outside time window")
 				continue
 			}
-			
+
 			// Process file
 			if event.Op&fsnotify.Create == fsnotify.Create || event.Op&fsnotify.Write == fsnotify.Write {
 				// Check if file is already being processed or was recently processed
 				if w.isFileBeingProcessed(event.Name) {
-					w.logger.Debug().
+					w.logger.Info().
 						Str("file", event.Name).
 						Str("rule", rule.Name).
-						Msg("File is being processed or in cooldown period, skipping")
+						Msg("⏸️ File is being processed or in cooldown period, skipping")
 					continue
 				}
 
@@ -365,19 +379,28 @@ func (w *Watcher) handleEvents(watcher *fsnotify.Watcher, rule Rule, dirRegex, f
 					Str("event", event.Op.String()).
 					Str("dirRegex", rule.DirRegEx).
 					Str("fileRegex", rule.FileRegEx).
-					Msg("File matched! Processing file")
+					Msg("✅ File matched all criteria! Starting processing")
 
 				// Wait if configured
 				if rule.TimeRestrictions.ProcessAfterSecs > 0 {
+					w.logger.Info().
+						Str("file", event.Name).
+						Int("delaySecs", rule.TimeRestrictions.ProcessAfterSecs).
+						Msg("⏳ Waiting before processing file")
 					time.Sleep(time.Duration(rule.TimeRestrictions.ProcessAfterSecs) * time.Second)
 				}
 
 				// Check if file is still being written
 				if rule.ProcessingOptions.CheckFileInUse {
 					if w.isFileInUse(event.Name) {
-						w.logger.Debug().Str("file", event.Name).Msg("File is still in use, skipping")
+						w.logger.Info().
+							Str("file", event.Name).
+							Msg("🔒 File is still in use, skipping")
 						continue
 					}
+					w.logger.Info().
+						Str("file", event.Name).
+						Msg("✅ File is not in use, proceeding")
 				}
 
 				// Mark file as being processed
@@ -403,84 +426,137 @@ func (w *Watcher) processFile(filePath string, rule Rule) {
 	// Ensure we mark the file as done processing when this function exits
 	defer w.markFileProcessed(filePath)
 
+	w.logger.Info().
+		Str("file", filePath).
+		Str("rule", rule.Name).
+		Msg("🚀 Starting file processing")
+
 	ops := rule.Operations
-	
+
 	// Execute pre-processing program
 	if ops.ExecProgBefore != "" {
+		w.logger.Info().
+			Str("file", filePath).
+			Str("program", ops.ExecProgBefore).
+			Msg("⚙️ Executing pre-processing program")
 		w.executeProgram(ops.ExecProgBefore, filePath)
 	}
-	
+
 	// Prepare destination path
 	destPath := filePath
 	if ops.CopyToDir != "" {
 		fileName := filepath.Base(filePath)
-		
+
 		// Apply rename if configured
 		if ops.RenameFileTo != "" {
+			oldName := fileName
 			fileName = w.applyRename(fileName, ops.RenameFileTo, ops.InsertTimestamp)
+			w.logger.Info().
+				Str("oldName", oldName).
+				Str("newName", fileName).
+				Msg("📝 Applying rename")
 		}
-		
+
 		destPath = filepath.Join(ops.CopyToDir, fileName)
+		w.logger.Info().
+			Str("destPath", destPath).
+			Msg("📍 Prepared destination path")
 	}
 	
 	// Backup file if configured
 	if ops.BackupToDir != "" {
 		backupPath := filepath.Join(ops.BackupToDir, filepath.Base(filePath))
+		w.logger.Info().
+			Str("file", filePath).
+			Str("backupPath", backupPath).
+			Msg("💾 Creating backup")
 		if err := w.copyFile(filePath, backupPath); err != nil {
-			w.logger.Error().Err(err).Str("file", filePath).Msg("Failed to backup file")
+			w.logger.Error().Err(err).Str("file", filePath).Msg("❌ Failed to backup file")
 		} else {
-			w.logger.Info().Str("file", filePath).Str("backup", backupPath).Msg("File backed up")
+			w.logger.Info().Str("file", filePath).Str("backup", backupPath).Msg("✅ File backed up successfully")
 		}
 	}
-	
+
 	// Copy or move file
 	if ops.CopyToDir != "" {
 		var err error
-		
+
 		// Check if destination exists and overwrite setting
 		if !ops.Overwrite && w.fileExists(destPath) {
-			w.logger.Warn().Str("file", filePath).Str("dest", destPath).Msg("Destination exists, skipping")
+			w.logger.Info().
+				Str("file", filePath).
+				Str("dest", destPath).
+				Msg("⚠️ Destination exists and overwrite is disabled, skipping")
 			return
 		}
-		
+
 		// Use temp extension if configured
 		tempPath := destPath
 		if ops.CopyTempExtension != "" {
 			tempPath = destPath + ops.CopyTempExtension
+			w.logger.Info().
+				Str("tempPath", tempPath).
+				Msg("📝 Using temporary extension during copy")
 		}
-		
+
 		if ops.CopyFileOption == 21 { // Move
+			w.logger.Info().
+				Str("source", filePath).
+				Str("dest", tempPath).
+				Msg("📦 Moving file")
 			err = os.Rename(filePath, tempPath)
 		} else { // Copy
+			w.logger.Info().
+				Str("source", filePath).
+				Str("dest", tempPath).
+				Msg("📋 Copying file")
 			err = w.copyFile(filePath, tempPath)
 		}
-		
+
 		if err != nil {
-			w.logger.Error().Err(err).Str("file", filePath).Msg("Failed to process file")
+			w.logger.Error().
+				Err(err).
+				Str("file", filePath).
+				Str("dest", tempPath).
+				Msg("❌ Failed to process file")
 			if ops.ExecProgError != "" {
+				w.logger.Info().
+					Str("program", ops.ExecProgError).
+					Msg("⚙️ Executing error handler program")
 				w.executeProgram(ops.ExecProgError, filePath)
 			}
 			return
 		}
-		
+
 		// Rename temp file to final name
 		if ops.CopyTempExtension != "" {
+			w.logger.Info().
+				Str("tempPath", tempPath).
+				Str("finalPath", destPath).
+				Msg("📝 Renaming temporary file to final name")
 			os.Rename(tempPath, destPath)
 		}
-		
+
 		// Remove source if configured (and not already moved)
 		if ops.RemoveAfterCopy && ops.CopyFileOption != 21 {
+			w.logger.Info().
+				Str("file", filePath).
+				Msg("🗑️ Removing source file after copy")
 			os.Remove(filePath)
 		}
-		
+
 		w.logger.Info().
 			Str("source", filePath).
 			Str("dest", destPath).
-			Msg("File processed successfully")
+			Msg("✅ File processed successfully")
 	}
-	
+
 	// Execute post-processing program
 	if ops.ExecProg != "" {
+		w.logger.Info().
+			Str("file", destPath).
+			Str("program", ops.ExecProg).
+			Msg("⚙️ Executing post-processing program")
 		w.executeProgram(ops.ExecProg, destPath)
 	}
 	
