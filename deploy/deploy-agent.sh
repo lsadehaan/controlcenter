@@ -103,10 +103,23 @@ download_agent() {
 
     # Determine download URL
     if [ "$RELEASE_VERSION" == "latest" ]; then
-        DOWNLOAD_URL="https://github.com/lsadehaan/controlcenter/releases/latest/download/agent-linux-amd64"
+        # Fetch the latest release tag from GitHub API
+        echo -e "${YELLOW}Fetching latest release version...${NC}"
+        LATEST_TAG=$(curl -s https://api.github.com/repos/lsadehaan/controlcenter/releases/latest | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
+
+        if [ -z "$LATEST_TAG" ]; then
+            echo -e "${RED}Error: Could not determine latest release version${NC}"
+            echo -e "${YELLOW}Trying direct download...${NC}"
+            DOWNLOAD_URL="https://github.com/lsadehaan/controlcenter/releases/latest/download/agent-linux-amd64"
+        else
+            echo -e "${GREEN}Latest version: $LATEST_TAG${NC}"
+            DOWNLOAD_URL="https://github.com/lsadehaan/controlcenter/releases/download/${LATEST_TAG}/agent-linux-amd64"
+        fi
     else
         DOWNLOAD_URL="https://github.com/lsadehaan/controlcenter/releases/download/${RELEASE_VERSION}/agent-linux-amd64"
     fi
+
+    echo -e "${YELLOW}Downloading from: $DOWNLOAD_URL${NC}"
 
     # Try to download release binary
     if wget -q -O agent "$DOWNLOAD_URL" 2>/dev/null; then
@@ -114,11 +127,11 @@ download_agent() {
         echo -e "${GREEN}✓ Agent binary downloaded from release${NC}"
     else
         echo -e "${RED}Error: No release binary found for version ${RELEASE_VERSION}${NC}"
-        echo -e "${RED}The release binaries have not been built yet.${NC}"
+        echo -e "${RED}Download URL: $DOWNLOAD_URL${NC}"
         echo ""
         echo "Please either:"
-        echo "  1. Wait for the CI/CD pipeline to build the binaries"
-        echo "  2. Check https://github.com/lsadehaan/controlcenter/releases for available versions"
+        echo "  1. Check https://github.com/lsadehaan/controlcenter/releases for available versions"
+        echo "  2. Set specific version: RELEASE_VERSION=v0.6.1 bash $0"
         echo "  3. Build from source manually:"
         echo ""
         echo "     git clone https://github.com/lsadehaan/controlcenter.git"
