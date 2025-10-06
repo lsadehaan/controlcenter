@@ -292,8 +292,78 @@ show_status() {
     echo -e "${GREEN}curl -fsSL https://raw.githubusercontent.com/lsadehaan/controlcenter/main/deploy/deploy-agent.sh | bash -s -- YOUR_TOKEN${NC}"
 }
 
+# Upgrade existing installation
+upgrade() {
+    echo -e "${YELLOW}Upgrading Control Center Manager...${NC}"
+
+    # Detect installation type
+    if docker ps -a --format '{{.Names}}' | grep -q controlcenter-manager; then
+        echo -e "${GREEN}Detected Docker installation${NC}"
+        INSTALL_TYPE="docker"
+
+        # Find data directory from container volume
+        DATA_DIR=$(docker inspect controlcenter-manager 2>/dev/null | grep -oP '(?<="Source": ")[^"]*(?=/data")' | head -1)
+        if [ -z "$DATA_DIR" ]; then
+            DATA_DIR="/opt/controlcenter/manager"
+        fi
+
+        echo -e "${YELLOW}Stopping container...${NC}"
+        docker stop controlcenter-manager 2>/dev/null || true
+        docker rm controlcenter-manager 2>/dev/null || true
+
+        echo -e "${YELLOW}Pulling latest image...${NC}"
+        docker pull ghcr.io/lsadehaan/controlcenter-manager:latest
+
+        echo -e "${YELLOW}Starting container...${NC}"
+        cd "$DATA_DIR"
+        docker compose up -d
+
+        echo -e "${GREEN}✓ Docker upgrade complete${NC}"
+
+    elif systemctl is-active --quiet controlcenter-manager 2>/dev/null; then
+        echo -e "${GREEN}Detected native installation${NC}"
+        INSTALL_TYPE="native"
+        DATA_DIR=$(systemctl show -p WorkingDirectory controlcenter-manager | cut -d= -f2)
+
+        echo -e "${YELLOW}Stopping service...${NC}"
+        sudo systemctl stop controlcenter-manager
+
+        echo -e "${YELLOW}Pulling latest code...${NC}"
+        cd /tmp
+        if [ -d "controlcenter" ]; then
+            cd controlcenter && git pull
+        else
+            git clone https://github.com/lsadehaan/controlcenter.git
+            cd controlcenter
+        fi
+
+        echo -e "${YELLOW}Updating files...${NC}"
+        sudo cp -r manager/* "$DATA_DIR/"
+        cd "$DATA_DIR"
+        sudo npm install --production
+
+        echo -e "${YELLOW}Starting service...${NC}"
+        sudo systemctl start controlcenter-manager
+
+        echo -e "${GREEN}✓ Native upgrade complete${NC}"
+    else
+        echo -e "${RED}No existing installation found${NC}"
+        echo "Use: bash $0 docker    (for new Docker installation)"
+        echo "     bash $0 native   (for new native installation)"
+        exit 1
+    fi
+
+    show_status
+}
+
 # Main execution
 main() {
+    # Check for upgrade flag
+    if [ "$1" == "--upgrade" ]; then
+        upgrade
+        exit 0
+    fi
+
     check_ubuntu
 
     if [ "$INSTALL_TYPE" == "docker" ]; then
@@ -312,4 +382,4 @@ main() {
 }
 
 # Run main function
-main
+main "$@"
