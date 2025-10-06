@@ -158,8 +158,11 @@ func (s *CommandStep) Execute(config map[string]interface{}, context map[string]
 		return err
 	}
 
-	// Get arguments if provided
+	// Get arguments if provided (try both "arguments" and "args" for compatibility)
 	arguments := s.getOptionalString(config, "arguments", "")
+	if arguments == "" {
+		arguments = s.getOptionalString(config, "args", "")
+	}
 
 	// Combine command and arguments
 	fullCommand := command
