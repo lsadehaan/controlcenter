@@ -2,11 +2,9 @@ package workflow
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -27,6 +25,7 @@ type Executor struct {
 	stopChan     chan struct{}
 	stopped      bool
 	alertHandler func(level, message string, details map[string]interface{})
+	stepRegistry *StepRegistry
 }
 
 type WorkflowInstance struct {
@@ -44,15 +43,18 @@ func NewExecutor(stateFile string, logger zerolog.Logger) (*Executor, error) {
 	}
 
 	return &Executor{
-		workflows: make(map[string]*WorkflowInstance),
-		state:     state,
-		logger:    logger,
-		stopChan:  make(chan struct{}),
+		workflows:    make(map[string]*WorkflowInstance),
+		state:        state,
+		logger:       logger,
+		stopChan:     make(chan struct{}),
+		stepRegistry: NewStepRegistry(logger, nil),
 	}, nil
 }
 
 func (e *Executor) SetAlertHandler(handler func(level, message string, details map[string]interface{})) {
 	e.alertHandler = handler
+	// Update registry with alert handler
+	e.stepRegistry = NewStepRegistry(e.logger, handler)
 }
 
 func (e *Executor) LoadWorkflows(workflows []config.Workflow) {
@@ -293,30 +295,50 @@ func (e *Executor) executeWorkflow(workflowID string, instance *WorkflowInstance
 	e.logger.Info().
 		Str("workflow", workflowID).
 		Str("name", instance.Workflow.Name).
-		Msg("Executing workflow")
+		Interface("context", context).
+		Msg("🚀 Starting workflow execution")
 
 	// Save state
 	e.state.StartWorkflow(workflowID, context)
 
-	// Execute steps
+	// Build step map for quick lookup
+	stepMap := make(map[string]config.Step)
 	for _, step := range instance.Workflow.Steps {
-		if err := e.executeStep(step, context); err != nil {
-			e.logger.Error().
-				Err(err).
-				Str("workflow", workflowID).
-				Str("step", step.ID).
-				Msg("Step execution failed")
-			
-			e.mu.Lock()
-			instance.Status = "failed"
-			instance.Error = err.Error()
-			e.mu.Unlock()
-			
-			e.state.FailWorkflow(workflowID, err.Error())
-			return
+		stepMap[step.ID] = step
+	}
+
+	// Get starting steps from trigger
+	startSteps := instance.Workflow.Trigger.StartSteps
+	if len(startSteps) == 0 {
+		// Fallback: if no startSteps defined, execute all steps sequentially
+		e.logger.Warn().
+			Str("workflow", workflowID).
+			Msg("⚠️ No trigger.startSteps defined, falling back to sequential execution")
+		for _, step := range instance.Workflow.Steps {
+			startSteps = append(startSteps, step.ID)
 		}
-		
-		e.state.CompleteStep(workflowID, step.ID)
+	}
+
+	e.logger.Info().
+		Str("workflow", workflowID).
+		Strs("startSteps", startSteps).
+		Msg("📍 Starting from trigger-defined steps")
+
+	// Execute step chains starting from trigger
+	visited := make(map[string]bool)
+	if err := e.executeStepChain(startSteps, stepMap, context, workflowID, visited); err != nil {
+		e.logger.Error().
+			Err(err).
+			Str("workflow", workflowID).
+			Msg("❌ Workflow execution failed")
+
+		e.mu.Lock()
+		instance.Status = "failed"
+		instance.Error = err.Error()
+		e.mu.Unlock()
+
+		e.state.FailWorkflow(workflowID, err.Error())
+		return
 	}
 
 	e.mu.Lock()
@@ -328,183 +350,122 @@ func (e *Executor) executeWorkflow(workflowID string, instance *WorkflowInstance
 
 	e.logger.Info().
 		Str("workflow", workflowID).
-		Msg("Workflow completed successfully")
+		Msg("✅ Workflow completed successfully")
 }
 
-func (e *Executor) executeStep(step config.Step, context map[string]interface{}) error {
-	e.logger.Debug().
+func (e *Executor) executeStepChain(stepIDs []string, stepMap map[string]config.Step, context map[string]interface{}, workflowID string, visited map[string]bool) error {
+	for _, stepID := range stepIDs {
+		// Check for cycles
+		if visited[stepID] {
+			e.logger.Warn().
+				Str("step", stepID).
+				Msg("🔄 Step already visited, skipping to prevent cycle")
+			continue
+		}
+		visited[stepID] = true
+
+		step, exists := stepMap[stepID]
+		if !exists {
+			e.logger.Error().
+				Str("step", stepID).
+				Msg("❌ Step not found in workflow")
+			return fmt.Errorf("step %s not found", stepID)
+		}
+
+		// Execute the step
+		if err := e.executeStep(step, context, workflowID); err != nil {
+			return err
+		}
+
+		// Follow connections to next steps
+		if len(step.Next) > 0 {
+			e.logger.Debug().
+				Str("step", stepID).
+				Strs("next", step.Next).
+				Msg("➡️ Following connections to next steps")
+			if err := e.executeStepChain(step.Next, stepMap, context, workflowID, visited); err != nil {
+				return err
+			}
+		} else {
+			e.logger.Debug().
+				Str("step", stepID).
+				Msg("🏁 Step has no next steps (end of branch)")
+		}
+	}
+	return nil
+}
+
+func (e *Executor) executeStep(step config.Step, context map[string]interface{}, workflowID string) error {
+	e.logger.Info().
 		Str("step", step.ID).
 		Str("type", step.Type).
-		Msg("Executing step")
+		Str("name", step.Name).
+		Msg("▶️ Executing step")
 
-	// Process config values with template substitution
-	processedConfig := make(map[string]interface{})
-	for key, value := range step.Config {
-		if strValue, ok := value.(string); ok {
-			processedConfig[key] = e.processTemplate(strValue, context)
-		} else {
-			processedConfig[key] = value
-		}
-	}
-
-	switch step.Type {
-	case "move-file":
-		return e.executeMoveFile(processedConfig)
-	case "copy-file":
-		return e.executeCopyFile(processedConfig)
-	case "delete-file":
-		return e.executeDeleteFile(processedConfig)
-	case "run-command":
-		return e.executeCommand(processedConfig)
-	case "alert":
-		return e.executeAlert(processedConfig)
-	default:
-		return fmt.Errorf("unknown step type: %s", step.Type)
-	}
-}
-
-func (e *Executor) executeMoveFile(config map[string]interface{}) error {
-	source, _ := config["source"].(string)
-	destination, _ := config["destination"].(string)
-	
-	if source == "" || destination == "" {
-		return fmt.Errorf("move-file requires source and destination")
-	}
-	
-	// Ensure destination directory exists
-	destDir := filepath.Dir(destination)
-	if err := os.MkdirAll(destDir, 0755); err != nil {
-		return fmt.Errorf("failed to create destination directory: %w", err)
-	}
-	
-	return os.Rename(source, destination)
-}
-
-func (e *Executor) executeCopyFile(config map[string]interface{}) error {
-	source, _ := config["source"].(string)
-	destination, _ := config["destination"].(string)
-	
-	if source == "" || destination == "" {
-		return fmt.Errorf("copy-file requires source and destination")
-	}
-	
-	// Read source file
-	data, err := os.ReadFile(source)
-	if err != nil {
-		return fmt.Errorf("failed to read source file: %w", err)
-	}
-	
-	// Ensure destination directory exists
-	destDir := filepath.Dir(destination)
-	if err := os.MkdirAll(destDir, 0755); err != nil {
-		return fmt.Errorf("failed to create destination directory: %w", err)
-	}
-	
-	// Write to destination
-	return os.WriteFile(destination, data, 0644)
-}
-
-func (e *Executor) executeDeleteFile(config map[string]interface{}) error {
-	path, _ := config["path"].(string)
-	
-	if path == "" {
-		return fmt.Errorf("delete-file requires path")
-	}
-	
-	return os.Remove(path)
-}
-
-func (e *Executor) executeCommand(config map[string]interface{}) error {
-	command, _ := config["command"].(string)
-	args, _ := config["args"].([]interface{})
-	workingDir, _ := config["working_directory"].(string)
-	timeoutSecs, _ := config["timeout"].(float64)
-
-	if command == "" {
-		return fmt.Errorf("run-command requires command")
-	}
-
-	// Convert args to strings - these are safe as exec.Command doesn't invoke shell
-	argStrings := make([]string, 0, len(args))
-	for _, arg := range args {
-		if arg != nil {
-			argStrings = append(argStrings, fmt.Sprint(arg))
-		}
-	}
-
-	// Set timeout (default 30 seconds, configurable)
-	timeout := 30 * time.Second
-	if timeoutSecs > 0 {
-		timeout = time.Duration(timeoutSecs) * time.Second
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
-	defer cancel()
-
-	// SECURITY: exec.CommandContext does NOT invoke shell, preventing injection
-	// Arguments are passed directly to the program, not interpreted by shell
-	cmd := exec.CommandContext(ctx, command, argStrings...)
-
-	// Set working directory if specified
-	if workingDir != "" {
-		// Resolve to absolute path to prevent ambiguity
-		absPath, err := filepath.Abs(workingDir)
-		if err != nil {
-			return fmt.Errorf("invalid working directory: %w", err)
-		}
-		cmd.Dir = absPath
-	}
-
-	// Security: Log command execution for audit
-	e.logger.Info().
-		Str("command", command).
-		Strs("args", argStrings).
-		Str("workingDir", workingDir).
-		Float64("timeout", timeoutSecs).
-		Msg("Executing command")
-
-	output, err := cmd.CombinedOutput()
-
-	if err != nil {
-		if ctx.Err() == context.DeadlineExceeded {
-			return fmt.Errorf("command timed out after %v", timeout)
-		}
-		// Log failed commands for security audit
-		e.logger.Error().
-			Str("command", command).
-			Err(err).
-			Str("output", string(output)).
-			Msg("Command failed")
-		return fmt.Errorf("command failed: %w\nOutput: %s", err, output)
-	}
+	// Process config values with recursive template substitution
+	processedConfig := e.processConfigWithTemplate(step.Config, context)
 
 	e.logger.Debug().
-		Str("command", command).
-		Int("outputLen", len(output)).
-		Msg("Command executed successfully")
+		Str("step", step.ID).
+		Interface("processedConfig", processedConfig).
+		Msg("🔄 Step config processed with templates")
+
+	// Create step instance from registry
+	stepImpl, err := e.stepRegistry.Create(step.Type)
+	if err != nil {
+		return fmt.Errorf("failed to create step %s: %w", step.Type, err)
+	}
+
+	// Execute the step
+	if err := stepImpl.Execute(processedConfig, context); err != nil {
+		e.logger.Error().
+			Err(err).
+			Str("step", step.ID).
+			Str("type", step.Type).
+			Msg("❌ Step execution failed")
+		return err
+	}
+
+	e.logger.Info().
+		Str("step", step.ID).
+		Str("type", step.Type).
+		Msg("✅ Step completed successfully")
+
+	// Mark step as completed in state
+	e.state.CompleteStep(workflowID, step.ID)
 
 	return nil
 }
 
-func (e *Executor) executeAlert(config map[string]interface{}) error {
-	level, _ := config["level"].(string)
-	message, _ := config["message"].(string)
-
-	if message == "" {
-		return fmt.Errorf("alert requires message")
+// processConfigWithTemplate recursively processes config values with template substitution
+func (e *Executor) processConfigWithTemplate(config map[string]interface{}, context map[string]interface{}) map[string]interface{} {
+	result := make(map[string]interface{})
+	for key, value := range config {
+		result[key] = e.processValueWithTemplate(value, context)
 	}
+	return result
+}
 
-	e.logger.Info().
-		Str("level", level).
-		Str("message", message).
-		Msg("Alert generated")
-
-	// Send alert to manager via alert channel
-	if e.alertHandler != nil {
-		e.alertHandler(level, message, config)
+// processValueWithTemplate recursively processes a value with template substitution
+func (e *Executor) processValueWithTemplate(value interface{}, context map[string]interface{}) interface{} {
+	switch v := value.(type) {
+	case string:
+		return e.processTemplate(v, context)
+	case map[string]interface{}:
+		result := make(map[string]interface{})
+		for key, val := range v {
+			result[key] = e.processValueWithTemplate(val, context)
+		}
+		return result
+	case []interface{}:
+		result := make([]interface{}, len(v))
+		for i, val := range v {
+			result[i] = e.processValueWithTemplate(val, context)
+		}
+		return result
+	default:
+		return value
 	}
-
-	return nil
 }
 
 // processTemplate applies template substitution to a string using context variables

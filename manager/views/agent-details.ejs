@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= title %> - Control Center</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    .tabs {
+      display: flex;
+      border-bottom: 2px solid #ddd;
+      margin-bottom: 20px;
+    }
+    .tab {
+      padding: 10px 20px;
+      cursor: pointer;
+      border: none;
+      background: none;
+      font-size: 16px;
+      border-bottom: 3px solid transparent;
+    }
+    .tab.active {
+      border-bottom-color: #007bff;
+      color: #007bff;
+      font-weight: bold;
+    }
+    .tab-content {
+      display: none;
+    }
+    .tab-content.active {
+      display: block;
+    }
+    .log-viewer {
+      background: #1e1e1e;
+      color: #d4d4d4;
+      padding: 15px;
+      border-radius: 4px;
+      font-family: 'Courier New', monospace;
+      font-size: 13px;
+      max-height: 600px;
+      overflow-y: auto;
+    }
+    .log-entry {
+      margin-bottom: 8px;
+      padding: 4px;
+      border-left: 3px solid transparent;
+    }
+    .log-entry.error { border-left-color: #f44336; background: rgba(244, 67, 54, 0.1); }
+    .log-entry.warn { border-left-color: #ff9800; background: rgba(255, 152, 0, 0.1); }
+    .log-entry.info { border-left-color: #2196f3; }
+    .log-entry.debug { border-left-color: #9e9e9e; opacity: 0.7; }
+    .log-timestamp { color: #858585; margin-right: 10px; }
+    .log-level {
+      display: inline-block;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-weight: bold;
+      margin-right: 10px;
+      min-width: 50px;
+      text-align: center;
+    }
+    .log-level.error { background: #f44336; color: white; }
+    .log-level.warn { background: #ff9800; color: white; }
+    .log-level.info { background: #2196f3; color: white; }
+    .log-level.debug { background: #9e9e9e; color: white; }
+    .log-message { color: #d4d4d4; }
+    .log-metadata {
+      margin-top: 4px;
+      padding-left: 20px;
+      color: #858585;
+      font-size: 12px;
+    }
+    .log-controls {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 15px;
+      flex-wrap: wrap;
+    }
+    .pagination {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      margin-top: 15px;
+    }
+    .metric-card {
+      background: #f8f9fa;
+      padding: 15px;
+      border-radius: 4px;
+      margin-bottom: 15px;
+    }
+    .metric-card h4 {
+      margin-top: 0;
+      color: #495057;
+    }
+    .metric-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 8px 0;
+      border-bottom: 1px solid #dee2e6;
+    }
+    .metric-row:last-child {
+      border-bottom: none;
+    }
+    .workflow-execution {
+      background: #f8f9fa;
+      padding: 15px;
+      border-radius: 4px;
+      margin-bottom: 10px;
+      border-left: 4px solid #007bff;
+    }
+    .workflow-execution.failed {
+      border-left-color: #dc3545;
+    }
+    .workflow-execution.running {
+      border-left-color: #ffc107;
+    }
+  </style>
+</head>
+<body>
+  <nav class="navbar">
+    <div class="nav-container">
+      <div class="nav-brand">
+        <h1>Control Center</h1>
+      </div>
+      <ul class="nav-menu">
+        <li><a href="/">Dashboard</a></li>
+        <li><a href="/agents" class="active">Agents</a></li>
+        <li><a href="/workflows">Workflows</a></li>
+        <li><a href="/workflow-editor">Editor</a></li>
+        <li><a href="/alerts">Alerts</a></li>
+        <li><a href="/logs">Logs</a></li>
+        <li><a href="/settings">Settings</a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <main class="main-content">
+    <div class="container">
+      <div class="page-header">
+        <h2>Agent: <%= agent.id %></h2>
+        <div>
+          <span class="status-badge <%= agent.status %>"><%= agent.status %></span>
+        </div>
+      </div>
+
+      <div class="tabs">
+        <button class="tab active" onclick="switchTab('overview')">Overview</button>
+        <button class="tab" onclick="switchTab('logs')">Logs</button>
+        <button class="tab" onclick="switchTab('workflows')">Workflows</button>
+        <button class="tab" onclick="switchTab('metrics')">Metrics</button>
+      </div>
+
+      <!-- Overview Tab -->
+      <div id="overview-tab" class="tab-content active">
+        <div class="metric-card">
+          <h4>Agent Information</h4>
+          <div class="metric-row">
+            <span>Agent ID:</span>
+            <strong><%= agent.id %></strong>
+          </div>
+          <div class="metric-row">
+            <span>Hostname:</span>
+            <strong><%= agent.hostname || 'N/A' %></strong>
+          </div>
+          <div class="metric-row">
+            <span>Platform:</span>
+            <strong><%= agent.platform || 'N/A' %></strong>
+          </div>
+          <div class="metric-row">
+            <span>Status:</span>
+            <strong><%= agent.status %></strong>
+          </div>
+          <div class="metric-row">
+            <span>Last Heartbeat:</span>
+            <strong><%= agent.last_heartbeat ? new Date(agent.last_heartbeat).toLocaleString() : 'Never' %></strong>
+          </div>
+          <div class="metric-row">
+            <span>Registered:</span>
+            <strong><%= agent.registered_at ? new Date(agent.registered_at).toLocaleString() : 'N/A' %></strong>
+          </div>
+        </div>
+      </div>
+
+      <!-- Logs Tab -->
+      <div id="logs-tab" class="tab-content">
+        <div class="log-controls">
+          <input type="text" id="log-search" placeholder="Search logs..." style="flex: 1; min-width: 200px;">
+          <select id="log-level">
+            <option value="">All Levels</option>
+            <option value="debug">Debug</option>
+            <option value="info">Info</option>
+            <option value="warn">Warning</option>
+            <option value="error">Error</option>
+          </select>
+          <select id="log-page-size">
+            <option value="50">50 lines</option>
+            <option value="100" selected>100 lines</option>
+            <option value="200">200 lines</option>
+            <option value="500">500 lines</option>
+          </select>
+          <button class="btn" onclick="loadLogs()">Refresh</button>
+          <button class="btn" onclick="downloadLogs()">Download</button>
+        </div>
+
+        <div class="log-viewer" id="log-viewer">
+          <div style="text-align: center; color: #858585;">
+            Click "Refresh" to load logs from agent
+          </div>
+        </div>
+
+        <div class="pagination" id="log-pagination" style="display: none;">
+          <button class="btn" onclick="prevPage()" id="prev-btn">Previous</button>
+          <span id="page-info">Page 1 of 1</span>
+          <button class="btn" onclick="nextPage()" id="next-btn">Next</button>
+        </div>
+      </div>
+
+      <!-- Workflows Tab -->
+      <div id="workflows-tab" class="tab-content">
+        <h3>Workflow Executions</h3>
+        <button class="btn" onclick="loadWorkflowExecutions()" style="margin-bottom: 15px;">Load Executions</button>
+        <div id="workflow-executions">
+          <p style="color: #666;">Click "Load Executions" to view workflow execution history</p>
+        </div>
+      </div>
+
+      <!-- Metrics Tab -->
+      <div id="metrics-tab" class="tab-content">
+        <button class="btn" onclick="loadMetrics()" style="margin-bottom: 15px;">Refresh Metrics</button>
+        <div id="metrics-content">
+          <p style="color: #666;">Click "Refresh Metrics" to load agent metrics</p>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <footer class="footer">
+    <p>&copy; 2025 Control Center - Distributed Automation Platform</p>
+  </footer>
+
+  <script>
+  const agentId = '<%= agent.id %>';
+  const agentConfig = <%- JSON.stringify(agent) %>;
+  let currentPage = 1;
+  let totalPages = 1;
+
+  function switchTab(tabName) {
+    // Hide all tabs
+    document.querySelectorAll('.tab-content').forEach(tab => {
+      tab.classList.remove('active');
+    });
+    document.querySelectorAll('.tab').forEach(tab => {
+      tab.classList.remove('active');
+    });
+
+    // Show selected tab
+    document.getElementById(tabName + '-tab').classList.add('active');
+    event.target.classList.add('active');
+  }
+
+  async function loadLogs(page = 1) {
+    const search = document.getElementById('log-search').value;
+    const level = document.getElementById('log-level').value;
+    const pageSize = document.getElementById('log-page-size').value;
+
+    // Get agent's API endpoint from config
+    const agentApiUrl = await getAgentApiUrl();
+    if (!agentApiUrl) {
+      document.getElementById('log-viewer').innerHTML =
+        '<div style="color: #f44336;">Agent is offline or API endpoint not available</div>';
+      return;
+    }
+
+    const url = `${agentApiUrl}/api/logs?page=${page}&pageSize=${pageSize}&level=${level}&search=${encodeURIComponent(search)}`;
+
+    try {
+      const response = await fetch(url);
+      const data = await response.json();
+
+      currentPage = data.page;
+      totalPages = data.totalPages;
+
+      if (data.logs.length === 0) {
+        document.getElementById('log-viewer').innerHTML =
+          '<div style="color: #858585;">No logs found</div>';
+        document.getElementById('log-pagination').style.display = 'none';
+        return;
+      }
+
+      // Render logs
+      let html = '';
+      data.logs.forEach(log => {
+        const metadata = log.metadata && Object.keys(log.metadata).length > 0
+          ? `<div class="log-metadata">${JSON.stringify(log.metadata)}</div>`
+          : '';
+
+        html += `
+          <div class="log-entry ${log.level}">
+            <span class="log-timestamp">${log.timestamp}</span>
+            <span class="log-level ${log.level}">${log.level.toUpperCase()}</span>
+            <span class="log-message">${escapeHtml(log.message)}</span>
+            ${metadata}
+          </div>
+        `;
+      });
+
+      document.getElementById('log-viewer').innerHTML = html;
+
+      // Update pagination
+      document.getElementById('page-info').textContent =
+        `Page ${data.page} of ${data.totalPages} (${data.totalLines} total lines)`;
+      document.getElementById('prev-btn').disabled = data.page === 1;
+      document.getElementById('next-btn').disabled = !data.hasMore;
+      document.getElementById('log-pagination').style.display = 'flex';
+
+    } catch (error) {
+      document.getElementById('log-viewer').innerHTML =
+        `<div style="color: #f44336;">Error loading logs: ${error.message}</div>`;
+    }
+  }
+
+  async function downloadLogs() {
+    const level = document.getElementById('log-level').value;
+    const search = document.getElementById('log-search').value;
+
+    const agentApiUrl = await getAgentApiUrl();
+    if (!agentApiUrl) {
+      alert('Agent is offline or API endpoint not available');
+      return;
+    }
+
+    const url = `${agentApiUrl}/api/logs/download?level=${level}&search=${encodeURIComponent(search)}&limit=50000`;
+    window.open(url, '_blank');
+  }
+
+  function prevPage() {
+    if (currentPage > 1) {
+      loadLogs(currentPage - 1);
+    }
+  }
+
+  function nextPage() {
+    if (currentPage < totalPages) {
+      loadLogs(currentPage + 1);
+    }
+  }
+
+  async function loadWorkflowExecutions() {
+    const agentApiUrl = await getAgentApiUrl();
+    if (!agentApiUrl) {
+      document.getElementById('workflow-executions').innerHTML =
+        '<div style="color: #f44336;">Agent is offline</div>';
+      return;
+    }
+
+    try {
+      const response = await fetch(`${agentApiUrl}/api/workflows/executions`);
+      const data = await response.json();
+
+      if (data.executions.length === 0) {
+        document.getElementById('workflow-executions').innerHTML =
+          '<p style="color: #666;">No workflow executions found</p>';
+        return;
+      }
+
+      let html = '';
+      data.executions.forEach(exec => {
+        const duration = exec.endTime ?
+          ((new Date(exec.endTime) - new Date(exec.startTime)) / 1000).toFixed(2) + 's' :
+          'Running...';
+
+        html += `
+          <div class="workflow-execution ${exec.status}">
+            <h4>${exec.workflowID} - ${exec.status.toUpperCase()}</h4>
+            <p><strong>Started:</strong> ${new Date(exec.startTime).toLocaleString()}</p>
+            ${exec.endTime ? `<p><strong>Ended:</strong> ${new Date(exec.endTime).toLocaleString()}</p>` : ''}
+            <p><strong>Duration:</strong> ${duration}</p>
+            <p><strong>Steps Completed:</strong> ${exec.completedSteps ? exec.completedSteps.length : 0}</p>
+            ${exec.error ? `<p style="color: #f44336;"><strong>Error:</strong> ${exec.error}</p>` : ''}
+          </div>
+        `;
+      });
+
+      document.getElementById('workflow-executions').innerHTML = html;
+
+    } catch (error) {
+      document.getElementById('workflow-executions').innerHTML =
+        `<div style="color: #f44336;">Error: ${error.message}</div>`;
+    }
+  }
+
+  async function loadMetrics() {
+    const agentApiUrl = await getAgentApiUrl();
+    if (!agentApiUrl) {
+      document.getElementById('metrics-content').innerHTML =
+        '<div style="color: #f44336;">Agent is offline</div>';
+      return;
+    }
+
+    try {
+      const response = await fetch(`${agentApiUrl}/api/metrics`);
+      const metrics = await response.json();
+
+      const html = `
+        <div class="metric-card">
+          <h4>Agent Metrics</h4>
+          <div class="metric-row">
+            <span>Workflows Loaded:</span>
+            <strong>${metrics.workflowsLoaded}</strong>
+          </div>
+          <div class="metric-row">
+            <span>Log File Size:</span>
+            <strong>${formatBytes(metrics.logFileSizeBytes)}</strong>
+          </div>
+          <div class="metric-row">
+            <span>State File Size:</span>
+            <strong>${formatBytes(metrics.stateFileSizeBytes)}</strong>
+          </div>
+          <div class="metric-row">
+            <span>Platform:</span>
+            <strong>${metrics.platform}</strong>
+          </div>
+          <div class="metric-row">
+            <span>Hostname:</span>
+            <strong>${metrics.hostname}</strong>
+          </div>
+        </div>
+      `;
+
+      document.getElementById('metrics-content').innerHTML = html;
+
+    } catch (error) {
+      document.getElementById('metrics-content').innerHTML =
+        `<div style="color: #f44336;">Error: ${error.message}</div>`;
+    }
+  }
+
+  async function getAgentApiUrl() {
+    // For now, assume agent API is on port 8088
+    // TODO: This should be stored in agent config/metadata
+    if (agentConfig.status !== 'online') {
+      return null;
+    }
+
+    // Extract hostname from manager URL or use localhost
+    // In production, this should be the actual agent's IP/hostname
+    return 'http://localhost:8088';
+  }
+
+  function formatBytes(bytes) {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+  }
+
+  function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+  }
+  </script>
+</body>
+</html>

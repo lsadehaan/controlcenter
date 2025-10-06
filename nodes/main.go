@@ -33,10 +33,12 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/rs/zerolog"
+	"github.com/your-org/controlcenter/nodes/internal/api"
 	"github.com/your-org/controlcenter/nodes/internal/config"
 	"github.com/your-org/controlcenter/nodes/internal/filewatcher"
 	"github.com/your-org/controlcenter/nodes/internal/gitsync"
 	"github.com/your-org/controlcenter/nodes/internal/identity"
+	"github.com/your-org/controlcenter/nodes/internal/logrotation"
 	"github.com/your-org/controlcenter/nodes/internal/sshserver"
 	"github.com/your-org/controlcenter/nodes/internal/websocket"
 	"github.com/your-org/controlcenter/nodes/internal/workflow"
@@ -51,6 +53,7 @@ type Agent struct {
 	sshServer    *sshserver.SSHServer
 	fileWatcher  *filewatcher.Watcher
 	logger       zerolog.Logger
+	logLevel     *zerolog.Level
 	configPath   string
 }
 
@@ -84,16 +87,45 @@ func main() {
 	)
 	flag.Parse()
 
-	// Setup logger
+	// Setup logger with both console and rotating file output
 	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
-	logOutput := zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: time.RFC3339}
-	
-	level, err := zerolog.ParseLevel(*logLevel)
-	if err != nil {
-		level = zerolog.InfoLevel
+
+	// Start with command-line log level or default
+	currentLevel := zerolog.InfoLevel
+	if *logLevel != "" {
+		if lvl, err := zerolog.ParseLevel(*logLevel); err == nil {
+			currentLevel = lvl
+		}
 	}
-	
-	logger := zerolog.New(logOutput).With().Timestamp().Logger().Level(level)
+
+	// Create rotating log file writer with defaults
+	// These will be overridden by config once loaded
+	logFilePath := filepath.Join(getDefaultConfigDir(), "agent.log")
+	rotatingWriter, err := logrotation.NewRotatingWriter(
+		logFilePath,
+		100,  // 100MB max size
+		30,   // 30 days retention
+		5,    // 5 backup files
+		true, // compress old logs
+	)
+	if err != nil {
+		fmt.Printf("Failed to create rotating log writer: %v\n", err)
+		os.Exit(1)
+	}
+	defer rotatingWriter.Close()
+
+	// Create multi-writer for both console and rotating file
+	consoleWriter := zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: time.RFC3339}
+	multiWriter := zerolog.MultiLevelWriter(consoleWriter, rotatingWriter)
+
+	logger := zerolog.New(multiWriter).With().Timestamp().Logger().Level(currentLevel)
+	logger.Info().
+		Str("logFile", logFilePath).
+		Str("logLevel", currentLevel.String()).
+		Int("maxSizeMB", 100).
+		Int("maxAgeDays", 30).
+		Int("maxBackups", 5).
+		Msg("Logging to both console and rotating file")
 
 	// Determine config path
 	actualConfigPath := *configPath
@@ -162,6 +194,7 @@ func main() {
 		config:     cfg,
 		identity:   identity,
 		logger:     logger,
+		logLevel:   &currentLevel,
 		configPath: *configPath,
 	}
 
@@ -460,9 +493,23 @@ func (a *Agent) startHealthEndpoint() {
 		})
 	})
 
-	a.logger.Info().Msg("Health endpoint listening on :8088")
+	// Register API endpoints for logs, metrics, and workflow data
+	apiServer := api.NewServer(a.config, a.executor, a.logger, a.logLevel)
+	apiServer.RegisterHandlers()
+
+	a.logger.Info().Msg("Agent API listening on :8088")
+	a.logger.Info().Msg("  GET /healthz - Health check")
+	a.logger.Info().Msg("  GET /info - Agent information")
+	a.logger.Info().Msg("  GET /api/logs?page=1&pageSize=100&level=error&search=query - Paginated logs")
+	a.logger.Info().Msg("  GET /api/logs/download?level=error&limit=5000 - Download logs")
+	a.logger.Info().Msg("  GET /api/workflows/executions - Workflow execution history")
+	a.logger.Info().Msg("  GET /api/workflows/state - Current workflow state")
+	a.logger.Info().Msg("  GET /api/metrics - Agent metrics")
+	a.logger.Info().Msg("  GET /api/loglevel - Get current log level")
+	a.logger.Info().Msg("  POST /api/loglevel {\"level\":\"debug\"} - Change log level")
+
 	if err := http.ListenAndServe(":8088", nil); err != nil {
-		a.logger.Error().Err(err).Msg("Health endpoint failed")
+		a.logger.Error().Err(err).Msg("Agent API server failed")
 	}
 }
 

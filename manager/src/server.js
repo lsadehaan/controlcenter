@@ -99,21 +99,14 @@ app.get('/agents/:id', async (req, res) => {
     if (!agent) {
       return res.status(404).send('Agent not found');
     }
-    
-    // Get recent logs for this agent
-    const logs = await db.getLogs(req.params.id, 50, 0);
-    
-    res.render('agent-view', { 
+
+    res.render('agent-details', {
       title: `Agent: ${agent.hostname || agent.id}`,
       agent: {
         ...agent,
         config: JSON.parse(agent.config || '{}'),
         metadata: JSON.parse(agent.metadata || '{}')
-      },
-      logs: logs.map(l => ({
-        ...l,
-        metadata: JSON.parse(l.metadata || '{}')
-      }))
+      }
     });
   } catch (err) {
     console.error('Error loading agent:', err);
