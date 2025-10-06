@@ -147,24 +147,41 @@ type CommandStep struct {
 }
 
 func (s *CommandStep) Execute(config map[string]interface{}, context map[string]interface{}) error {
+	// Log raw config for debugging
+	s.Logger.Info().
+		Interface("config", config).
+		Interface("context", context).
+		Msg("📋 Command step configuration")
+
 	command, err := s.getRequiredString(config, "command")
 	if err != nil {
 		return err
+	}
+
+	// Get arguments if provided
+	arguments := s.getOptionalString(config, "arguments", "")
+
+	// Combine command and arguments
+	fullCommand := command
+	if arguments != "" {
+		fullCommand = command + " " + arguments
 	}
 
 	workDir := s.getOptionalString(config, "workingDir", "")
 
 	s.Logger.Info().
 		Str("command", command).
+		Str("arguments", arguments).
+		Str("fullCommand", fullCommand).
 		Str("workDir", workDir).
 		Msg("🔧 Executing command")
 
 	// Use shell to execute for proper handling
 	var cmd *exec.Cmd
 	if runtime.GOOS == "windows" {
-		cmd = exec.Command("cmd", "/C", command)
+		cmd = exec.Command("cmd", "/C", fullCommand)
 	} else {
-		cmd = exec.Command("sh", "-c", command)
+		cmd = exec.Command("sh", "-c", fullCommand)
 	}
 
 	if workDir != "" {
@@ -174,7 +191,8 @@ func (s *CommandStep) Execute(config map[string]interface{}, context map[string]
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		s.Logger.Error().
-			Str("command", command).
+			Str("fullCommand", fullCommand).
+			Str("workDir", workDir).
 			Str("output", string(output)).
 			Err(err).
 			Msg("❌ Command execution failed")
@@ -182,7 +200,7 @@ func (s *CommandStep) Execute(config map[string]interface{}, context map[string]
 	}
 
 	s.Logger.Info().
-		Str("command", command).
+		Str("fullCommand", fullCommand).
 		Str("output", string(output)).
 		Msg("✅ Command executed successfully")
 
