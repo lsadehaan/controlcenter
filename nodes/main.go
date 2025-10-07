@@ -1119,7 +1119,7 @@ func (w *workflowExecutorAdapter) ExecuteWorkflow(name string, context map[strin
 		Str("workflow", name).
 		Interface("context", context).
 		Msg("Executing workflow from file watcher")
-	
+
 	// Find the workflow by name
 	for _, wf := range w.executor.GetWorkflows() {
 		if wf.Name == name {
@@ -1128,11 +1128,34 @@ func (w *workflowExecutorAdapter) ExecuteWorkflow(name string, context map[strin
 				Type: "filewatcher",
 				Data: context,
 			}
-			
+
 			// Execute the workflow
 			return w.executor.ExecuteWorkflow(wf.ID, trigger)
 		}
 	}
-	
+
+	return fmt.Errorf("workflow '%s' not found", name)
+}
+
+func (w *workflowExecutorAdapter) ExecuteWorkflowSync(name string, context map[string]interface{}) error {
+	w.logger.Info().
+		Str("workflow", name).
+		Interface("context", context).
+		Msg("Executing workflow synchronously from file watcher")
+
+	// Find the workflow by name
+	for _, wf := range w.executor.GetWorkflows() {
+		if wf.Name == name {
+			// Create a trigger event for the workflow
+			trigger := workflow.TriggerEvent{
+				Type: "filewatcher",
+				Data: context,
+			}
+
+			// Execute the workflow synchronously (waits for completion)
+			return w.executor.ExecuteWorkflowSync(wf.ID, trigger)
+		}
+	}
+
 	return fmt.Errorf("workflow '%s' not found", name)
 }
