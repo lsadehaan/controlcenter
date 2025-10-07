@@ -13,7 +13,7 @@ NC='\033[0m' # No Color
 # Configuration
 INSTALL_TYPE="${1:-docker}"  # docker or native
 MANAGER_PORT="${MANAGER_PORT:-3000}"
-GIT_PORT="${GIT_PORT:-9418}"
+GIT_SSH_PORT="${GIT_SSH_PORT:-2223}"
 DATA_DIR="${DATA_DIR:-/opt/controlcenter/manager}"
 
 echo -e "${GREEN}Control Center Manager Deployment${NC}"
@@ -98,7 +98,7 @@ services:
     restart: unless-stopped
     ports:
       - "${MANAGER_PORT}:3000"
-      - "${GIT_PORT}:9418"
+      - "${GIT_SSH_PORT}:2223"
     volumes:
       - ${DATA_DIR}/data:/app/data
     environment:
@@ -205,7 +205,7 @@ setup_firewall() {
 
     if command -v ufw &> /dev/null; then
         sudo ufw allow ${MANAGER_PORT}/tcp comment 'Control Center Manager'
-        sudo ufw allow ${GIT_PORT}/tcp comment 'Control Center Git'
+        sudo ufw allow ${GIT_SSH_PORT}/tcp comment 'Control Center Git SSH'
         echo -e "${GREEN}✓ Firewall rules added${NC}"
     else
         echo -e "${YELLOW}UFW not found, skipping firewall setup${NC}"
@@ -277,9 +277,9 @@ show_status() {
 
     local IP=$(hostname -I | cut -d' ' -f1)
     echo -e "\n${GREEN}Access URLs:${NC}"
-    echo -e "  Web UI:     ${GREEN}http://$IP:${MANAGER_PORT}${NC}"
-    echo -e "  Health:     ${GREEN}http://$IP:${MANAGER_PORT}/health${NC}"
-    echo -e "  Git Server: ${GREEN}git://$IP:${GIT_PORT}${NC}"
+    echo -e "  Web UI:      ${GREEN}http://$IP:${MANAGER_PORT}${NC}"
+    echo -e "  Health:      ${GREEN}http://$IP:${MANAGER_PORT}/health${NC}"
+    echo -e "  Git SSH:     ${GREEN}ssh://git@$IP:${GIT_SSH_PORT}${NC}"
 
     echo -e "\n${GREEN}Next Steps:${NC}"
     echo "1. Access the Manager Web UI"

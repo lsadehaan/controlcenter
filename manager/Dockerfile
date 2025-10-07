@@ -29,7 +29,7 @@ RUN mkdir -p data/config-repo data/logs && \
     chmod -R 755 data
 
 # Expose ports
-EXPOSE 3000 9418
+EXPOSE 3000 2223
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
