@@ -16,12 +16,18 @@ class WebSocketServer {
   }
 
   setupHandlers() {
-    this.wss.on('connection', (ws) => {
+    this.wss.on('connection', (ws, req) => {
       const connectionId = uuidv4();
       ws.connectionId = connectionId;
       ws.isAlive = true;
-      
-      this.logger.log(`WebSocket connection established: ${connectionId}`);
+
+      // Capture the client's IP address
+      const clientIp = req.headers['x-forwarded-for']?.split(',')[0] ||
+                       req.socket.remoteAddress ||
+                       'unknown';
+      ws.clientIp = clientIp.replace('::ffff:', ''); // Remove IPv6 prefix if present
+
+      this.logger.log(`WebSocket connection established: ${connectionId} from ${ws.clientIp}`);
 
       ws.on('message', async (data) => {
         try {
@@ -99,12 +105,15 @@ class WebSocketServer {
       return;
     }
 
-    // Register agent
+    // Register agent with connection IP
     await this.db.registerAgent({
       id: agentId,
       hostname,
       platform,
-      publicKey
+      publicKey,
+      metadata: {
+        connectionIp: ws.clientIp
+      }
     });
 
     // Mark token as used
@@ -171,11 +180,12 @@ class WebSocketServer {
     // Update agent status
     await this.db.updateAgentStatus(agentId, 'online', Date.now());
 
-    // Update metadata if hostname or platform changed
+    // Update metadata if hostname, platform, or connection IP changed
     const metadata = JSON.parse(agent.metadata || '{}');
-    if (metadata.hostname !== hostname || metadata.platform !== platform) {
+    if (metadata.hostname !== hostname || metadata.platform !== platform || metadata.connectionIp !== ws.clientIp) {
       metadata.hostname = hostname;
       metadata.platform = platform;
+      metadata.connectionIp = ws.clientIp;
       await this.db.updateAgentMetadata(agentId, metadata);
     }
 

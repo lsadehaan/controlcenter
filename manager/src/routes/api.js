@@ -441,6 +441,19 @@ module.exports = (db, wsServer, gitServer) => {
 
   // Agent API proxy endpoints - forward requests to agent's local API
 
+  // Helper function to get agent's HTTP API URL
+  function getAgentUrl(agent) {
+    const metadata = JSON.parse(agent.metadata || '{}');
+    let agentHost = metadata.connectionIp || 'localhost';
+
+    // Wrap IPv6 addresses in brackets for URL
+    if (agentHost.includes(':')) {
+      agentHost = `[${agentHost}]`;
+    }
+
+    return `http://${agentHost}:8088`;
+  }
+
   // Proxy agent logs
   router.get('/agents/:id/logs', async (req, res) => {
     try {
@@ -452,8 +465,7 @@ module.exports = (db, wsServer, gitServer) => {
         return res.status(503).json({ error: 'Agent is offline' });
       }
 
-      const hostname = agent.hostname || 'localhost';
-      const agentUrl = `http://${hostname}:8088`;
+      const agentUrl = getAgentUrl(agent);
 
       // Forward query parameters
       const queryParams = new URLSearchParams(req.query).toString();
@@ -485,8 +497,7 @@ module.exports = (db, wsServer, gitServer) => {
         return res.status(503).json({ error: 'Agent is offline' });
       }
 
-      const hostname = agent.hostname || 'localhost';
-      const agentUrl = `http://${hostname}:8088`;
+      const agentUrl = getAgentUrl(agent);
 
       // Forward query parameters
       const queryParams = new URLSearchParams(req.query).toString();
@@ -515,8 +526,7 @@ module.exports = (db, wsServer, gitServer) => {
         return res.status(503).json({ error: 'Agent is offline' });
       }
 
-      const hostname = agent.hostname || 'localhost';
-      const agentUrl = `http://${hostname}:8088`;
+      const agentUrl = getAgentUrl(agent);
 
       const queryParams = new URLSearchParams(req.query).toString();
       const url = `${agentUrl}/api/workflows/executions?${queryParams}`;
@@ -541,8 +551,7 @@ module.exports = (db, wsServer, gitServer) => {
         return res.status(503).json({ error: 'Agent is offline' });
       }
 
-      const hostname = agent.hostname || 'localhost';
-      const agentUrl = `http://${hostname}:8088`;
+      const agentUrl = getAgentUrl(agent);
 
       const url = `${agentUrl}/api/metrics`;
 
