@@ -126,22 +126,34 @@ class WebSocketServer {
 
     // Initialize agent config in Git repository
     if (this.gitServer) {
-      const initialConfig = {
-        agentId,
-        hostname,
-        platform,
-        fileWatcherSettings: {
-          scanDir: '',
-          scanSubDir: false
-        },
-        fileWatcherRules: [],
-        workflows: []
-      };
       try {
-        await this.gitServer.saveAgentConfig(agentId, initialConfig);
-        this.logger.log(`Initialized Git config for agent ${agentId}`);
+        // Check if config already exists (agent re-registering)
+        const existingConfig = await this.gitServer.getAgentConfig(agentId);
+
+        if (existingConfig) {
+          // Preserve existing config, just update metadata
+          existingConfig.hostname = hostname;
+          existingConfig.platform = platform;
+          await this.gitServer.saveAgentConfig(agentId, existingConfig);
+          this.logger.log(`Preserved existing Git config for re-registered agent ${agentId}`);
+        } else {
+          // Create new initial config
+          const initialConfig = {
+            agentId,
+            hostname,
+            platform,
+            fileWatcherSettings: {
+              scanDir: '',
+              scanSubDir: false
+            },
+            fileWatcherRules: [],
+            workflows: []
+          };
+          await this.gitServer.saveAgentConfig(agentId, initialConfig);
+          this.logger.log(`Initialized Git config for new agent ${agentId}`);
+        }
       } catch (err) {
-        this.logger.error(`Failed to save initial agent config to Git: ${err.message}`);
+        this.logger.error(`Failed to save agent config to Git: ${err.message}`);
       }
     }
 
