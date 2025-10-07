@@ -3,6 +3,7 @@
 const express = require('express');
 const { v4: uuidv4 } = require('uuid');
 const { importFromINI, exportToINI } = require('../utils/ini-converter');
+const fetch = require('node-fetch');
 const router = express.Router();
 
 module.exports = (db, wsServer, gitServer) => {
@@ -458,7 +459,6 @@ module.exports = (db, wsServer, gitServer) => {
       const queryParams = new URLSearchParams(req.query).toString();
       const url = `${agentUrl}/api/logs?${queryParams}`;
 
-      const fetch = require('node-fetch');
       const response = await fetch(url);
 
       if (!response.ok) {
@@ -492,7 +492,6 @@ module.exports = (db, wsServer, gitServer) => {
       const queryParams = new URLSearchParams(req.query).toString();
       const url = `${agentUrl}/api/logs/download?${queryParams}`;
 
-      const fetch = require('node-fetch');
       const response = await fetch(url);
 
       // Forward headers and stream the response
@@ -522,7 +521,6 @@ module.exports = (db, wsServer, gitServer) => {
       const queryParams = new URLSearchParams(req.query).toString();
       const url = `${agentUrl}/api/workflows/executions?${queryParams}`;
 
-      const fetch = require('node-fetch');
       const response = await fetch(url);
       const data = await response.json();
 
@@ -548,7 +546,6 @@ module.exports = (db, wsServer, gitServer) => {
 
       const url = `${agentUrl}/api/metrics`;
 
-      const fetch = require('node-fetch');
       const response = await fetch(url);
       const data = await response.json();
 

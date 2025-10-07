@@ -14,7 +14,7 @@
     "express": "^4.19.2",
     "ini": "^5.0.0",
     "jsonwebtoken": "^9.0.2",
-    "node-fetch": "^3.3.2",
+    "node-fetch": "^2.7.0",
     "simple-git": "^3.28.0",
     "sqlite3": "^5.1.7",
     "uuid": "^13.0.0",
