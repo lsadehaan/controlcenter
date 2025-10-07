@@ -296,6 +296,20 @@
       const response = await fetch(url);
       const data = await response.json();
 
+      // Check if response contains an error
+      if (data.error) {
+        document.getElementById('log-viewer').innerHTML =
+          `<div style="color: #f44336;">Error: ${data.error}</div>`;
+        return;
+      }
+
+      // Check if data structure is valid
+      if (!data.logs) {
+        document.getElementById('log-viewer').innerHTML =
+          '<div style="color: #f44336;">Invalid response from server</div>';
+        return;
+      }
+
       currentPage = data.page;
       totalPages = data.totalPages;
 

@@ -460,11 +460,17 @@ module.exports = (db, wsServer, gitServer) => {
 
       const fetch = require('node-fetch');
       const response = await fetch(url);
-      const data = await response.json();
 
+      if (!response.ok) {
+        return res.status(response.status).json({
+          error: `Agent API error: ${response.statusText}`
+        });
+      }
+
+      const data = await response.json();
       res.json(data);
     } catch (err) {
-      res.status(500).json({ error: err.message });
+      res.status(500).json({ error: `Failed to connect to agent: ${err.message}` });
     }
   });
 
