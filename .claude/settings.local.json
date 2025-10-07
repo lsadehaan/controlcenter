@@ -34,7 +34,9 @@
       "WebFetch(domain:raw.githubusercontent.com)",
       "Bash(git restore:*)",
       "Bash(rm:*)",
-      "Bash(powershell:*)"
+      "Bash(powershell:*)",
+      "Bash(netstat:*)",
+      "Bash(findstr:*)"
     ],
     "deny": [],
     "ask": [],
