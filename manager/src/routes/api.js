@@ -323,7 +323,38 @@ module.exports = (db, wsServer, gitServer) => {
       res.status(500).json({ error: err.message });
     }
   });
-  
+
+  // Update agent API address
+  router.put('/agents/:id/api-address', async (req, res) => {
+    try {
+      const agent = await db.getAgent(req.params.id);
+
+      if (!agent) {
+        return res.status(404).json({ error: 'Agent not found' });
+      }
+
+      const metadata = JSON.parse(agent.metadata || '{}');
+
+      // Update or clear the API address
+      if (req.body.apiAddress === null || req.body.apiAddress === undefined) {
+        delete metadata.apiAddress;
+      } else {
+        // Strip http:// or https:// prefix if present
+        metadata.apiAddress = req.body.apiAddress.replace(/^https?:\/\//, '');
+      }
+
+      await db.updateAgentMetadata(req.params.id, metadata);
+
+      res.json({
+        success: true,
+        message: 'API address updated',
+        apiAddress: metadata.apiAddress || null
+      });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   // Import INI file
   router.post('/agents/:id/filewatcher/import', async (req, res) => {
     try {

@@ -112,7 +112,10 @@
   }
 
   function generateToken() {
-    const apiAddress = document.getElementById('api-address').value.trim();
+    let apiAddress = document.getElementById('api-address').value.trim();
+
+    // Strip http:// or https:// prefix if present
+    apiAddress = apiAddress.replace(/^https?:\/\//, '');
 
     fetch('/api/tokens', {
       method: 'POST',

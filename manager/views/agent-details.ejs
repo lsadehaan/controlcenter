@@ -204,6 +204,30 @@
             <strong><%= agent.registered_at ? new Date(agent.registered_at).toLocaleString() : 'N/A' %></strong>
           </div>
         </div>
+
+        <div class="metric-card">
+          <h4>API Configuration</h4>
+          <div class="metric-row">
+            <span>Connection IP:</span>
+            <strong><%= agent.metadata?.connectionIp || 'N/A' %></strong>
+          </div>
+          <div class="metric-row">
+            <span>API Address:</span>
+            <strong id="current-api-address"><%= agent.metadata?.apiAddress || 'Auto-detect from connection IP' %></strong>
+          </div>
+          <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #dee2e6;">
+            <label style="display: block; margin-bottom: 8px; font-weight: 500;">Update API Address:</label>
+            <div style="display: flex; gap: 10px; align-items: center;">
+              <input type="text" id="new-api-address" class="form-control" placeholder="e.g., 192.168.1.100:8088" style="flex: 1;">
+              <button class="btn" onclick="updateApiAddress()">Update</button>
+              <button class="btn" onclick="clearApiAddress()">Clear (Auto-detect)</button>
+            </div>
+            <small style="color: #666; display: block; margin-top: 5px;">
+              Leave empty or click Clear to auto-detect from connection IP. Format: host:port (do not include http://)
+            </small>
+          </div>
+          <div id="api-update-result" style="margin-top: 10px; padding: 10px; display: none; border-radius: 4px;"></div>
+        </div>
       </div>
 
       <!-- Logs Tab -->
@@ -502,6 +526,86 @@
     const select = document.getElementById('log-level-select');
     const level = select.value;
     await sendCommand('set-log-level', { level });
+  }
+
+  async function updateApiAddress() {
+    let apiAddress = document.getElementById('new-api-address').value.trim();
+
+    if (!apiAddress) {
+      alert('Please enter an API address or click "Clear" to use auto-detect');
+      return;
+    }
+
+    // Strip http:// or https:// prefix if present
+    apiAddress = apiAddress.replace(/^https?:\/\//, '');
+
+    const resultDiv = document.getElementById('api-update-result');
+    resultDiv.style.display = 'block';
+    resultDiv.style.background = '#fff3cd';
+    resultDiv.style.color = '#856404';
+    resultDiv.textContent = 'Updating API address...';
+
+    try {
+      const response = await fetch(`/api/agents/${agentId}/api-address`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ apiAddress })
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        resultDiv.style.background = '#d4edda';
+        resultDiv.style.color = '#155724';
+        resultDiv.textContent = '✓ API address updated successfully';
+        document.getElementById('current-api-address').textContent = apiAddress;
+        document.getElementById('new-api-address').value = '';
+        setTimeout(() => resultDiv.style.display = 'none', 5000);
+      } else {
+        resultDiv.style.background = '#f8d7da';
+        resultDiv.style.color = '#721c24';
+        resultDiv.textContent = `✗ Failed: ${data.error || 'Unknown error'}`;
+      }
+    } catch (error) {
+      resultDiv.style.background = '#f8d7da';
+      resultDiv.style.color = '#721c24';
+      resultDiv.textContent = `✗ Error: ${error.message}`;
+    }
+  }
+
+  async function clearApiAddress() {
+    const resultDiv = document.getElementById('api-update-result');
+    resultDiv.style.display = 'block';
+    resultDiv.style.background = '#fff3cd';
+    resultDiv.style.color = '#856404';
+    resultDiv.textContent = 'Clearing API address...';
+
+    try {
+      const response = await fetch(`/api/agents/${agentId}/api-address`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ apiAddress: null })
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        resultDiv.style.background = '#d4edda';
+        resultDiv.style.color = '#155724';
+        resultDiv.textContent = '✓ API address cleared - now using auto-detect';
+        document.getElementById('current-api-address').textContent = 'Auto-detect from connection IP';
+        document.getElementById('new-api-address').value = '';
+        setTimeout(() => resultDiv.style.display = 'none', 5000);
+      } else {
+        resultDiv.style.background = '#f8d7da';
+        resultDiv.style.color = '#721c24';
+        resultDiv.textContent = `✗ Failed: ${data.error || 'Unknown error'}`;
+      }
+    } catch (error) {
+      resultDiv.style.background = '#f8d7da';
+      resultDiv.style.color = '#721c24';
+      resultDiv.textContent = `✗ Error: ${error.message}`;
+    }
   }
   </script>
 </body>
