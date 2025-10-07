@@ -210,11 +210,11 @@ class Database {
   }
 
   // Token methods
-  createToken(token, expiresIn = 3600000) { // 1 hour default
+  createToken(token, expiresIn = 3600000, metadata = null) { // 1 hour default
     return new Promise((resolve, reject) => {
       this.db.run(
-        'INSERT INTO registration_tokens (token, created_at, expires_at) VALUES (?, ?, ?)',
-        [token, Date.now(), Date.now() + expiresIn],
+        'INSERT INTO registration_tokens (token, created_at, expires_at, metadata) VALUES (?, ?, ?, ?)',
+        [token, Date.now(), Date.now() + expiresIn, metadata ? JSON.stringify(metadata) : null],
         (err) => {
           if (err) reject(err);
           else resolve(token);
@@ -230,7 +230,7 @@ class Database {
         [token, Date.now()],
         (err, row) => {
           if (err) reject(err);
-          else resolve(row ? true : false);
+          else resolve(row || null);
         }
       );
     });

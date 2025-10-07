@@ -28,14 +28,31 @@
     <div class="container">
       <div class="page-header">
         <h2>Agents</h2>
-        <button class="btn btn-primary" onclick="generateToken()">Generate Registration Token</button>
+        <button class="btn btn-primary" onclick="showTokenDialog()">Generate Registration Token</button>
       </div>
-      
+
+      <div id="token-dialog" class="modal" style="display: none;">
+        <div class="modal-content">
+          <h3>Generate Registration Token</h3>
+          <p>Optionally specify the agent's API address for HTTP calls (e.g., 192.168.1.50:8088 or agent1.internal:8088)</p>
+          <div class="form-group">
+            <label for="api-address">Agent API Address (optional):</label>
+            <input type="text" id="api-address" placeholder="Leave empty to auto-detect" />
+            <small>If empty, will auto-detect from WebSocket connection</small>
+          </div>
+          <div class="modal-actions">
+            <button class="btn btn-primary" onclick="generateToken()">Generate Token</button>
+            <button class="btn" onclick="hideTokenDialog()">Cancel</button>
+          </div>
+        </div>
+      </div>
+
       <div id="token-display" class="token-display" style="display: none;">
         <h3>Registration Token</h3>
         <p>Use this token to register a new agent:</p>
         <code id="token-value"></code>
         <p class="token-command">Run agent with: <code>./nodes -token <span id="token-cmd"></span></code></p>
+        <p id="api-address-info" style="display: none;" class="info-message">API Address: <code id="api-address-value"></code></p>
       </div>
       
       <div class="agents-grid">
@@ -85,17 +102,39 @@
   </footer>
   
   <script>
+  function showTokenDialog() {
+    document.getElementById('token-dialog').style.display = 'flex';
+    document.getElementById('api-address').value = '';
+  }
+
+  function hideTokenDialog() {
+    document.getElementById('token-dialog').style.display = 'none';
+  }
+
   function generateToken() {
+    const apiAddress = document.getElementById('api-address').value.trim();
+
     fetch('/api/tokens', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ expiresIn: 3600000 })
+      body: JSON.stringify({
+        expiresIn: 3600000,
+        apiAddress: apiAddress || undefined
+      })
     })
     .then(r => r.json())
     .then(data => {
+      hideTokenDialog();
       document.getElementById('token-display').style.display = 'block';
       document.getElementById('token-value').textContent = data.token;
       document.getElementById('token-cmd').textContent = data.token;
+
+      if (apiAddress) {
+        document.getElementById('api-address-info').style.display = 'block';
+        document.getElementById('api-address-value').textContent = apiAddress;
+      } else {
+        document.getElementById('api-address-info').style.display = 'none';
+      }
     })
     .catch(err => alert('Failed to generate token: ' + err.message));
   }

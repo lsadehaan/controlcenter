@@ -87,9 +87,10 @@ module.exports = (db, wsServer, gitServer) => {
     try {
       const token = uuidv4();
       const expiresIn = req.body.expiresIn || 3600000; // 1 hour default
-      
-      await db.createToken(token, expiresIn);
-      res.json({ 
+      const apiAddress = req.body.apiAddress || null;
+
+      await db.createToken(token, expiresIn, apiAddress ? { apiAddress } : null);
+      res.json({
         token,
         expiresAt: new Date(Date.now() + expiresIn).toISOString()
       });
@@ -444,10 +445,18 @@ module.exports = (db, wsServer, gitServer) => {
   // Helper function to get agent's HTTP API URL
   function getAgentUrl(agent) {
     const metadata = JSON.parse(agent.metadata || '{}');
+
+    // Priority: explicit apiAddress > auto-detected connectionIp > localhost
+    if (metadata.apiAddress) {
+      // Admin specified address during registration
+      return `http://${metadata.apiAddress}`;
+    }
+
+    // Fall back to auto-detected connection IP
     let agentHost = metadata.connectionIp || 'localhost';
 
     // Wrap IPv6 addresses in brackets for URL
-    if (agentHost.includes(':')) {
+    if (agentHost.includes(':') && !agentHost.includes('[')) {
       agentHost = `[${agentHost}]`;
     }
 

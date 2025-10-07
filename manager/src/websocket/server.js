@@ -94,9 +94,9 @@ class WebSocketServer {
   async handleRegistration(ws, agentId, payload) {
     const { publicKey, token, hostname, platform } = payload;
 
-    // Validate token
-    const isValid = await this.db.validateToken(token);
-    if (!isValid) {
+    // Validate token and get metadata
+    const tokenRecord = await this.db.validateToken(token);
+    if (!tokenRecord) {
       ws.send(JSON.stringify({
         type: 'registration',
         payload: { success: false, error: 'Invalid or expired token' }
@@ -105,14 +105,19 @@ class WebSocketServer {
       return;
     }
 
-    // Register agent with connection IP
+    // Parse token metadata to get API address if specified
+    const tokenMetadata = tokenRecord.metadata ? JSON.parse(tokenRecord.metadata) : {};
+    const apiAddress = tokenMetadata.apiAddress || null;
+
+    // Register agent with connection IP and optional API address
     await this.db.registerAgent({
       id: agentId,
       hostname,
       platform,
       publicKey,
       metadata: {
-        connectionIp: ws.clientIp
+        connectionIp: ws.clientIp,
+        apiAddress: apiAddress  // Explicit API address from token, or null to use auto-detected connectionIp
       }
     });
 
