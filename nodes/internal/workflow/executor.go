@@ -374,10 +374,48 @@ func (e *Executor) executeStepChain(stepIDs []string, stepMap map[string]config.
 
 		// Execute the step
 		if err := e.executeStep(step, context, workflowID); err != nil {
-			return err
+			// Step failed - check if there are error handlers
+			if len(step.OnError) > 0 {
+				e.logger.Info().
+					Str("step", stepID).
+					Strs("onError", step.OnError).
+					Str("error", err.Error()).
+					Msg("⚠️ Step failed, executing error handlers")
+
+				// Add error information to context for error handlers
+				errorContext := make(map[string]interface{})
+				for k, v := range context {
+					errorContext[k] = v
+				}
+				errorContext["error"] = err.Error()
+				errorContext["errorStep"] = step.ID
+				errorContext["errorStepName"] = step.Name
+
+				// Execute error handler chain
+				if err := e.executeStepChain(step.OnError, stepMap, errorContext, workflowID, visited); err != nil {
+					e.logger.Error().
+						Err(err).
+						Str("step", stepID).
+						Msg("Error handler chain also failed")
+					return err
+				}
+
+				// Error was handled - continue with next iteration (don't follow normal 'next' path)
+				e.logger.Info().
+					Str("step", stepID).
+					Msg("✅ Error handlers completed successfully")
+				continue
+			} else {
+				// No error handlers defined - propagate error up
+				e.logger.Error().
+					Err(err).
+					Str("step", stepID).
+					Msg("❌ Step failed with no error handlers")
+				return err
+			}
 		}
 
-		// Follow connections to next steps
+		// Step succeeded - follow normal next connections
 		if len(step.Next) > 0 {
 			e.logger.Debug().
 				Str("step", stepID).

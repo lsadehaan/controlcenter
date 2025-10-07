@@ -192,20 +192,33 @@ func (s *CommandStep) Execute(config map[string]interface{}, context map[string]
 	}
 
 	output, err := cmd.CombinedOutput()
+	outputStr := string(output)
+
+	// Always store command info in context for downstream steps
+	context["command"] = fullCommand
+	context["commandOutput"] = outputStr
+
 	if err != nil {
 		s.Logger.Error().
 			Str("fullCommand", fullCommand).
 			Str("workDir", workDir).
-			Str("output", string(output)).
+			Str("output", outputStr).
 			Err(err).
 			Msg("❌ Command execution failed")
+
+		// Store error details in context for error handlers
+		context["commandError"] = err.Error()
+		context["commandExitCode"] = "non-zero"
+
 		return fmt.Errorf("command failed: %w, output: %s", err, output)
 	}
 
 	s.Logger.Info().
 		Str("fullCommand", fullCommand).
-		Str("output", string(output)).
+		Str("output", outputStr).
 		Msg("✅ Command executed successfully")
+
+	context["commandExitCode"] = "0"
 
 	return nil
 }

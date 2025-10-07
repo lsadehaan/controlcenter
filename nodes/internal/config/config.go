@@ -61,11 +61,12 @@ type Trigger struct {
 }
 
 type Step struct {
-	ID     string                 `json:"id"`
-	Type   string                 `json:"type"`
-	Name   string                 `json:"name"`
-	Config map[string]interface{} `json:"config"`
-	Next   []string               `json:"next,omitempty"`
+	ID      string                 `json:"id"`
+	Type    string                 `json:"type"`
+	Name    string                 `json:"name"`
+	Config  map[string]interface{} `json:"config"`
+	Next    []string               `json:"next,omitempty"`
+	OnError []string               `json:"onError,omitempty"`
 }
 
 func Load(path string) (*Config, error) {
