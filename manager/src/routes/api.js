@@ -438,5 +438,119 @@ module.exports = (db, wsServer, gitServer) => {
     }
   });
 
+  // Agent API proxy endpoints - forward requests to agent's local API
+
+  // Proxy agent logs
+  router.get('/agents/:id/logs', async (req, res) => {
+    try {
+      const agent = await db.getAgent(req.params.id);
+      if (!agent) {
+        return res.status(404).json({ error: 'Agent not found' });
+      }
+      if (agent.status !== 'online') {
+        return res.status(503).json({ error: 'Agent is offline' });
+      }
+
+      const hostname = agent.hostname || 'localhost';
+      const agentUrl = `http://${hostname}:8088`;
+
+      // Forward query parameters
+      const queryParams = new URLSearchParams(req.query).toString();
+      const url = `${agentUrl}/api/logs?${queryParams}`;
+
+      const fetch = require('node-fetch');
+      const response = await fetch(url);
+      const data = await response.json();
+
+      res.json(data);
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // Proxy agent logs download
+  router.get('/agents/:id/logs/download', async (req, res) => {
+    try {
+      const agent = await db.getAgent(req.params.id);
+      if (!agent) {
+        return res.status(404).json({ error: 'Agent not found' });
+      }
+      if (agent.status !== 'online') {
+        return res.status(503).json({ error: 'Agent is offline' });
+      }
+
+      const hostname = agent.hostname || 'localhost';
+      const agentUrl = `http://${hostname}:8088`;
+
+      // Forward query parameters
+      const queryParams = new URLSearchParams(req.query).toString();
+      const url = `${agentUrl}/api/logs/download?${queryParams}`;
+
+      const fetch = require('node-fetch');
+      const response = await fetch(url);
+
+      // Forward headers and stream the response
+      res.setHeader('Content-Type', response.headers.get('content-type'));
+      res.setHeader('Content-Disposition', response.headers.get('content-disposition'));
+
+      response.body.pipe(res);
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // Proxy agent workflow executions
+  router.get('/agents/:id/workflows/executions', async (req, res) => {
+    try {
+      const agent = await db.getAgent(req.params.id);
+      if (!agent) {
+        return res.status(404).json({ error: 'Agent not found' });
+      }
+      if (agent.status !== 'online') {
+        return res.status(503).json({ error: 'Agent is offline' });
+      }
+
+      const hostname = agent.hostname || 'localhost';
+      const agentUrl = `http://${hostname}:8088`;
+
+      const queryParams = new URLSearchParams(req.query).toString();
+      const url = `${agentUrl}/api/workflows/executions?${queryParams}`;
+
+      const fetch = require('node-fetch');
+      const response = await fetch(url);
+      const data = await response.json();
+
+      res.json(data);
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // Proxy agent metrics
+  router.get('/agents/:id/metrics', async (req, res) => {
+    try {
+      const agent = await db.getAgent(req.params.id);
+      if (!agent) {
+        return res.status(404).json({ error: 'Agent not found' });
+      }
+      if (agent.status !== 'online') {
+        return res.status(503).json({ error: 'Agent is offline' });
+      }
+
+      const hostname = agent.hostname || 'localhost';
+      const agentUrl = `http://${hostname}:8088`;
+
+      const url = `${agentUrl}/api/metrics`;
+
+      const fetch = require('node-fetch');
+      const response = await fetch(url);
+      const data = await response.json();
+
+      res.json(data);
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   return router;
 };

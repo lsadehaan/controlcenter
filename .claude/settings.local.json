@@ -31,7 +31,10 @@
       "Bash(gh release create:*)",
       "Bash(gh api:*)",
       "Bash(gh run view:*)",
-      "WebFetch(domain:raw.githubusercontent.com)"
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(git restore:*)",
+      "Bash(rm:*)",
+      "Bash(powershell:*)"
     ],
     "deny": [],
     "ask": [],

@@ -289,15 +289,8 @@
     const level = document.getElementById('log-level').value;
     const pageSize = document.getElementById('log-page-size').value;
 
-    // Get agent's API endpoint from config
-    const agentApiUrl = await getAgentApiUrl();
-    if (!agentApiUrl) {
-      document.getElementById('log-viewer').innerHTML =
-        '<div style="color: #f44336;">Agent is offline or API endpoint not available</div>';
-      return;
-    }
-
-    const url = `${agentApiUrl}/api/logs?page=${page}&pageSize=${pageSize}&level=${level}&search=${encodeURIComponent(search)}`;
+    // Use Manager proxy to fetch logs from agent
+    const url = `/api/agents/${agentId}/logs?page=${page}&pageSize=${pageSize}&level=${level}&search=${encodeURIComponent(search)}`;
 
     try {
       const response = await fetch(url);
@@ -349,13 +342,8 @@
     const level = document.getElementById('log-level').value;
     const search = document.getElementById('log-search').value;
 
-    const agentApiUrl = await getAgentApiUrl();
-    if (!agentApiUrl) {
-      alert('Agent is offline or API endpoint not available');
-      return;
-    }
-
-    const url = `${agentApiUrl}/api/logs/download?level=${level}&search=${encodeURIComponent(search)}&limit=50000`;
+    // Use Manager proxy to download logs from agent
+    const url = `/api/agents/${agentId}/logs/download?level=${level}&search=${encodeURIComponent(search)}&limit=50000`;
     window.open(url, '_blank');
   }
 
@@ -372,15 +360,9 @@
   }
 
   async function loadWorkflowExecutions() {
-    const agentApiUrl = await getAgentApiUrl();
-    if (!agentApiUrl) {
-      document.getElementById('workflow-executions').innerHTML =
-        '<div style="color: #f44336;">Agent is offline</div>';
-      return;
-    }
-
     try {
-      const response = await fetch(`${agentApiUrl}/api/workflows/executions`);
+      // Use Manager proxy to fetch workflow executions from agent
+      const response = await fetch(`/api/agents/${agentId}/workflows/executions`);
       const data = await response.json();
 
       if (data.executions.length === 0) {
@@ -416,15 +398,9 @@
   }
 
   async function loadMetrics() {
-    const agentApiUrl = await getAgentApiUrl();
-    if (!agentApiUrl) {
-      document.getElementById('metrics-content').innerHTML =
-        '<div style="color: #f44336;">Agent is offline</div>';
-      return;
-    }
-
     try {
-      const response = await fetch(`${agentApiUrl}/api/metrics`);
+      // Use Manager proxy to fetch metrics from agent
+      const response = await fetch(`/api/agents/${agentId}/metrics`);
       const metrics = await response.json();
 
       const html = `
@@ -459,18 +435,6 @@
       document.getElementById('metrics-content').innerHTML =
         `<div style="color: #f44336;">Error: ${error.message}</div>`;
     }
-  }
-
-  async function getAgentApiUrl() {
-    // For now, assume agent API is on port 8088
-    // TODO: This should be stored in agent config/metadata
-    if (agentConfig.status !== 'online') {
-      return null;
-    }
-
-    // Extract hostname from manager URL or use localhost
-    // In production, this should be the actual agent's IP/hostname
-    return 'http://localhost:8088';
   }
 
   function formatBytes(bytes) {

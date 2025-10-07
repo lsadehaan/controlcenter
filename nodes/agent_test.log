@@ -1,0 +1,625 @@
+[90m2025-10-06T12:59:58-03:00[0m DBG Checking for saved config file [36mpath=[0m"C:\\Users\\ade_h\\.controlcenter-agent\\agent-config.json"
+[90m2025-10-06T12:59:58-03:00[0m [32mINF[0m [1mUsing saved config file[0m [36mpath=[0m"C:\\Users\\ade_h\\.controlcenter-agent\\agent-config.json"
+[90m2025-10-06T12:59:58-03:00[0m DBG Loading config from path [36mactualConfigPath=[0m"C:\\Users\\ade_h\\.controlcenter-agent\\agent-config.json"
+[90m2025-10-06T12:59:58-03:00[0m DBG Config loaded [36magentId=[0m4fbb2b92-c3cd-4e36-bbe2-3fe7d3717b7f [36mregistered=[0mtrue
+[90m2025-10-06T12:59:58-03:00[0m [32mINF[0m [1mConfig saved[0m [36mpath=[0m"C:\\Users\\ade_h\\.controlcenter-agent\\agent-config.json"
+[90m2025-10-06T12:59:58-03:00[0m [32mINF[0m [1mRunning in standalone mode - Git sync disabled[0m
+[90m2025-10-06T12:59:58-03:00[0m [32mINF[0m [1mFile watchers stopped[0m [36mcomponent=[0mfilewatcher
+[90m2025-10-06T12:59:58-03:00[0m DBG No file watcher rules configured
+[90m2025-10-06T12:59:58-03:00[0m [32mINF[0m [1mSSH server started[0m [36mport=[0m2222
+[90m2025-10-06T12:59:58-03:00[0m [32mINF[0m [1mRunning in standalone mode - Manager connection disabled[0m
+[90m2025-10-06T12:59:58-03:00[0m [32mINF[0m [1mLoaded workflow[0m [36mid=[0mdf14be30-e984-4c84-96c2-4fc905a12e02 [36mname=[0mtestalert2
+[90m2025-10-06T12:59:58-03:00[0m [32mINF[0m [1mLoaded workflows from configuration[0m [36mcount=[0m1
+[90m2025-10-06T12:59:58-03:00[0m [32mINF[0m [1mAgent started in STANDALONE mode[0m [36magentId=[0m4fbb2b92-c3cd-4e36-bbe2-3fe7d3717b7f [36mconfigPath=[0m"C:\\Users\\ade_h\\.controlcenter-agent\\agent-config.json" [36mstandalone=[0mtrue [36mworkflows=[0m1
+[90m2025-10-06T12:59:58-03:00[0m [32mINF[0m [1mStarting workflow executor[0m
+[90m2025-10-06T12:59:58-03:00[0m [32mINF[0m [1mAgent API listening on :8088[0m
+[90m2025-10-06T12:59:58-03:00[0m DBG Setting up trigger [36mconfig=[0m{"cron":"* * * * *"} [36mtype=[0mschedule [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T12:59:58-03:00[0m [32mINF[0m [1m  GET /healthz - Health check[0m
+[90m2025-10-06T12:59:58-03:00[0m [32mINF[0m [1m  GET /info - Agent information[0m
+[90m2025-10-06T12:59:58-03:00[0m [32mINF[0m [1mScheduled trigger set (using simplified interval)[0m [36mcron=[0m"* * * * *" [36minterval=[0m60000 [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T12:59:58-03:00[0m [32mINF[0m [1m  GET /api/logs?page=1&pageSize=100&level=error&search=query - Paginated logs[0m
+[90m2025-10-06T12:59:58-03:00[0m [32mINF[0m [1m  GET /api/logs/download?level=error&limit=5000 - Download logs[0m
+[90m2025-10-06T12:59:58-03:00[0m [32mINF[0m [1m  GET /api/workflows/executions - Workflow execution history[0m
+[90m2025-10-06T12:59:58-03:00[0m [32mINF[0m [1m  GET /api/workflows/state - Current workflow state[0m
+[90m2025-10-06T12:59:58-03:00[0m [32mINF[0m [1m  GET /api/metrics - Agent metrics[0m
+[90m2025-10-06T12:59:58-03:00[0m [32mINF[0m [1mSSH server started[0m [36mport=[0m2222
+[90m2025-10-06T13:00:58-03:00[0m [32mINF[0m [1m🚀 Starting workflow execution[0m [36mcontext=[0m{"time":1759766458,"trigger":"schedule"} [36mname=[0mtestalert2 [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:00:58-03:00[0m [33mWRN[0m [1m⚠️ No trigger.startSteps defined, falling back to sequential execution[0m [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:00:58-03:00[0m [32mINF[0m [1m📍 Starting from trigger-defined steps[0m [36mstartSteps=[0m["step-2"] [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:00:58-03:00[0m [32mINF[0m [1m▶️ Executing step[0m [36mname=[0malert [36mstep=[0mstep-2 [36mtype=[0malert
+[90m2025-10-06T13:00:58-03:00[0m DBG 🔄 Step config processed with templates [36mprocessedConfig=[0m{"level":"info","message":"Hello"} [36mstep=[0mstep-2
+[90m2025-10-06T13:00:58-03:00[0m [32mINF[0m [1m🔔 Alert generated[0m
+[90m2025-10-06T13:00:58-03:00[0m [32mINF[0m [1mAlert (local only - no manager connection)[0m [36mdetails=[0m{"level":"info","message":"Hello"}
+[90m2025-10-06T13:00:58-03:00[0m [32mINF[0m [1m✅ Step completed successfully[0m [36mstep=[0mstep-2 [36mtype=[0malert
+[90m2025-10-06T13:00:58-03:00[0m DBG 🏁 Step has no next steps (end of branch) [36mstep=[0mstep-2
+[90m2025-10-06T13:00:58-03:00[0m [32mINF[0m [1m✅ Workflow completed successfully[0m [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:01:58-03:00[0m [32mINF[0m [1m🚀 Starting workflow execution[0m [36mcontext=[0m{"time":1759766518,"trigger":"schedule"} [36mname=[0mtestalert2 [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:01:58-03:00[0m [33mWRN[0m [1m⚠️ No trigger.startSteps defined, falling back to sequential execution[0m [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:01:58-03:00[0m [32mINF[0m [1m📍 Starting from trigger-defined steps[0m [36mstartSteps=[0m["step-2"] [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:01:58-03:00[0m [32mINF[0m [1m▶️ Executing step[0m [36mname=[0malert [36mstep=[0mstep-2 [36mtype=[0malert
+[90m2025-10-06T13:01:58-03:00[0m DBG 🔄 Step config processed with templates [36mprocessedConfig=[0m{"level":"info","message":"Hello"} [36mstep=[0mstep-2
+[90m2025-10-06T13:01:58-03:00[0m [32mINF[0m [1m🔔 Alert generated[0m
+[90m2025-10-06T13:01:58-03:00[0m [32mINF[0m [1mAlert (local only - no manager connection)[0m [36mdetails=[0m{"level":"info","message":"Hello"}
+[90m2025-10-06T13:01:58-03:00[0m [32mINF[0m [1m✅ Step completed successfully[0m [36mstep=[0mstep-2 [36mtype=[0malert
+[90m2025-10-06T13:01:58-03:00[0m DBG 🏁 Step has no next steps (end of branch) [36mstep=[0mstep-2
+[90m2025-10-06T13:01:58-03:00[0m [32mINF[0m [1m✅ Workflow completed successfully[0m [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:02:58-03:00[0m [32mINF[0m [1m🚀 Starting workflow execution[0m [36mcontext=[0m{"time":1759766578,"trigger":"schedule"} [36mname=[0mtestalert2 [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:02:58-03:00[0m [33mWRN[0m [1m⚠️ No trigger.startSteps defined, falling back to sequential execution[0m [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:02:58-03:00[0m [32mINF[0m [1m📍 Starting from trigger-defined steps[0m [36mstartSteps=[0m["step-2"] [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:02:58-03:00[0m [32mINF[0m [1m▶️ Executing step[0m [36mname=[0malert [36mstep=[0mstep-2 [36mtype=[0malert
+[90m2025-10-06T13:02:58-03:00[0m DBG 🔄 Step config processed with templates [36mprocessedConfig=[0m{"level":"info","message":"Hello"} [36mstep=[0mstep-2
+[90m2025-10-06T13:02:58-03:00[0m [32mINF[0m [1m🔔 Alert generated[0m
+[90m2025-10-06T13:02:58-03:00[0m [32mINF[0m [1mAlert (local only - no manager connection)[0m [36mdetails=[0m{"level":"info","message":"Hello"}
+[90m2025-10-06T13:02:58-03:00[0m [32mINF[0m [1m✅ Step completed successfully[0m [36mstep=[0mstep-2 [36mtype=[0malert
+[90m2025-10-06T13:02:58-03:00[0m DBG 🏁 Step has no next steps (end of branch) [36mstep=[0mstep-2
+[90m2025-10-06T13:02:58-03:00[0m [32mINF[0m [1m✅ Workflow completed successfully[0m [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:03:58-03:00[0m [32mINF[0m [1m🚀 Starting workflow execution[0m [36mcontext=[0m{"time":1759766638,"trigger":"schedule"} [36mname=[0mtestalert2 [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:03:58-03:00[0m [33mWRN[0m [1m⚠️ No trigger.startSteps defined, falling back to sequential execution[0m [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:03:58-03:00[0m [32mINF[0m [1m📍 Starting from trigger-defined steps[0m [36mstartSteps=[0m["step-2"] [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:03:58-03:00[0m [32mINF[0m [1m▶️ Executing step[0m [36mname=[0malert [36mstep=[0mstep-2 [36mtype=[0malert
+[90m2025-10-06T13:03:58-03:00[0m DBG 🔄 Step config processed with templates [36mprocessedConfig=[0m{"level":"info","message":"Hello"} [36mstep=[0mstep-2
+[90m2025-10-06T13:03:58-03:00[0m [32mINF[0m [1m🔔 Alert generated[0m
+[90m2025-10-06T13:03:58-03:00[0m [32mINF[0m [1mAlert (local only - no manager connection)[0m [36mdetails=[0m{"level":"info","message":"Hello"}
+[90m2025-10-06T13:03:58-03:00[0m [32mINF[0m [1m✅ Step completed successfully[0m [36mstep=[0mstep-2 [36mtype=[0malert
+[90m2025-10-06T13:03:58-03:00[0m DBG 🏁 Step has no next steps (end of branch) [36mstep=[0mstep-2
+[90m2025-10-06T13:03:58-03:00[0m [32mINF[0m [1m✅ Workflow completed successfully[0m [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:04:58-03:00[0m [32mINF[0m [1m🚀 Starting workflow execution[0m [36mcontext=[0m{"time":1759766698,"trigger":"schedule"} [36mname=[0mtestalert2 [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:04:58-03:00[0m [33mWRN[0m [1m⚠️ No trigger.startSteps defined, falling back to sequential execution[0m [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:04:58-03:00[0m [32mINF[0m [1m📍 Starting from trigger-defined steps[0m [36mstartSteps=[0m["step-2"] [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:04:58-03:00[0m [32mINF[0m [1m▶️ Executing step[0m [36mname=[0malert [36mstep=[0mstep-2 [36mtype=[0malert
+[90m2025-10-06T13:04:58-03:00[0m DBG 🔄 Step config processed with templates [36mprocessedConfig=[0m{"level":"info","message":"Hello"} [36mstep=[0mstep-2
+[90m2025-10-06T13:04:58-03:00[0m [32mINF[0m [1m🔔 Alert generated[0m
+[90m2025-10-06T13:04:58-03:00[0m [32mINF[0m [1mAlert (local only - no manager connection)[0m [36mdetails=[0m{"level":"info","message":"Hello"}
+[90m2025-10-06T13:04:58-03:00[0m [32mINF[0m [1m✅ Step completed successfully[0m [36mstep=[0mstep-2 [36mtype=[0malert
+[90m2025-10-06T13:04:58-03:00[0m DBG 🏁 Step has no next steps (end of branch) [36mstep=[0mstep-2
+[90m2025-10-06T13:04:58-03:00[0m [32mINF[0m [1m✅ Workflow completed successfully[0m [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:05:58-03:00[0m [32mINF[0m [1m🚀 Starting workflow execution[0m [36mcontext=[0m{"time":1759766758,"trigger":"schedule"} [36mname=[0mtestalert2 [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:05:58-03:00[0m [33mWRN[0m [1m⚠️ No trigger.startSteps defined, falling back to sequential execution[0m [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:05:58-03:00[0m [32mINF[0m [1m📍 Starting from trigger-defined steps[0m [36mstartSteps=[0m["step-2"] [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:05:58-03:00[0m [32mINF[0m [1m▶️ Executing step[0m [36mname=[0malert [36mstep=[0mstep-2 [36mtype=[0malert
+[90m2025-10-06T13:05:58-03:00[0m DBG 🔄 Step config processed with templates [36mprocessedConfig=[0m{"level":"info","message":"Hello"} [36mstep=[0mstep-2
+[90m2025-10-06T13:05:58-03:00[0m [32mINF[0m [1m🔔 Alert generated[0m
+[90m2025-10-06T13:05:58-03:00[0m [32mINF[0m [1mAlert (local only - no manager connection)[0m [36mdetails=[0m{"level":"info","message":"Hello"}
+[90m2025-10-06T13:05:58-03:00[0m [32mINF[0m [1m✅ Step completed successfully[0m [36mstep=[0mstep-2 [36mtype=[0malert
+[90m2025-10-06T13:05:58-03:00[0m DBG 🏁 Step has no next steps (end of branch) [36mstep=[0mstep-2
+[90m2025-10-06T13:05:58-03:00[0m [32mINF[0m [1m✅ Workflow completed successfully[0m [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:06:58-03:00[0m [32mINF[0m [1m🚀 Starting workflow execution[0m [36mcontext=[0m{"time":1759766818,"trigger":"schedule"} [36mname=[0mtestalert2 [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:06:58-03:00[0m [33mWRN[0m [1m⚠️ No trigger.startSteps defined, falling back to sequential execution[0m [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:06:58-03:00[0m [32mINF[0m [1m📍 Starting from trigger-defined steps[0m [36mstartSteps=[0m["step-2"] [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:06:58-03:00[0m [32mINF[0m [1m▶️ Executing step[0m [36mname=[0malert [36mstep=[0mstep-2 [36mtype=[0malert
+[90m2025-10-06T13:06:58-03:00[0m DBG 🔄 Step config processed with templates [36mprocessedConfig=[0m{"level":"info","message":"Hello"} [36mstep=[0mstep-2
+[90m2025-10-06T13:06:58-03:00[0m [32mINF[0m [1m🔔 Alert generated[0m
+[90m2025-10-06T13:06:58-03:00[0m [32mINF[0m [1mAlert (local only - no manager connection)[0m [36mdetails=[0m{"level":"info","message":"Hello"}
+[90m2025-10-06T13:06:58-03:00[0m [32mINF[0m [1m✅ Step completed successfully[0m [36mstep=[0mstep-2 [36mtype=[0malert
+[90m2025-10-06T13:06:58-03:00[0m DBG 🏁 Step has no next steps (end of branch) [36mstep=[0mstep-2
+[90m2025-10-06T13:06:58-03:00[0m [32mINF[0m [1m✅ Workflow completed successfully[0m [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:07:58-03:00[0m [32mINF[0m [1m🚀 Starting workflow execution[0m [36mcontext=[0m{"time":1759766878,"trigger":"schedule"} [36mname=[0mtestalert2 [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:07:58-03:00[0m [33mWRN[0m [1m⚠️ No trigger.startSteps defined, falling back to sequential execution[0m [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:07:58-03:00[0m [32mINF[0m [1m📍 Starting from trigger-defined steps[0m [36mstartSteps=[0m["step-2"] [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:07:58-03:00[0m [32mINF[0m [1m▶️ Executing step[0m [36mname=[0malert [36mstep=[0mstep-2 [36mtype=[0malert
+[90m2025-10-06T13:07:58-03:00[0m DBG 🔄 Step config processed with templates [36mprocessedConfig=[0m{"level":"info","message":"Hello"} [36mstep=[0mstep-2
+[90m2025-10-06T13:07:58-03:00[0m [32mINF[0m [1m🔔 Alert generated[0m
+[90m2025-10-06T13:07:58-03:00[0m [32mINF[0m [1mAlert (local only - no manager connection)[0m [36mdetails=[0m{"level":"info","message":"Hello"}
+[90m2025-10-06T13:07:58-03:00[0m [32mINF[0m [1m✅ Step completed successfully[0m [36mstep=[0mstep-2 [36mtype=[0malert
+[90m2025-10-06T13:07:58-03:00[0m DBG 🏁 Step has no next steps (end of branch) [36mstep=[0mstep-2
+[90m2025-10-06T13:07:58-03:00[0m [32mINF[0m [1m✅ Workflow completed successfully[0m [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:08:58-03:00[0m [32mINF[0m [1m🚀 Starting workflow execution[0m [36mcontext=[0m{"time":1759766938,"trigger":"schedule"} [36mname=[0mtestalert2 [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:08:58-03:00[0m [33mWRN[0m [1m⚠️ No trigger.startSteps defined, falling back to sequential execution[0m [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:08:58-03:00[0m [32mINF[0m [1m📍 Starting from trigger-defined steps[0m [36mstartSteps=[0m["step-2"] [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:08:58-03:00[0m [32mINF[0m [1m▶️ Executing step[0m [36mname=[0malert [36mstep=[0mstep-2 [36mtype=[0malert
+[90m2025-10-06T13:08:58-03:00[0m DBG 🔄 Step config processed with templates [36mprocessedConfig=[0m{"level":"info","message":"Hello"} [36mstep=[0mstep-2
+[90m2025-10-06T13:08:58-03:00[0m [32mINF[0m [1m🔔 Alert generated[0m
+[90m2025-10-06T13:08:58-03:00[0m [32mINF[0m [1mAlert (local only - no manager connection)[0m [36mdetails=[0m{"level":"info","message":"Hello"}
+[90m2025-10-06T13:08:58-03:00[0m [32mINF[0m [1m✅ Step completed successfully[0m [36mstep=[0mstep-2 [36mtype=[0malert
+[90m2025-10-06T13:08:58-03:00[0m DBG 🏁 Step has no next steps (end of branch) [36mstep=[0mstep-2
+[90m2025-10-06T13:08:58-03:00[0m [32mINF[0m [1m✅ Workflow completed successfully[0m [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:09:58-03:00[0m [32mINF[0m [1m🚀 Starting workflow execution[0m [36mcontext=[0m{"time":1759766998,"trigger":"schedule"} [36mname=[0mtestalert2 [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:09:58-03:00[0m [33mWRN[0m [1m⚠️ No trigger.startSteps defined, falling back to sequential execution[0m [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:09:58-03:00[0m [32mINF[0m [1m📍 Starting from trigger-defined steps[0m [36mstartSteps=[0m["step-2"] [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:09:58-03:00[0m [32mINF[0m [1m▶️ Executing step[0m [36mname=[0malert [36mstep=[0mstep-2 [36mtype=[0malert
+[90m2025-10-06T13:09:58-03:00[0m DBG 🔄 Step config processed with templates [36mprocessedConfig=[0m{"level":"info","message":"Hello"} [36mstep=[0mstep-2
+[90m2025-10-06T13:09:58-03:00[0m [32mINF[0m [1m🔔 Alert generated[0m
+[90m2025-10-06T13:09:58-03:00[0m [32mINF[0m [1mAlert (local only - no manager connection)[0m [36mdetails=[0m{"level":"info","message":"Hello"}
+[90m2025-10-06T13:09:58-03:00[0m [32mINF[0m [1m✅ Step completed successfully[0m [36mstep=[0mstep-2 [36mtype=[0malert
+[90m2025-10-06T13:09:58-03:00[0m DBG 🏁 Step has no next steps (end of branch) [36mstep=[0mstep-2
+[90m2025-10-06T13:09:58-03:00[0m [32mINF[0m [1m✅ Workflow completed successfully[0m [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:10:58-03:00[0m [32mINF[0m [1m🚀 Starting workflow execution[0m [36mcontext=[0m{"time":1759767058,"trigger":"schedule"} [36mname=[0mtestalert2 [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:10:58-03:00[0m [33mWRN[0m [1m⚠️ No trigger.startSteps defined, falling back to sequential execution[0m [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:10:58-03:00[0m [32mINF[0m [1m📍 Starting from trigger-defined steps[0m [36mstartSteps=[0m["step-2"] [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:10:58-03:00[0m [32mINF[0m [1m▶️ Executing step[0m [36mname=[0malert [36mstep=[0mstep-2 [36mtype=[0malert
+[90m2025-10-06T13:10:58-03:00[0m DBG 🔄 Step config processed with templates [36mprocessedConfig=[0m{"level":"info","message":"Hello"} [36mstep=[0mstep-2
+[90m2025-10-06T13:10:58-03:00[0m [32mINF[0m [1m🔔 Alert generated[0m
+[90m2025-10-06T13:10:58-03:00[0m [32mINF[0m [1mAlert (local only - no manager connection)[0m [36mdetails=[0m{"level":"info","message":"Hello"}
+[90m2025-10-06T13:10:58-03:00[0m [32mINF[0m [1m✅ Step completed successfully[0m [36mstep=[0mstep-2 [36mtype=[0malert
+[90m2025-10-06T13:10:58-03:00[0m DBG 🏁 Step has no next steps (end of branch) [36mstep=[0mstep-2
+[90m2025-10-06T13:10:58-03:00[0m [32mINF[0m [1m✅ Workflow completed successfully[0m [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:11:58-03:00[0m [32mINF[0m [1m🚀 Starting workflow execution[0m [36mcontext=[0m{"time":1759767118,"trigger":"schedule"} [36mname=[0mtestalert2 [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:11:58-03:00[0m [33mWRN[0m [1m⚠️ No trigger.startSteps defined, falling back to sequential execution[0m [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:11:58-03:00[0m [32mINF[0m [1m📍 Starting from trigger-defined steps[0m [36mstartSteps=[0m["step-2"] [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:11:58-03:00[0m [32mINF[0m [1m▶️ Executing step[0m [36mname=[0malert [36mstep=[0mstep-2 [36mtype=[0malert
+[90m2025-10-06T13:11:58-03:00[0m DBG 🔄 Step config processed with templates [36mprocessedConfig=[0m{"level":"info","message":"Hello"} [36mstep=[0mstep-2
+[90m2025-10-06T13:11:58-03:00[0m [32mINF[0m [1m🔔 Alert generated[0m
+[90m2025-10-06T13:11:58-03:00[0m [32mINF[0m [1mAlert (local only - no manager connection)[0m [36mdetails=[0m{"level":"info","message":"Hello"}
+[90m2025-10-06T13:11:58-03:00[0m [32mINF[0m [1m✅ Step completed successfully[0m [36mstep=[0mstep-2 [36mtype=[0malert
+[90m2025-10-06T13:11:58-03:00[0m DBG 🏁 Step has no next steps (end of branch) [36mstep=[0mstep-2
+[90m2025-10-06T13:11:58-03:00[0m [32mINF[0m [1m✅ Workflow completed successfully[0m [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:12:58-03:00[0m [32mINF[0m [1m🚀 Starting workflow execution[0m [36mcontext=[0m{"time":1759767178,"trigger":"schedule"} [36mname=[0mtestalert2 [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:12:58-03:00[0m [33mWRN[0m [1m⚠️ No trigger.startSteps defined, falling back to sequential execution[0m [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:12:58-03:00[0m [32mINF[0m [1m📍 Starting from trigger-defined steps[0m [36mstartSteps=[0m["step-2"] [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:12:58-03:00[0m [32mINF[0m [1m▶️ Executing step[0m [36mname=[0malert [36mstep=[0mstep-2 [36mtype=[0malert
+[90m2025-10-06T13:12:58-03:00[0m DBG 🔄 Step config processed with templates [36mprocessedConfig=[0m{"level":"info","message":"Hello"} [36mstep=[0mstep-2
+[90m2025-10-06T13:12:58-03:00[0m [32mINF[0m [1m🔔 Alert generated[0m
+[90m2025-10-06T13:12:58-03:00[0m [32mINF[0m [1mAlert (local only - no manager connection)[0m [36mdetails=[0m{"level":"info","message":"Hello"}
+[90m2025-10-06T13:12:58-03:00[0m [32mINF[0m [1m✅ Step completed successfully[0m [36mstep=[0mstep-2 [36mtype=[0malert
+[90m2025-10-06T13:12:58-03:00[0m DBG 🏁 Step has no next steps (end of branch) [36mstep=[0mstep-2
+[90m2025-10-06T13:12:58-03:00[0m [32mINF[0m [1m✅ Workflow completed successfully[0m [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:13:58-03:00[0m [32mINF[0m [1m🚀 Starting workflow execution[0m [36mcontext=[0m{"time":1759767238,"trigger":"schedule"} [36mname=[0mtestalert2 [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:13:58-03:00[0m [33mWRN[0m [1m⚠️ No trigger.startSteps defined, falling back to sequential execution[0m [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:13:58-03:00[0m [32mINF[0m [1m📍 Starting from trigger-defined steps[0m [36mstartSteps=[0m["step-2"] [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:13:58-03:00[0m [32mINF[0m [1m▶️ Executing step[0m [36mname=[0malert [36mstep=[0mstep-2 [36mtype=[0malert
+[90m2025-10-06T13:13:58-03:00[0m DBG 🔄 Step config processed with templates [36mprocessedConfig=[0m{"level":"info","message":"Hello"} [36mstep=[0mstep-2
+[90m2025-10-06T13:13:58-03:00[0m [32mINF[0m [1m🔔 Alert generated[0m
+[90m2025-10-06T13:13:58-03:00[0m [32mINF[0m [1mAlert (local only - no manager connection)[0m [36mdetails=[0m{"level":"info","message":"Hello"}
+[90m2025-10-06T13:13:58-03:00[0m [32mINF[0m [1m✅ Step completed successfully[0m [36mstep=[0mstep-2 [36mtype=[0malert
+[90m2025-10-06T13:13:58-03:00[0m DBG 🏁 Step has no next steps (end of branch) [36mstep=[0mstep-2
+[90m2025-10-06T13:13:58-03:00[0m [32mINF[0m [1m✅ Workflow completed successfully[0m [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:14:58-03:00[0m [32mINF[0m [1m🚀 Starting workflow execution[0m [36mcontext=[0m{"time":1759767298,"trigger":"schedule"} [36mname=[0mtestalert2 [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:14:58-03:00[0m [33mWRN[0m [1m⚠️ No trigger.startSteps defined, falling back to sequential execution[0m [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:14:58-03:00[0m [32mINF[0m [1m📍 Starting from trigger-defined steps[0m [36mstartSteps=[0m["step-2"] [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:14:58-03:00[0m [32mINF[0m [1m▶️ Executing step[0m [36mname=[0malert [36mstep=[0mstep-2 [36mtype=[0malert
+[90m2025-10-06T13:14:58-03:00[0m DBG 🔄 Step config processed with templates [36mprocessedConfig=[0m{"level":"info","message":"Hello"} [36mstep=[0mstep-2
+[90m2025-10-06T13:14:58-03:00[0m [32mINF[0m [1m🔔 Alert generated[0m
+[90m2025-10-06T13:14:58-03:00[0m [32mINF[0m [1mAlert (local only - no manager connection)[0m [36mdetails=[0m{"level":"info","message":"Hello"}
+[90m2025-10-06T13:14:58-03:00[0m [32mINF[0m [1m✅ Step completed successfully[0m [36mstep=[0mstep-2 [36mtype=[0malert
+[90m2025-10-06T13:14:58-03:00[0m DBG 🏁 Step has no next steps (end of branch) [36mstep=[0mstep-2
+[90m2025-10-06T13:14:58-03:00[0m [32mINF[0m [1m✅ Workflow completed successfully[0m [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:15:58-03:00[0m [32mINF[0m [1m🚀 Starting workflow execution[0m [36mcontext=[0m{"time":1759767358,"trigger":"schedule"} [36mname=[0mtestalert2 [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:15:58-03:00[0m [33mWRN[0m [1m⚠️ No trigger.startSteps defined, falling back to sequential execution[0m [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:15:58-03:00[0m [32mINF[0m [1m📍 Starting from trigger-defined steps[0m [36mstartSteps=[0m["step-2"] [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:15:58-03:00[0m [32mINF[0m [1m▶️ Executing step[0m [36mname=[0malert [36mstep=[0mstep-2 [36mtype=[0malert
+[90m2025-10-06T13:15:58-03:00[0m DBG 🔄 Step config processed with templates [36mprocessedConfig=[0m{"level":"info","message":"Hello"} [36mstep=[0mstep-2
+[90m2025-10-06T13:15:58-03:00[0m [32mINF[0m [1m🔔 Alert generated[0m
+[90m2025-10-06T13:15:58-03:00[0m [32mINF[0m [1mAlert (local only - no manager connection)[0m [36mdetails=[0m{"level":"info","message":"Hello"}
+[90m2025-10-06T13:15:58-03:00[0m [32mINF[0m [1m✅ Step completed successfully[0m [36mstep=[0mstep-2 [36mtype=[0malert
+[90m2025-10-06T13:15:58-03:00[0m DBG 🏁 Step has no next steps (end of branch) [36mstep=[0mstep-2
+[90m2025-10-06T13:15:58-03:00[0m [32mINF[0m [1m✅ Workflow completed successfully[0m [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:16:58-03:00[0m [32mINF[0m [1m🚀 Starting workflow execution[0m [36mcontext=[0m{"time":1759767418,"trigger":"schedule"} [36mname=[0mtestalert2 [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:16:58-03:00[0m [33mWRN[0m [1m⚠️ No trigger.startSteps defined, falling back to sequential execution[0m [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:16:58-03:00[0m [32mINF[0m [1m📍 Starting from trigger-defined steps[0m [36mstartSteps=[0m["step-2"] [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:16:58-03:00[0m [32mINF[0m [1m▶️ Executing step[0m [36mname=[0malert [36mstep=[0mstep-2 [36mtype=[0malert
+[90m2025-10-06T13:16:58-03:00[0m DBG 🔄 Step config processed with templates [36mprocessedConfig=[0m{"level":"info","message":"Hello"} [36mstep=[0mstep-2
+[90m2025-10-06T13:16:58-03:00[0m [32mINF[0m [1m🔔 Alert generated[0m
+[90m2025-10-06T13:16:58-03:00[0m [32mINF[0m [1mAlert (local only - no manager connection)[0m [36mdetails=[0m{"level":"info","message":"Hello"}
+[90m2025-10-06T13:16:58-03:00[0m [32mINF[0m [1m✅ Step completed successfully[0m [36mstep=[0mstep-2 [36mtype=[0malert
+[90m2025-10-06T13:16:58-03:00[0m DBG 🏁 Step has no next steps (end of branch) [36mstep=[0mstep-2
+[90m2025-10-06T13:16:58-03:00[0m [32mINF[0m [1m✅ Workflow completed successfully[0m [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:17:58-03:00[0m [32mINF[0m [1m🚀 Starting workflow execution[0m [36mcontext=[0m{"time":1759767478,"trigger":"schedule"} [36mname=[0mtestalert2 [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:17:58-03:00[0m [33mWRN[0m [1m⚠️ No trigger.startSteps defined, falling back to sequential execution[0m [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:17:58-03:00[0m [32mINF[0m [1m📍 Starting from trigger-defined steps[0m [36mstartSteps=[0m["step-2"] [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:17:58-03:00[0m [32mINF[0m [1m▶️ Executing step[0m [36mname=[0malert [36mstep=[0mstep-2 [36mtype=[0malert
+[90m2025-10-06T13:17:58-03:00[0m DBG 🔄 Step config processed with templates [36mprocessedConfig=[0m{"level":"info","message":"Hello"} [36mstep=[0mstep-2
+[90m2025-10-06T13:17:58-03:00[0m [32mINF[0m [1m🔔 Alert generated[0m
+[90m2025-10-06T13:17:58-03:00[0m [32mINF[0m [1mAlert (local only - no manager connection)[0m [36mdetails=[0m{"level":"info","message":"Hello"}
+[90m2025-10-06T13:17:58-03:00[0m [32mINF[0m [1m✅ Step completed successfully[0m [36mstep=[0mstep-2 [36mtype=[0malert
+[90m2025-10-06T13:17:58-03:00[0m DBG 🏁 Step has no next steps (end of branch) [36mstep=[0mstep-2
+[90m2025-10-06T13:17:58-03:00[0m [32mINF[0m [1m✅ Workflow completed successfully[0m [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:18:58-03:00[0m [32mINF[0m [1m🚀 Starting workflow execution[0m [36mcontext=[0m{"time":1759767538,"trigger":"schedule"} [36mname=[0mtestalert2 [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:18:58-03:00[0m [33mWRN[0m [1m⚠️ No trigger.startSteps defined, falling back to sequential execution[0m [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:18:58-03:00[0m [32mINF[0m [1m📍 Starting from trigger-defined steps[0m [36mstartSteps=[0m["step-2"] [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:18:58-03:00[0m [32mINF[0m [1m▶️ Executing step[0m [36mname=[0malert [36mstep=[0mstep-2 [36mtype=[0malert
+[90m2025-10-06T13:18:58-03:00[0m DBG 🔄 Step config processed with templates [36mprocessedConfig=[0m{"level":"info","message":"Hello"} [36mstep=[0mstep-2
+[90m2025-10-06T13:18:58-03:00[0m [32mINF[0m [1m🔔 Alert generated[0m
+[90m2025-10-06T13:18:58-03:00[0m [32mINF[0m [1mAlert (local only - no manager connection)[0m [36mdetails=[0m{"level":"info","message":"Hello"}
+[90m2025-10-06T13:18:58-03:00[0m [32mINF[0m [1m✅ Step completed successfully[0m [36mstep=[0mstep-2 [36mtype=[0malert
+[90m2025-10-06T13:18:58-03:00[0m DBG 🏁 Step has no next steps (end of branch) [36mstep=[0mstep-2
+[90m2025-10-06T13:18:58-03:00[0m [32mINF[0m [1m✅ Workflow completed successfully[0m [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:19:58-03:00[0m [32mINF[0m [1m🚀 Starting workflow execution[0m [36mcontext=[0m{"time":1759767598,"trigger":"schedule"} [36mname=[0mtestalert2 [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:19:58-03:00[0m [33mWRN[0m [1m⚠️ No trigger.startSteps defined, falling back to sequential execution[0m [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:19:58-03:00[0m [32mINF[0m [1m📍 Starting from trigger-defined steps[0m [36mstartSteps=[0m["step-2"] [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:19:58-03:00[0m [32mINF[0m [1m▶️ Executing step[0m [36mname=[0malert [36mstep=[0mstep-2 [36mtype=[0malert
+[90m2025-10-06T13:19:58-03:00[0m DBG 🔄 Step config processed with templates [36mprocessedConfig=[0m{"level":"info","message":"Hello"} [36mstep=[0mstep-2
+[90m2025-10-06T13:19:58-03:00[0m [32mINF[0m [1m🔔 Alert generated[0m
+[90m2025-10-06T13:19:58-03:00[0m [32mINF[0m [1mAlert (local only - no manager connection)[0m [36mdetails=[0m{"level":"info","message":"Hello"}
+[90m2025-10-06T13:19:58-03:00[0m [32mINF[0m [1m✅ Step completed successfully[0m [36mstep=[0mstep-2 [36mtype=[0malert
+[90m2025-10-06T13:19:58-03:00[0m DBG 🏁 Step has no next steps (end of branch) [36mstep=[0mstep-2
+[90m2025-10-06T13:19:58-03:00[0m [32mINF[0m [1m✅ Workflow completed successfully[0m [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:20:58-03:00[0m [32mINF[0m [1m🚀 Starting workflow execution[0m [36mcontext=[0m{"time":1759767658,"trigger":"schedule"} [36mname=[0mtestalert2 [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:20:58-03:00[0m [33mWRN[0m [1m⚠️ No trigger.startSteps defined, falling back to sequential execution[0m [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:20:58-03:00[0m [32mINF[0m [1m📍 Starting from trigger-defined steps[0m [36mstartSteps=[0m["step-2"] [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:20:58-03:00[0m [32mINF[0m [1m▶️ Executing step[0m [36mname=[0malert [36mstep=[0mstep-2 [36mtype=[0malert
+[90m2025-10-06T13:20:58-03:00[0m DBG 🔄 Step config processed with templates [36mprocessedConfig=[0m{"level":"info","message":"Hello"} [36mstep=[0mstep-2
+[90m2025-10-06T13:20:58-03:00[0m [32mINF[0m [1m🔔 Alert generated[0m
+[90m2025-10-06T13:20:58-03:00[0m [32mINF[0m [1mAlert (local only - no manager connection)[0m [36mdetails=[0m{"level":"info","message":"Hello"}
+[90m2025-10-06T13:20:58-03:00[0m [32mINF[0m [1m✅ Step completed successfully[0m [36mstep=[0mstep-2 [36mtype=[0malert
+[90m2025-10-06T13:20:58-03:00[0m DBG 🏁 Step has no next steps (end of branch) [36mstep=[0mstep-2
+[90m2025-10-06T13:20:58-03:00[0m [32mINF[0m [1m✅ Workflow completed successfully[0m [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:21:58-03:00[0m [32mINF[0m [1m🚀 Starting workflow execution[0m [36mcontext=[0m{"time":1759767718,"trigger":"schedule"} [36mname=[0mtestalert2 [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:21:58-03:00[0m [33mWRN[0m [1m⚠️ No trigger.startSteps defined, falling back to sequential execution[0m [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:21:58-03:00[0m [32mINF[0m [1m📍 Starting from trigger-defined steps[0m [36mstartSteps=[0m["step-2"] [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:21:58-03:00[0m [32mINF[0m [1m▶️ Executing step[0m [36mname=[0malert [36mstep=[0mstep-2 [36mtype=[0malert
+[90m2025-10-06T13:21:58-03:00[0m DBG 🔄 Step config processed with templates [36mprocessedConfig=[0m{"level":"info","message":"Hello"} [36mstep=[0mstep-2
+[90m2025-10-06T13:21:58-03:00[0m [32mINF[0m [1m🔔 Alert generated[0m
+[90m2025-10-06T13:21:58-03:00[0m [32mINF[0m [1mAlert (local only - no manager connection)[0m [36mdetails=[0m{"level":"info","message":"Hello"}
+[90m2025-10-06T13:21:58-03:00[0m [32mINF[0m [1m✅ Step completed successfully[0m [36mstep=[0mstep-2 [36mtype=[0malert
+[90m2025-10-06T13:21:58-03:00[0m DBG 🏁 Step has no next steps (end of branch) [36mstep=[0mstep-2
+[90m2025-10-06T13:21:58-03:00[0m [32mINF[0m [1m✅ Workflow completed successfully[0m [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:22:58-03:00[0m [32mINF[0m [1m🚀 Starting workflow execution[0m [36mcontext=[0m{"time":1759767778,"trigger":"schedule"} [36mname=[0mtestalert2 [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:22:58-03:00[0m [33mWRN[0m [1m⚠️ No trigger.startSteps defined, falling back to sequential execution[0m [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:22:58-03:00[0m [32mINF[0m [1m📍 Starting from trigger-defined steps[0m [36mstartSteps=[0m["step-2"] [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:22:58-03:00[0m [32mINF[0m [1m▶️ Executing step[0m [36mname=[0malert [36mstep=[0mstep-2 [36mtype=[0malert
+[90m2025-10-06T13:22:58-03:00[0m DBG 🔄 Step config processed with templates [36mprocessedConfig=[0m{"level":"info","message":"Hello"} [36mstep=[0mstep-2
+[90m2025-10-06T13:22:58-03:00[0m [32mINF[0m [1m🔔 Alert generated[0m
+[90m2025-10-06T13:22:58-03:00[0m [32mINF[0m [1mAlert (local only - no manager connection)[0m [36mdetails=[0m{"level":"info","message":"Hello"}
+[90m2025-10-06T13:22:58-03:00[0m [32mINF[0m [1m✅ Step completed successfully[0m [36mstep=[0mstep-2 [36mtype=[0malert
+[90m2025-10-06T13:22:58-03:00[0m DBG 🏁 Step has no next steps (end of branch) [36mstep=[0mstep-2
+[90m2025-10-06T13:22:58-03:00[0m [32mINF[0m [1m✅ Workflow completed successfully[0m [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:23:58-03:00[0m [32mINF[0m [1m🚀 Starting workflow execution[0m [36mcontext=[0m{"time":1759767838,"trigger":"schedule"} [36mname=[0mtestalert2 [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:23:58-03:00[0m [33mWRN[0m [1m⚠️ No trigger.startSteps defined, falling back to sequential execution[0m [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:23:58-03:00[0m [32mINF[0m [1m📍 Starting from trigger-defined steps[0m [36mstartSteps=[0m["step-2"] [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:23:58-03:00[0m [32mINF[0m [1m▶️ Executing step[0m [36mname=[0malert [36mstep=[0mstep-2 [36mtype=[0malert
+[90m2025-10-06T13:23:58-03:00[0m DBG 🔄 Step config processed with templates [36mprocessedConfig=[0m{"level":"info","message":"Hello"} [36mstep=[0mstep-2
+[90m2025-10-06T13:23:58-03:00[0m [32mINF[0m [1m🔔 Alert generated[0m
+[90m2025-10-06T13:23:58-03:00[0m [32mINF[0m [1mAlert (local only - no manager connection)[0m [36mdetails=[0m{"level":"info","message":"Hello"}
+[90m2025-10-06T13:23:58-03:00[0m [32mINF[0m [1m✅ Step completed successfully[0m [36mstep=[0mstep-2 [36mtype=[0malert
+[90m2025-10-06T13:23:58-03:00[0m DBG 🏁 Step has no next steps (end of branch) [36mstep=[0mstep-2
+[90m2025-10-06T13:23:58-03:00[0m [32mINF[0m [1m✅ Workflow completed successfully[0m [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:24:58-03:00[0m [32mINF[0m [1m🚀 Starting workflow execution[0m [36mcontext=[0m{"time":1759767898,"trigger":"schedule"} [36mname=[0mtestalert2 [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:24:58-03:00[0m [33mWRN[0m [1m⚠️ No trigger.startSteps defined, falling back to sequential execution[0m [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:24:58-03:00[0m [32mINF[0m [1m📍 Starting from trigger-defined steps[0m [36mstartSteps=[0m["step-2"] [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:24:58-03:00[0m [32mINF[0m [1m▶️ Executing step[0m [36mname=[0malert [36mstep=[0mstep-2 [36mtype=[0malert
+[90m2025-10-06T13:24:58-03:00[0m DBG 🔄 Step config processed with templates [36mprocessedConfig=[0m{"level":"info","message":"Hello"} [36mstep=[0mstep-2
+[90m2025-10-06T13:24:58-03:00[0m [32mINF[0m [1m🔔 Alert generated[0m
+[90m2025-10-06T13:24:58-03:00[0m [32mINF[0m [1mAlert (local only - no manager connection)[0m [36mdetails=[0m{"level":"info","message":"Hello"}
+[90m2025-10-06T13:24:58-03:00[0m [32mINF[0m [1m✅ Step completed successfully[0m [36mstep=[0mstep-2 [36mtype=[0malert
+[90m2025-10-06T13:24:58-03:00[0m DBG 🏁 Step has no next steps (end of branch) [36mstep=[0mstep-2
+[90m2025-10-06T13:24:58-03:00[0m [32mINF[0m [1m✅ Workflow completed successfully[0m [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:25:58-03:00[0m [32mINF[0m [1m🚀 Starting workflow execution[0m [36mcontext=[0m{"time":1759767958,"trigger":"schedule"} [36mname=[0mtestalert2 [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:25:58-03:00[0m [33mWRN[0m [1m⚠️ No trigger.startSteps defined, falling back to sequential execution[0m [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:25:58-03:00[0m [32mINF[0m [1m📍 Starting from trigger-defined steps[0m [36mstartSteps=[0m["step-2"] [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:25:58-03:00[0m [32mINF[0m [1m▶️ Executing step[0m [36mname=[0malert [36mstep=[0mstep-2 [36mtype=[0malert
+[90m2025-10-06T13:25:58-03:00[0m DBG 🔄 Step config processed with templates [36mprocessedConfig=[0m{"level":"info","message":"Hello"} [36mstep=[0mstep-2
+[90m2025-10-06T13:25:58-03:00[0m [32mINF[0m [1m🔔 Alert generated[0m
+[90m2025-10-06T13:25:58-03:00[0m [32mINF[0m [1mAlert (local only - no manager connection)[0m [36mdetails=[0m{"level":"info","message":"Hello"}
+[90m2025-10-06T13:25:58-03:00[0m [32mINF[0m [1m✅ Step completed successfully[0m [36mstep=[0mstep-2 [36mtype=[0malert
+[90m2025-10-06T13:25:58-03:00[0m DBG 🏁 Step has no next steps (end of branch) [36mstep=[0mstep-2
+[90m2025-10-06T13:25:58-03:00[0m [32mINF[0m [1m✅ Workflow completed successfully[0m [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:26:58-03:00[0m [32mINF[0m [1m🚀 Starting workflow execution[0m [36mcontext=[0m{"time":1759768018,"trigger":"schedule"} [36mname=[0mtestalert2 [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:26:58-03:00[0m [33mWRN[0m [1m⚠️ No trigger.startSteps defined, falling back to sequential execution[0m [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:26:58-03:00[0m [32mINF[0m [1m📍 Starting from trigger-defined steps[0m [36mstartSteps=[0m["step-2"] [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:26:58-03:00[0m [32mINF[0m [1m▶️ Executing step[0m [36mname=[0malert [36mstep=[0mstep-2 [36mtype=[0malert
+[90m2025-10-06T13:26:58-03:00[0m DBG 🔄 Step config processed with templates [36mprocessedConfig=[0m{"level":"info","message":"Hello"} [36mstep=[0mstep-2
+[90m2025-10-06T13:26:58-03:00[0m [32mINF[0m [1m🔔 Alert generated[0m
+[90m2025-10-06T13:26:58-03:00[0m [32mINF[0m [1mAlert (local only - no manager connection)[0m [36mdetails=[0m{"level":"info","message":"Hello"}
+[90m2025-10-06T13:26:58-03:00[0m [32mINF[0m [1m✅ Step completed successfully[0m [36mstep=[0mstep-2 [36mtype=[0malert
+[90m2025-10-06T13:26:58-03:00[0m DBG 🏁 Step has no next steps (end of branch) [36mstep=[0mstep-2
+[90m2025-10-06T13:26:58-03:00[0m [32mINF[0m [1m✅ Workflow completed successfully[0m [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:27:58-03:00[0m [32mINF[0m [1m🚀 Starting workflow execution[0m [36mcontext=[0m{"time":1759768078,"trigger":"schedule"} [36mname=[0mtestalert2 [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:27:58-03:00[0m [33mWRN[0m [1m⚠️ No trigger.startSteps defined, falling back to sequential execution[0m [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:27:58-03:00[0m [32mINF[0m [1m📍 Starting from trigger-defined steps[0m [36mstartSteps=[0m["step-2"] [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:27:58-03:00[0m [32mINF[0m [1m▶️ Executing step[0m [36mname=[0malert [36mstep=[0mstep-2 [36mtype=[0malert
+[90m2025-10-06T13:27:58-03:00[0m DBG 🔄 Step config processed with templates [36mprocessedConfig=[0m{"level":"info","message":"Hello"} [36mstep=[0mstep-2
+[90m2025-10-06T13:27:58-03:00[0m [32mINF[0m [1m🔔 Alert generated[0m
+[90m2025-10-06T13:27:58-03:00[0m [32mINF[0m [1mAlert (local only - no manager connection)[0m [36mdetails=[0m{"level":"info","message":"Hello"}
+[90m2025-10-06T13:27:58-03:00[0m [32mINF[0m [1m✅ Step completed successfully[0m [36mstep=[0mstep-2 [36mtype=[0malert
+[90m2025-10-06T13:27:58-03:00[0m DBG 🏁 Step has no next steps (end of branch) [36mstep=[0mstep-2
+[90m2025-10-06T13:27:58-03:00[0m [32mINF[0m [1m✅ Workflow completed successfully[0m [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:28:58-03:00[0m [32mINF[0m [1m🚀 Starting workflow execution[0m [36mcontext=[0m{"time":1759768138,"trigger":"schedule"} [36mname=[0mtestalert2 [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:28:58-03:00[0m [33mWRN[0m [1m⚠️ No trigger.startSteps defined, falling back to sequential execution[0m [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:28:58-03:00[0m [32mINF[0m [1m📍 Starting from trigger-defined steps[0m [36mstartSteps=[0m["step-2"] [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:28:58-03:00[0m [32mINF[0m [1m▶️ Executing step[0m [36mname=[0malert [36mstep=[0mstep-2 [36mtype=[0malert
+[90m2025-10-06T13:28:58-03:00[0m DBG 🔄 Step config processed with templates [36mprocessedConfig=[0m{"level":"info","message":"Hello"} [36mstep=[0mstep-2
+[90m2025-10-06T13:28:58-03:00[0m [32mINF[0m [1m🔔 Alert generated[0m
+[90m2025-10-06T13:28:58-03:00[0m [32mINF[0m [1mAlert (local only - no manager connection)[0m [36mdetails=[0m{"level":"info","message":"Hello"}
+[90m2025-10-06T13:28:58-03:00[0m [32mINF[0m [1m✅ Step completed successfully[0m [36mstep=[0mstep-2 [36mtype=[0malert
+[90m2025-10-06T13:28:58-03:00[0m DBG 🏁 Step has no next steps (end of branch) [36mstep=[0mstep-2
+[90m2025-10-06T13:28:58-03:00[0m [32mINF[0m [1m✅ Workflow completed successfully[0m [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:29:58-03:00[0m [32mINF[0m [1m🚀 Starting workflow execution[0m [36mcontext=[0m{"time":1759768198,"trigger":"schedule"} [36mname=[0mtestalert2 [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:29:58-03:00[0m [33mWRN[0m [1m⚠️ No trigger.startSteps defined, falling back to sequential execution[0m [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:29:58-03:00[0m [32mINF[0m [1m📍 Starting from trigger-defined steps[0m [36mstartSteps=[0m["step-2"] [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:29:58-03:00[0m [32mINF[0m [1m▶️ Executing step[0m [36mname=[0malert [36mstep=[0mstep-2 [36mtype=[0malert
+[90m2025-10-06T13:29:58-03:00[0m DBG 🔄 Step config processed with templates [36mprocessedConfig=[0m{"level":"info","message":"Hello"} [36mstep=[0mstep-2
+[90m2025-10-06T13:29:58-03:00[0m [32mINF[0m [1m🔔 Alert generated[0m
+[90m2025-10-06T13:29:58-03:00[0m [32mINF[0m [1mAlert (local only - no manager connection)[0m [36mdetails=[0m{"level":"info","message":"Hello"}
+[90m2025-10-06T13:29:58-03:00[0m [32mINF[0m [1m✅ Step completed successfully[0m [36mstep=[0mstep-2 [36mtype=[0malert
+[90m2025-10-06T13:29:58-03:00[0m DBG 🏁 Step has no next steps (end of branch) [36mstep=[0mstep-2
+[90m2025-10-06T13:29:58-03:00[0m [32mINF[0m [1m✅ Workflow completed successfully[0m [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:30:58-03:00[0m [32mINF[0m [1m🚀 Starting workflow execution[0m [36mcontext=[0m{"time":1759768258,"trigger":"schedule"} [36mname=[0mtestalert2 [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:30:58-03:00[0m [33mWRN[0m [1m⚠️ No trigger.startSteps defined, falling back to sequential execution[0m [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:30:58-03:00[0m [32mINF[0m [1m📍 Starting from trigger-defined steps[0m [36mstartSteps=[0m["step-2"] [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:30:58-03:00[0m [32mINF[0m [1m▶️ Executing step[0m [36mname=[0malert [36mstep=[0mstep-2 [36mtype=[0malert
+[90m2025-10-06T13:30:58-03:00[0m DBG 🔄 Step config processed with templates [36mprocessedConfig=[0m{"level":"info","message":"Hello"} [36mstep=[0mstep-2
+[90m2025-10-06T13:30:58-03:00[0m [32mINF[0m [1m🔔 Alert generated[0m
+[90m2025-10-06T13:30:58-03:00[0m [32mINF[0m [1mAlert (local only - no manager connection)[0m [36mdetails=[0m{"level":"info","message":"Hello"}
+[90m2025-10-06T13:30:58-03:00[0m [32mINF[0m [1m✅ Step completed successfully[0m [36mstep=[0mstep-2 [36mtype=[0malert
+[90m2025-10-06T13:30:58-03:00[0m DBG 🏁 Step has no next steps (end of branch) [36mstep=[0mstep-2
+[90m2025-10-06T13:30:58-03:00[0m [32mINF[0m [1m✅ Workflow completed successfully[0m [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:31:58-03:00[0m [32mINF[0m [1m🚀 Starting workflow execution[0m [36mcontext=[0m{"time":1759768318,"trigger":"schedule"} [36mname=[0mtestalert2 [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:31:58-03:00[0m [33mWRN[0m [1m⚠️ No trigger.startSteps defined, falling back to sequential execution[0m [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:31:58-03:00[0m [32mINF[0m [1m📍 Starting from trigger-defined steps[0m [36mstartSteps=[0m["step-2"] [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:31:58-03:00[0m [32mINF[0m [1m▶️ Executing step[0m [36mname=[0malert [36mstep=[0mstep-2 [36mtype=[0malert
+[90m2025-10-06T13:31:58-03:00[0m DBG 🔄 Step config processed with templates [36mprocessedConfig=[0m{"level":"info","message":"Hello"} [36mstep=[0mstep-2
+[90m2025-10-06T13:31:58-03:00[0m [32mINF[0m [1m🔔 Alert generated[0m
+[90m2025-10-06T13:31:58-03:00[0m [32mINF[0m [1mAlert (local only - no manager connection)[0m [36mdetails=[0m{"level":"info","message":"Hello"}
+[90m2025-10-06T13:31:58-03:00[0m [32mINF[0m [1m✅ Step completed successfully[0m [36mstep=[0mstep-2 [36mtype=[0malert
+[90m2025-10-06T13:31:58-03:00[0m DBG 🏁 Step has no next steps (end of branch) [36mstep=[0mstep-2
+[90m2025-10-06T13:31:58-03:00[0m [32mINF[0m [1m✅ Workflow completed successfully[0m [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:32:58-03:00[0m [32mINF[0m [1m🚀 Starting workflow execution[0m [36mcontext=[0m{"time":1759768378,"trigger":"schedule"} [36mname=[0mtestalert2 [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:32:58-03:00[0m [33mWRN[0m [1m⚠️ No trigger.startSteps defined, falling back to sequential execution[0m [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:32:58-03:00[0m [32mINF[0m [1m📍 Starting from trigger-defined steps[0m [36mstartSteps=[0m["step-2"] [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:32:58-03:00[0m [32mINF[0m [1m▶️ Executing step[0m [36mname=[0malert [36mstep=[0mstep-2 [36mtype=[0malert
+[90m2025-10-06T13:32:58-03:00[0m DBG 🔄 Step config processed with templates [36mprocessedConfig=[0m{"level":"info","message":"Hello"} [36mstep=[0mstep-2
+[90m2025-10-06T13:32:58-03:00[0m [32mINF[0m [1m🔔 Alert generated[0m
+[90m2025-10-06T13:32:58-03:00[0m [32mINF[0m [1mAlert (local only - no manager connection)[0m [36mdetails=[0m{"level":"info","message":"Hello"}
+[90m2025-10-06T13:32:58-03:00[0m [32mINF[0m [1m✅ Step completed successfully[0m [36mstep=[0mstep-2 [36mtype=[0malert
+[90m2025-10-06T13:32:58-03:00[0m DBG 🏁 Step has no next steps (end of branch) [36mstep=[0mstep-2
+[90m2025-10-06T13:32:58-03:00[0m [32mINF[0m [1m✅ Workflow completed successfully[0m [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:33:58-03:00[0m [32mINF[0m [1m🚀 Starting workflow execution[0m [36mcontext=[0m{"time":1759768438,"trigger":"schedule"} [36mname=[0mtestalert2 [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:33:58-03:00[0m [33mWRN[0m [1m⚠️ No trigger.startSteps defined, falling back to sequential execution[0m [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:33:58-03:00[0m [32mINF[0m [1m📍 Starting from trigger-defined steps[0m [36mstartSteps=[0m["step-2"] [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:33:58-03:00[0m [32mINF[0m [1m▶️ Executing step[0m [36mname=[0malert [36mstep=[0mstep-2 [36mtype=[0malert
+[90m2025-10-06T13:33:58-03:00[0m DBG 🔄 Step config processed with templates [36mprocessedConfig=[0m{"level":"info","message":"Hello"} [36mstep=[0mstep-2
+[90m2025-10-06T13:33:58-03:00[0m [32mINF[0m [1m🔔 Alert generated[0m
+[90m2025-10-06T13:33:58-03:00[0m [32mINF[0m [1mAlert (local only - no manager connection)[0m [36mdetails=[0m{"level":"info","message":"Hello"}
+[90m2025-10-06T13:33:58-03:00[0m [32mINF[0m [1m✅ Step completed successfully[0m [36mstep=[0mstep-2 [36mtype=[0malert
+[90m2025-10-06T13:33:58-03:00[0m DBG 🏁 Step has no next steps (end of branch) [36mstep=[0mstep-2
+[90m2025-10-06T13:33:58-03:00[0m [32mINF[0m [1m✅ Workflow completed successfully[0m [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:34:58-03:00[0m [32mINF[0m [1m🚀 Starting workflow execution[0m [36mcontext=[0m{"time":1759768498,"trigger":"schedule"} [36mname=[0mtestalert2 [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:34:58-03:00[0m [33mWRN[0m [1m⚠️ No trigger.startSteps defined, falling back to sequential execution[0m [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:34:58-03:00[0m [32mINF[0m [1m📍 Starting from trigger-defined steps[0m [36mstartSteps=[0m["step-2"] [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:34:58-03:00[0m [32mINF[0m [1m▶️ Executing step[0m [36mname=[0malert [36mstep=[0mstep-2 [36mtype=[0malert
+[90m2025-10-06T13:34:58-03:00[0m DBG 🔄 Step config processed with templates [36mprocessedConfig=[0m{"level":"info","message":"Hello"} [36mstep=[0mstep-2
+[90m2025-10-06T13:34:58-03:00[0m [32mINF[0m [1m🔔 Alert generated[0m
+[90m2025-10-06T13:34:58-03:00[0m [32mINF[0m [1mAlert (local only - no manager connection)[0m [36mdetails=[0m{"level":"info","message":"Hello"}
+[90m2025-10-06T13:34:58-03:00[0m [32mINF[0m [1m✅ Step completed successfully[0m [36mstep=[0mstep-2 [36mtype=[0malert
+[90m2025-10-06T13:34:58-03:00[0m DBG 🏁 Step has no next steps (end of branch) [36mstep=[0mstep-2
+[90m2025-10-06T13:34:58-03:00[0m [32mINF[0m [1m✅ Workflow completed successfully[0m [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:35:58-03:00[0m [32mINF[0m [1m🚀 Starting workflow execution[0m [36mcontext=[0m{"time":1759768558,"trigger":"schedule"} [36mname=[0mtestalert2 [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:35:58-03:00[0m [33mWRN[0m [1m⚠️ No trigger.startSteps defined, falling back to sequential execution[0m [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:35:58-03:00[0m [32mINF[0m [1m📍 Starting from trigger-defined steps[0m [36mstartSteps=[0m["step-2"] [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:35:58-03:00[0m [32mINF[0m [1m▶️ Executing step[0m [36mname=[0malert [36mstep=[0mstep-2 [36mtype=[0malert
+[90m2025-10-06T13:35:58-03:00[0m DBG 🔄 Step config processed with templates [36mprocessedConfig=[0m{"level":"info","message":"Hello"} [36mstep=[0mstep-2
+[90m2025-10-06T13:35:58-03:00[0m [32mINF[0m [1m🔔 Alert generated[0m
+[90m2025-10-06T13:35:58-03:00[0m [32mINF[0m [1mAlert (local only - no manager connection)[0m [36mdetails=[0m{"level":"info","message":"Hello"}
+[90m2025-10-06T13:35:58-03:00[0m [32mINF[0m [1m✅ Step completed successfully[0m [36mstep=[0mstep-2 [36mtype=[0malert
+[90m2025-10-06T13:35:58-03:00[0m DBG 🏁 Step has no next steps (end of branch) [36mstep=[0mstep-2
+[90m2025-10-06T13:35:58-03:00[0m [32mINF[0m [1m✅ Workflow completed successfully[0m [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:36:58-03:00[0m [32mINF[0m [1m🚀 Starting workflow execution[0m [36mcontext=[0m{"time":1759768618,"trigger":"schedule"} [36mname=[0mtestalert2 [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:36:58-03:00[0m [33mWRN[0m [1m⚠️ No trigger.startSteps defined, falling back to sequential execution[0m [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:36:58-03:00[0m [32mINF[0m [1m📍 Starting from trigger-defined steps[0m [36mstartSteps=[0m["step-2"] [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:36:58-03:00[0m [32mINF[0m [1m▶️ Executing step[0m [36mname=[0malert [36mstep=[0mstep-2 [36mtype=[0malert
+[90m2025-10-06T13:36:58-03:00[0m DBG 🔄 Step config processed with templates [36mprocessedConfig=[0m{"level":"info","message":"Hello"} [36mstep=[0mstep-2
+[90m2025-10-06T13:36:58-03:00[0m [32mINF[0m [1m🔔 Alert generated[0m
+[90m2025-10-06T13:36:58-03:00[0m [32mINF[0m [1mAlert (local only - no manager connection)[0m [36mdetails=[0m{"level":"info","message":"Hello"}
+[90m2025-10-06T13:36:58-03:00[0m [32mINF[0m [1m✅ Step completed successfully[0m [36mstep=[0mstep-2 [36mtype=[0malert
+[90m2025-10-06T13:36:58-03:00[0m DBG 🏁 Step has no next steps (end of branch) [36mstep=[0mstep-2
+[90m2025-10-06T13:36:58-03:00[0m [32mINF[0m [1m✅ Workflow completed successfully[0m [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:37:58-03:00[0m [32mINF[0m [1m🚀 Starting workflow execution[0m [36mcontext=[0m{"time":1759768678,"trigger":"schedule"} [36mname=[0mtestalert2 [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:37:58-03:00[0m [33mWRN[0m [1m⚠️ No trigger.startSteps defined, falling back to sequential execution[0m [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:37:58-03:00[0m [32mINF[0m [1m📍 Starting from trigger-defined steps[0m [36mstartSteps=[0m["step-2"] [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:37:58-03:00[0m [32mINF[0m [1m▶️ Executing step[0m [36mname=[0malert [36mstep=[0mstep-2 [36mtype=[0malert
+[90m2025-10-06T13:37:58-03:00[0m DBG 🔄 Step config processed with templates [36mprocessedConfig=[0m{"level":"info","message":"Hello"} [36mstep=[0mstep-2
+[90m2025-10-06T13:37:58-03:00[0m [32mINF[0m [1m🔔 Alert generated[0m
+[90m2025-10-06T13:37:58-03:00[0m [32mINF[0m [1mAlert (local only - no manager connection)[0m [36mdetails=[0m{"level":"info","message":"Hello"}
+[90m2025-10-06T13:37:58-03:00[0m [32mINF[0m [1m✅ Step completed successfully[0m [36mstep=[0mstep-2 [36mtype=[0malert
+[90m2025-10-06T13:37:58-03:00[0m DBG 🏁 Step has no next steps (end of branch) [36mstep=[0mstep-2
+[90m2025-10-06T13:37:58-03:00[0m [32mINF[0m [1m✅ Workflow completed successfully[0m [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:38:58-03:00[0m [32mINF[0m [1m🚀 Starting workflow execution[0m [36mcontext=[0m{"time":1759768738,"trigger":"schedule"} [36mname=[0mtestalert2 [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:38:58-03:00[0m [33mWRN[0m [1m⚠️ No trigger.startSteps defined, falling back to sequential execution[0m [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:38:58-03:00[0m [32mINF[0m [1m📍 Starting from trigger-defined steps[0m [36mstartSteps=[0m["step-2"] [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:38:58-03:00[0m [32mINF[0m [1m▶️ Executing step[0m [36mname=[0malert [36mstep=[0mstep-2 [36mtype=[0malert
+[90m2025-10-06T13:38:58-03:00[0m DBG 🔄 Step config processed with templates [36mprocessedConfig=[0m{"level":"info","message":"Hello"} [36mstep=[0mstep-2
+[90m2025-10-06T13:38:58-03:00[0m [32mINF[0m [1m🔔 Alert generated[0m
+[90m2025-10-06T13:38:58-03:00[0m [32mINF[0m [1mAlert (local only - no manager connection)[0m [36mdetails=[0m{"level":"info","message":"Hello"}
+[90m2025-10-06T13:38:58-03:00[0m [32mINF[0m [1m✅ Step completed successfully[0m [36mstep=[0mstep-2 [36mtype=[0malert
+[90m2025-10-06T13:38:58-03:00[0m DBG 🏁 Step has no next steps (end of branch) [36mstep=[0mstep-2
+[90m2025-10-06T13:38:58-03:00[0m [32mINF[0m [1m✅ Workflow completed successfully[0m [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:39:58-03:00[0m [32mINF[0m [1m🚀 Starting workflow execution[0m [36mcontext=[0m{"time":1759768798,"trigger":"schedule"} [36mname=[0mtestalert2 [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:39:58-03:00[0m [33mWRN[0m [1m⚠️ No trigger.startSteps defined, falling back to sequential execution[0m [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:39:58-03:00[0m [32mINF[0m [1m📍 Starting from trigger-defined steps[0m [36mstartSteps=[0m["step-2"] [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:39:58-03:00[0m [32mINF[0m [1m▶️ Executing step[0m [36mname=[0malert [36mstep=[0mstep-2 [36mtype=[0malert
+[90m2025-10-06T13:39:58-03:00[0m DBG 🔄 Step config processed with templates [36mprocessedConfig=[0m{"level":"info","message":"Hello"} [36mstep=[0mstep-2
+[90m2025-10-06T13:39:58-03:00[0m [32mINF[0m [1m🔔 Alert generated[0m
+[90m2025-10-06T13:39:58-03:00[0m [32mINF[0m [1mAlert (local only - no manager connection)[0m [36mdetails=[0m{"level":"info","message":"Hello"}
+[90m2025-10-06T13:39:58-03:00[0m [32mINF[0m [1m✅ Step completed successfully[0m [36mstep=[0mstep-2 [36mtype=[0malert
+[90m2025-10-06T13:39:58-03:00[0m DBG 🏁 Step has no next steps (end of branch) [36mstep=[0mstep-2
+[90m2025-10-06T13:39:58-03:00[0m [32mINF[0m [1m✅ Workflow completed successfully[0m [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:40:58-03:00[0m [32mINF[0m [1m🚀 Starting workflow execution[0m [36mcontext=[0m{"time":1759768858,"trigger":"schedule"} [36mname=[0mtestalert2 [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:40:58-03:00[0m [33mWRN[0m [1m⚠️ No trigger.startSteps defined, falling back to sequential execution[0m [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:40:58-03:00[0m [32mINF[0m [1m📍 Starting from trigger-defined steps[0m [36mstartSteps=[0m["step-2"] [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:40:58-03:00[0m [32mINF[0m [1m▶️ Executing step[0m [36mname=[0malert [36mstep=[0mstep-2 [36mtype=[0malert
+[90m2025-10-06T13:40:58-03:00[0m DBG 🔄 Step config processed with templates [36mprocessedConfig=[0m{"level":"info","message":"Hello"} [36mstep=[0mstep-2
+[90m2025-10-06T13:40:58-03:00[0m [32mINF[0m [1m🔔 Alert generated[0m
+[90m2025-10-06T13:40:58-03:00[0m [32mINF[0m [1mAlert (local only - no manager connection)[0m [36mdetails=[0m{"level":"info","message":"Hello"}
+[90m2025-10-06T13:40:58-03:00[0m [32mINF[0m [1m✅ Step completed successfully[0m [36mstep=[0mstep-2 [36mtype=[0malert
+[90m2025-10-06T13:40:58-03:00[0m DBG 🏁 Step has no next steps (end of branch) [36mstep=[0mstep-2
+[90m2025-10-06T13:40:58-03:00[0m [32mINF[0m [1m✅ Workflow completed successfully[0m [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:41:58-03:00[0m [32mINF[0m [1m🚀 Starting workflow execution[0m [36mcontext=[0m{"time":1759768918,"trigger":"schedule"} [36mname=[0mtestalert2 [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:41:58-03:00[0m [33mWRN[0m [1m⚠️ No trigger.startSteps defined, falling back to sequential execution[0m [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:41:58-03:00[0m [32mINF[0m [1m📍 Starting from trigger-defined steps[0m [36mstartSteps=[0m["step-2"] [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:41:58-03:00[0m [32mINF[0m [1m▶️ Executing step[0m [36mname=[0malert [36mstep=[0mstep-2 [36mtype=[0malert
+[90m2025-10-06T13:41:58-03:00[0m DBG 🔄 Step config processed with templates [36mprocessedConfig=[0m{"level":"info","message":"Hello"} [36mstep=[0mstep-2
+[90m2025-10-06T13:41:58-03:00[0m [32mINF[0m [1m🔔 Alert generated[0m
+[90m2025-10-06T13:41:58-03:00[0m [32mINF[0m [1mAlert (local only - no manager connection)[0m [36mdetails=[0m{"level":"info","message":"Hello"}
+[90m2025-10-06T13:41:58-03:00[0m [32mINF[0m [1m✅ Step completed successfully[0m [36mstep=[0mstep-2 [36mtype=[0malert
+[90m2025-10-06T13:41:58-03:00[0m DBG 🏁 Step has no next steps (end of branch) [36mstep=[0mstep-2
+[90m2025-10-06T13:41:58-03:00[0m [32mINF[0m [1m✅ Workflow completed successfully[0m [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:42:58-03:00[0m [32mINF[0m [1m🚀 Starting workflow execution[0m [36mcontext=[0m{"time":1759768978,"trigger":"schedule"} [36mname=[0mtestalert2 [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:42:58-03:00[0m [33mWRN[0m [1m⚠️ No trigger.startSteps defined, falling back to sequential execution[0m [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:42:58-03:00[0m [32mINF[0m [1m📍 Starting from trigger-defined steps[0m [36mstartSteps=[0m["step-2"] [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:42:58-03:00[0m [32mINF[0m [1m▶️ Executing step[0m [36mname=[0malert [36mstep=[0mstep-2 [36mtype=[0malert
+[90m2025-10-06T13:42:58-03:00[0m DBG 🔄 Step config processed with templates [36mprocessedConfig=[0m{"level":"info","message":"Hello"} [36mstep=[0mstep-2
+[90m2025-10-06T13:42:58-03:00[0m [32mINF[0m [1m🔔 Alert generated[0m
+[90m2025-10-06T13:42:58-03:00[0m [32mINF[0m [1mAlert (local only - no manager connection)[0m [36mdetails=[0m{"level":"info","message":"Hello"}
+[90m2025-10-06T13:42:58-03:00[0m [32mINF[0m [1m✅ Step completed successfully[0m [36mstep=[0mstep-2 [36mtype=[0malert
+[90m2025-10-06T13:42:58-03:00[0m DBG 🏁 Step has no next steps (end of branch) [36mstep=[0mstep-2
+[90m2025-10-06T13:42:58-03:00[0m [32mINF[0m [1m✅ Workflow completed successfully[0m [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:43:58-03:00[0m [32mINF[0m [1m🚀 Starting workflow execution[0m [36mcontext=[0m{"time":1759769038,"trigger":"schedule"} [36mname=[0mtestalert2 [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:43:58-03:00[0m [33mWRN[0m [1m⚠️ No trigger.startSteps defined, falling back to sequential execution[0m [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:43:58-03:00[0m [32mINF[0m [1m📍 Starting from trigger-defined steps[0m [36mstartSteps=[0m["step-2"] [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:43:58-03:00[0m [32mINF[0m [1m▶️ Executing step[0m [36mname=[0malert [36mstep=[0mstep-2 [36mtype=[0malert
+[90m2025-10-06T13:43:58-03:00[0m DBG 🔄 Step config processed with templates [36mprocessedConfig=[0m{"level":"info","message":"Hello"} [36mstep=[0mstep-2
+[90m2025-10-06T13:43:58-03:00[0m [32mINF[0m [1m🔔 Alert generated[0m
+[90m2025-10-06T13:43:58-03:00[0m [32mINF[0m [1mAlert (local only - no manager connection)[0m [36mdetails=[0m{"level":"info","message":"Hello"}
+[90m2025-10-06T13:43:58-03:00[0m [32mINF[0m [1m✅ Step completed successfully[0m [36mstep=[0mstep-2 [36mtype=[0malert
+[90m2025-10-06T13:43:58-03:00[0m DBG 🏁 Step has no next steps (end of branch) [36mstep=[0mstep-2
+[90m2025-10-06T13:43:58-03:00[0m [32mINF[0m [1m✅ Workflow completed successfully[0m [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:44:58-03:00[0m [32mINF[0m [1m🚀 Starting workflow execution[0m [36mcontext=[0m{"time":1759769098,"trigger":"schedule"} [36mname=[0mtestalert2 [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:44:58-03:00[0m [33mWRN[0m [1m⚠️ No trigger.startSteps defined, falling back to sequential execution[0m [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:44:58-03:00[0m [32mINF[0m [1m📍 Starting from trigger-defined steps[0m [36mstartSteps=[0m["step-2"] [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:44:58-03:00[0m [32mINF[0m [1m▶️ Executing step[0m [36mname=[0malert [36mstep=[0mstep-2 [36mtype=[0malert
+[90m2025-10-06T13:44:58-03:00[0m DBG 🔄 Step config processed with templates [36mprocessedConfig=[0m{"level":"info","message":"Hello"} [36mstep=[0mstep-2
+[90m2025-10-06T13:44:58-03:00[0m [32mINF[0m [1m🔔 Alert generated[0m
+[90m2025-10-06T13:44:58-03:00[0m [32mINF[0m [1mAlert (local only - no manager connection)[0m [36mdetails=[0m{"level":"info","message":"Hello"}
+[90m2025-10-06T13:44:58-03:00[0m [32mINF[0m [1m✅ Step completed successfully[0m [36mstep=[0mstep-2 [36mtype=[0malert
+[90m2025-10-06T13:44:58-03:00[0m DBG 🏁 Step has no next steps (end of branch) [36mstep=[0mstep-2
+[90m2025-10-06T13:44:58-03:00[0m [32mINF[0m [1m✅ Workflow completed successfully[0m [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:45:58-03:00[0m [32mINF[0m [1m🚀 Starting workflow execution[0m [36mcontext=[0m{"time":1759769158,"trigger":"schedule"} [36mname=[0mtestalert2 [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:45:58-03:00[0m [33mWRN[0m [1m⚠️ No trigger.startSteps defined, falling back to sequential execution[0m [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:45:58-03:00[0m [32mINF[0m [1m📍 Starting from trigger-defined steps[0m [36mstartSteps=[0m["step-2"] [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:45:58-03:00[0m [32mINF[0m [1m▶️ Executing step[0m [36mname=[0malert [36mstep=[0mstep-2 [36mtype=[0malert
+[90m2025-10-06T13:45:58-03:00[0m DBG 🔄 Step config processed with templates [36mprocessedConfig=[0m{"level":"info","message":"Hello"} [36mstep=[0mstep-2
+[90m2025-10-06T13:45:58-03:00[0m [32mINF[0m [1m🔔 Alert generated[0m
+[90m2025-10-06T13:45:58-03:00[0m [32mINF[0m [1mAlert (local only - no manager connection)[0m [36mdetails=[0m{"level":"info","message":"Hello"}
+[90m2025-10-06T13:45:58-03:00[0m [32mINF[0m [1m✅ Step completed successfully[0m [36mstep=[0mstep-2 [36mtype=[0malert
+[90m2025-10-06T13:45:58-03:00[0m DBG 🏁 Step has no next steps (end of branch) [36mstep=[0mstep-2
+[90m2025-10-06T13:45:58-03:00[0m [32mINF[0m [1m✅ Workflow completed successfully[0m [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:46:58-03:00[0m [32mINF[0m [1m🚀 Starting workflow execution[0m [36mcontext=[0m{"time":1759769218,"trigger":"schedule"} [36mname=[0mtestalert2 [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:46:58-03:00[0m [33mWRN[0m [1m⚠️ No trigger.startSteps defined, falling back to sequential execution[0m [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:46:58-03:00[0m [32mINF[0m [1m📍 Starting from trigger-defined steps[0m [36mstartSteps=[0m["step-2"] [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:46:58-03:00[0m [32mINF[0m [1m▶️ Executing step[0m [36mname=[0malert [36mstep=[0mstep-2 [36mtype=[0malert
+[90m2025-10-06T13:46:58-03:00[0m DBG 🔄 Step config processed with templates [36mprocessedConfig=[0m{"level":"info","message":"Hello"} [36mstep=[0mstep-2
+[90m2025-10-06T13:46:58-03:00[0m [32mINF[0m [1m🔔 Alert generated[0m
+[90m2025-10-06T13:46:58-03:00[0m [32mINF[0m [1mAlert (local only - no manager connection)[0m [36mdetails=[0m{"level":"info","message":"Hello"}
+[90m2025-10-06T13:46:58-03:00[0m [32mINF[0m [1m✅ Step completed successfully[0m [36mstep=[0mstep-2 [36mtype=[0malert
+[90m2025-10-06T13:46:58-03:00[0m DBG 🏁 Step has no next steps (end of branch) [36mstep=[0mstep-2
+[90m2025-10-06T13:46:58-03:00[0m [32mINF[0m [1m✅ Workflow completed successfully[0m [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:47:58-03:00[0m [32mINF[0m [1m🚀 Starting workflow execution[0m [36mcontext=[0m{"time":1759769278,"trigger":"schedule"} [36mname=[0mtestalert2 [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:47:58-03:00[0m [33mWRN[0m [1m⚠️ No trigger.startSteps defined, falling back to sequential execution[0m [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:47:58-03:00[0m [32mINF[0m [1m📍 Starting from trigger-defined steps[0m [36mstartSteps=[0m["step-2"] [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:47:58-03:00[0m [32mINF[0m [1m▶️ Executing step[0m [36mname=[0malert [36mstep=[0mstep-2 [36mtype=[0malert
+[90m2025-10-06T13:47:58-03:00[0m DBG 🔄 Step config processed with templates [36mprocessedConfig=[0m{"level":"info","message":"Hello"} [36mstep=[0mstep-2
+[90m2025-10-06T13:47:58-03:00[0m [32mINF[0m [1m🔔 Alert generated[0m
+[90m2025-10-06T13:47:58-03:00[0m [32mINF[0m [1mAlert (local only - no manager connection)[0m [36mdetails=[0m{"level":"info","message":"Hello"}
+[90m2025-10-06T13:47:58-03:00[0m [32mINF[0m [1m✅ Step completed successfully[0m [36mstep=[0mstep-2 [36mtype=[0malert
+[90m2025-10-06T13:47:58-03:00[0m DBG 🏁 Step has no next steps (end of branch) [36mstep=[0mstep-2
+[90m2025-10-06T13:47:58-03:00[0m [32mINF[0m [1m✅ Workflow completed successfully[0m [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:48:58-03:00[0m [32mINF[0m [1m🚀 Starting workflow execution[0m [36mcontext=[0m{"time":1759769338,"trigger":"schedule"} [36mname=[0mtestalert2 [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:48:58-03:00[0m [33mWRN[0m [1m⚠️ No trigger.startSteps defined, falling back to sequential execution[0m [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:48:58-03:00[0m [32mINF[0m [1m📍 Starting from trigger-defined steps[0m [36mstartSteps=[0m["step-2"] [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:48:58-03:00[0m [32mINF[0m [1m▶️ Executing step[0m [36mname=[0malert [36mstep=[0mstep-2 [36mtype=[0malert
+[90m2025-10-06T13:48:58-03:00[0m DBG 🔄 Step config processed with templates [36mprocessedConfig=[0m{"level":"info","message":"Hello"} [36mstep=[0mstep-2
+[90m2025-10-06T13:48:58-03:00[0m [32mINF[0m [1m🔔 Alert generated[0m
+[90m2025-10-06T13:48:58-03:00[0m [32mINF[0m [1mAlert (local only - no manager connection)[0m [36mdetails=[0m{"level":"info","message":"Hello"}
+[90m2025-10-06T13:48:58-03:00[0m [32mINF[0m [1m✅ Step completed successfully[0m [36mstep=[0mstep-2 [36mtype=[0malert
+[90m2025-10-06T13:48:58-03:00[0m DBG 🏁 Step has no next steps (end of branch) [36mstep=[0mstep-2
+[90m2025-10-06T13:48:58-03:00[0m [32mINF[0m [1m✅ Workflow completed successfully[0m [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:49:58-03:00[0m [32mINF[0m [1m🚀 Starting workflow execution[0m [36mcontext=[0m{"time":1759769398,"trigger":"schedule"} [36mname=[0mtestalert2 [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:49:58-03:00[0m [33mWRN[0m [1m⚠️ No trigger.startSteps defined, falling back to sequential execution[0m [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:49:58-03:00[0m [32mINF[0m [1m📍 Starting from trigger-defined steps[0m [36mstartSteps=[0m["step-2"] [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:49:58-03:00[0m [32mINF[0m [1m▶️ Executing step[0m [36mname=[0malert [36mstep=[0mstep-2 [36mtype=[0malert
+[90m2025-10-06T13:49:58-03:00[0m DBG 🔄 Step config processed with templates [36mprocessedConfig=[0m{"level":"info","message":"Hello"} [36mstep=[0mstep-2
+[90m2025-10-06T13:49:58-03:00[0m [32mINF[0m [1m🔔 Alert generated[0m
+[90m2025-10-06T13:49:58-03:00[0m [32mINF[0m [1mAlert (local only - no manager connection)[0m [36mdetails=[0m{"level":"info","message":"Hello"}
+[90m2025-10-06T13:49:58-03:00[0m [32mINF[0m [1m✅ Step completed successfully[0m [36mstep=[0mstep-2 [36mtype=[0malert
+[90m2025-10-06T13:49:58-03:00[0m DBG 🏁 Step has no next steps (end of branch) [36mstep=[0mstep-2
+[90m2025-10-06T13:49:58-03:00[0m [32mINF[0m [1m✅ Workflow completed successfully[0m [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:50:58-03:00[0m [32mINF[0m [1m🚀 Starting workflow execution[0m [36mcontext=[0m{"time":1759769458,"trigger":"schedule"} [36mname=[0mtestalert2 [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:50:58-03:00[0m [33mWRN[0m [1m⚠️ No trigger.startSteps defined, falling back to sequential execution[0m [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:50:58-03:00[0m [32mINF[0m [1m📍 Starting from trigger-defined steps[0m [36mstartSteps=[0m["step-2"] [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:50:58-03:00[0m [32mINF[0m [1m▶️ Executing step[0m [36mname=[0malert [36mstep=[0mstep-2 [36mtype=[0malert
+[90m2025-10-06T13:50:58-03:00[0m DBG 🔄 Step config processed with templates [36mprocessedConfig=[0m{"level":"info","message":"Hello"} [36mstep=[0mstep-2
+[90m2025-10-06T13:50:58-03:00[0m [32mINF[0m [1m🔔 Alert generated[0m
+[90m2025-10-06T13:50:58-03:00[0m [32mINF[0m [1mAlert (local only - no manager connection)[0m [36mdetails=[0m{"level":"info","message":"Hello"}
+[90m2025-10-06T13:50:58-03:00[0m [32mINF[0m [1m✅ Step completed successfully[0m [36mstep=[0mstep-2 [36mtype=[0malert
+[90m2025-10-06T13:50:58-03:00[0m DBG 🏁 Step has no next steps (end of branch) [36mstep=[0mstep-2
+[90m2025-10-06T13:50:58-03:00[0m [32mINF[0m [1m✅ Workflow completed successfully[0m [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:51:58-03:00[0m [32mINF[0m [1m🚀 Starting workflow execution[0m [36mcontext=[0m{"time":1759769518,"trigger":"schedule"} [36mname=[0mtestalert2 [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:51:58-03:00[0m [33mWRN[0m [1m⚠️ No trigger.startSteps defined, falling back to sequential execution[0m [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:51:58-03:00[0m [32mINF[0m [1m📍 Starting from trigger-defined steps[0m [36mstartSteps=[0m["step-2"] [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:51:58-03:00[0m [32mINF[0m [1m▶️ Executing step[0m [36mname=[0malert [36mstep=[0mstep-2 [36mtype=[0malert
+[90m2025-10-06T13:51:58-03:00[0m DBG 🔄 Step config processed with templates [36mprocessedConfig=[0m{"level":"info","message":"Hello"} [36mstep=[0mstep-2
+[90m2025-10-06T13:51:58-03:00[0m [32mINF[0m [1m🔔 Alert generated[0m
+[90m2025-10-06T13:51:58-03:00[0m [32mINF[0m [1mAlert (local only - no manager connection)[0m [36mdetails=[0m{"level":"info","message":"Hello"}
+[90m2025-10-06T13:51:58-03:00[0m [32mINF[0m [1m✅ Step completed successfully[0m [36mstep=[0mstep-2 [36mtype=[0malert
+[90m2025-10-06T13:51:58-03:00[0m DBG 🏁 Step has no next steps (end of branch) [36mstep=[0mstep-2
+[90m2025-10-06T13:51:58-03:00[0m [32mINF[0m [1m✅ Workflow completed successfully[0m [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:52:58-03:00[0m [32mINF[0m [1m🚀 Starting workflow execution[0m [36mcontext=[0m{"time":1759769578,"trigger":"schedule"} [36mname=[0mtestalert2 [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:52:58-03:00[0m [33mWRN[0m [1m⚠️ No trigger.startSteps defined, falling back to sequential execution[0m [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:52:58-03:00[0m [32mINF[0m [1m📍 Starting from trigger-defined steps[0m [36mstartSteps=[0m["step-2"] [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:52:58-03:00[0m [32mINF[0m [1m▶️ Executing step[0m [36mname=[0malert [36mstep=[0mstep-2 [36mtype=[0malert
+[90m2025-10-06T13:52:58-03:00[0m DBG 🔄 Step config processed with templates [36mprocessedConfig=[0m{"level":"info","message":"Hello"} [36mstep=[0mstep-2
+[90m2025-10-06T13:52:58-03:00[0m [32mINF[0m [1m🔔 Alert generated[0m
+[90m2025-10-06T13:52:58-03:00[0m [32mINF[0m [1mAlert (local only - no manager connection)[0m [36mdetails=[0m{"level":"info","message":"Hello"}
+[90m2025-10-06T13:52:58-03:00[0m [32mINF[0m [1m✅ Step completed successfully[0m [36mstep=[0mstep-2 [36mtype=[0malert
+[90m2025-10-06T13:52:58-03:00[0m DBG 🏁 Step has no next steps (end of branch) [36mstep=[0mstep-2
+[90m2025-10-06T13:52:58-03:00[0m [32mINF[0m [1m✅ Workflow completed successfully[0m [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:53:58-03:00[0m [32mINF[0m [1m🚀 Starting workflow execution[0m [36mcontext=[0m{"time":1759769638,"trigger":"schedule"} [36mname=[0mtestalert2 [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:53:58-03:00[0m [33mWRN[0m [1m⚠️ No trigger.startSteps defined, falling back to sequential execution[0m [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:53:58-03:00[0m [32mINF[0m [1m📍 Starting from trigger-defined steps[0m [36mstartSteps=[0m["step-2"] [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:53:58-03:00[0m [32mINF[0m [1m▶️ Executing step[0m [36mname=[0malert [36mstep=[0mstep-2 [36mtype=[0malert
+[90m2025-10-06T13:53:58-03:00[0m DBG 🔄 Step config processed with templates [36mprocessedConfig=[0m{"level":"info","message":"Hello"} [36mstep=[0mstep-2
+[90m2025-10-06T13:53:58-03:00[0m [32mINF[0m [1m🔔 Alert generated[0m
+[90m2025-10-06T13:53:58-03:00[0m [32mINF[0m [1mAlert (local only - no manager connection)[0m [36mdetails=[0m{"level":"info","message":"Hello"}
+[90m2025-10-06T13:53:58-03:00[0m [32mINF[0m [1m✅ Step completed successfully[0m [36mstep=[0mstep-2 [36mtype=[0malert
+[90m2025-10-06T13:53:58-03:00[0m DBG 🏁 Step has no next steps (end of branch) [36mstep=[0mstep-2
+[90m2025-10-06T13:53:58-03:00[0m [32mINF[0m [1m✅ Workflow completed successfully[0m [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:54:58-03:00[0m [32mINF[0m [1m🚀 Starting workflow execution[0m [36mcontext=[0m{"time":1759769698,"trigger":"schedule"} [36mname=[0mtestalert2 [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:54:58-03:00[0m [33mWRN[0m [1m⚠️ No trigger.startSteps defined, falling back to sequential execution[0m [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:54:58-03:00[0m [32mINF[0m [1m📍 Starting from trigger-defined steps[0m [36mstartSteps=[0m["step-2"] [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:54:58-03:00[0m [32mINF[0m [1m▶️ Executing step[0m [36mname=[0malert [36mstep=[0mstep-2 [36mtype=[0malert
+[90m2025-10-06T13:54:58-03:00[0m DBG 🔄 Step config processed with templates [36mprocessedConfig=[0m{"level":"info","message":"Hello"} [36mstep=[0mstep-2
+[90m2025-10-06T13:54:58-03:00[0m [32mINF[0m [1m🔔 Alert generated[0m
+[90m2025-10-06T13:54:58-03:00[0m [32mINF[0m [1mAlert (local only - no manager connection)[0m [36mdetails=[0m{"level":"info","message":"Hello"}
+[90m2025-10-06T13:54:58-03:00[0m [32mINF[0m [1m✅ Step completed successfully[0m [36mstep=[0mstep-2 [36mtype=[0malert
+[90m2025-10-06T13:54:58-03:00[0m DBG 🏁 Step has no next steps (end of branch) [36mstep=[0mstep-2
+[90m2025-10-06T13:54:58-03:00[0m [32mINF[0m [1m✅ Workflow completed successfully[0m [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:55:58-03:00[0m [32mINF[0m [1m🚀 Starting workflow execution[0m [36mcontext=[0m{"time":1759769758,"trigger":"schedule"} [36mname=[0mtestalert2 [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:55:58-03:00[0m [33mWRN[0m [1m⚠️ No trigger.startSteps defined, falling back to sequential execution[0m [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:55:58-03:00[0m [32mINF[0m [1m📍 Starting from trigger-defined steps[0m [36mstartSteps=[0m["step-2"] [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:55:58-03:00[0m [32mINF[0m [1m▶️ Executing step[0m [36mname=[0malert [36mstep=[0mstep-2 [36mtype=[0malert
+[90m2025-10-06T13:55:58-03:00[0m DBG 🔄 Step config processed with templates [36mprocessedConfig=[0m{"level":"info","message":"Hello"} [36mstep=[0mstep-2
+[90m2025-10-06T13:55:58-03:00[0m [32mINF[0m [1m🔔 Alert generated[0m
+[90m2025-10-06T13:55:58-03:00[0m [32mINF[0m [1mAlert (local only - no manager connection)[0m [36mdetails=[0m{"level":"info","message":"Hello"}
+[90m2025-10-06T13:55:58-03:00[0m [32mINF[0m [1m✅ Step completed successfully[0m [36mstep=[0mstep-2 [36mtype=[0malert
+[90m2025-10-06T13:55:58-03:00[0m DBG 🏁 Step has no next steps (end of branch) [36mstep=[0mstep-2
+[90m2025-10-06T13:55:58-03:00[0m [32mINF[0m [1m✅ Workflow completed successfully[0m [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:56:58-03:00[0m [32mINF[0m [1m🚀 Starting workflow execution[0m [36mcontext=[0m{"time":1759769818,"trigger":"schedule"} [36mname=[0mtestalert2 [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:56:58-03:00[0m [33mWRN[0m [1m⚠️ No trigger.startSteps defined, falling back to sequential execution[0m [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:56:58-03:00[0m [32mINF[0m [1m📍 Starting from trigger-defined steps[0m [36mstartSteps=[0m["step-2"] [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:56:58-03:00[0m [32mINF[0m [1m▶️ Executing step[0m [36mname=[0malert [36mstep=[0mstep-2 [36mtype=[0malert
+[90m2025-10-06T13:56:58-03:00[0m DBG 🔄 Step config processed with templates [36mprocessedConfig=[0m{"level":"info","message":"Hello"} [36mstep=[0mstep-2
+[90m2025-10-06T13:56:58-03:00[0m [32mINF[0m [1m🔔 Alert generated[0m
+[90m2025-10-06T13:56:58-03:00[0m [32mINF[0m [1mAlert (local only - no manager connection)[0m [36mdetails=[0m{"level":"info","message":"Hello"}
+[90m2025-10-06T13:56:58-03:00[0m [32mINF[0m [1m✅ Step completed successfully[0m [36mstep=[0mstep-2 [36mtype=[0malert
+[90m2025-10-06T13:56:58-03:00[0m DBG 🏁 Step has no next steps (end of branch) [36mstep=[0mstep-2
+[90m2025-10-06T13:56:58-03:00[0m [32mINF[0m [1m✅ Workflow completed successfully[0m [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:57:58-03:00[0m [32mINF[0m [1m🚀 Starting workflow execution[0m [36mcontext=[0m{"time":1759769878,"trigger":"schedule"} [36mname=[0mtestalert2 [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:57:58-03:00[0m [33mWRN[0m [1m⚠️ No trigger.startSteps defined, falling back to sequential execution[0m [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:57:58-03:00[0m [32mINF[0m [1m📍 Starting from trigger-defined steps[0m [36mstartSteps=[0m["step-2"] [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:57:58-03:00[0m [32mINF[0m [1m▶️ Executing step[0m [36mname=[0malert [36mstep=[0mstep-2 [36mtype=[0malert
+[90m2025-10-06T13:57:58-03:00[0m DBG 🔄 Step config processed with templates [36mprocessedConfig=[0m{"level":"info","message":"Hello"} [36mstep=[0mstep-2
+[90m2025-10-06T13:57:58-03:00[0m [32mINF[0m [1m🔔 Alert generated[0m
+[90m2025-10-06T13:57:58-03:00[0m [32mINF[0m [1mAlert (local only - no manager connection)[0m [36mdetails=[0m{"level":"info","message":"Hello"}
+[90m2025-10-06T13:57:58-03:00[0m [32mINF[0m [1m✅ Step completed successfully[0m [36mstep=[0mstep-2 [36mtype=[0malert
+[90m2025-10-06T13:57:58-03:00[0m DBG 🏁 Step has no next steps (end of branch) [36mstep=[0mstep-2
+[90m2025-10-06T13:57:58-03:00[0m [32mINF[0m [1m✅ Workflow completed successfully[0m [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:58:58-03:00[0m [32mINF[0m [1m🚀 Starting workflow execution[0m [36mcontext=[0m{"time":1759769938,"trigger":"schedule"} [36mname=[0mtestalert2 [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:58:58-03:00[0m [33mWRN[0m [1m⚠️ No trigger.startSteps defined, falling back to sequential execution[0m [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:58:58-03:00[0m [32mINF[0m [1m📍 Starting from trigger-defined steps[0m [36mstartSteps=[0m["step-2"] [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:58:58-03:00[0m [32mINF[0m [1m▶️ Executing step[0m [36mname=[0malert [36mstep=[0mstep-2 [36mtype=[0malert
+[90m2025-10-06T13:58:58-03:00[0m DBG 🔄 Step config processed with templates [36mprocessedConfig=[0m{"level":"info","message":"Hello"} [36mstep=[0mstep-2
+[90m2025-10-06T13:58:58-03:00[0m [32mINF[0m [1m🔔 Alert generated[0m
+[90m2025-10-06T13:58:58-03:00[0m [32mINF[0m [1mAlert (local only - no manager connection)[0m [36mdetails=[0m{"level":"info","message":"Hello"}
+[90m2025-10-06T13:58:58-03:00[0m [32mINF[0m [1m✅ Step completed successfully[0m [36mstep=[0mstep-2 [36mtype=[0malert
+[90m2025-10-06T13:58:58-03:00[0m DBG 🏁 Step has no next steps (end of branch) [36mstep=[0mstep-2
+[90m2025-10-06T13:58:58-03:00[0m [32mINF[0m [1m✅ Workflow completed successfully[0m [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:59:58-03:00[0m [32mINF[0m [1m🚀 Starting workflow execution[0m [36mcontext=[0m{"time":1759769998,"trigger":"schedule"} [36mname=[0mtestalert2 [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:59:58-03:00[0m [33mWRN[0m [1m⚠️ No trigger.startSteps defined, falling back to sequential execution[0m [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:59:58-03:00[0m [32mINF[0m [1m📍 Starting from trigger-defined steps[0m [36mstartSteps=[0m["step-2"] [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
+[90m2025-10-06T13:59:58-03:00[0m [32mINF[0m [1m▶️ Executing step[0m [36mname=[0malert [36mstep=[0mstep-2 [36mtype=[0malert
+[90m2025-10-06T13:59:58-03:00[0m DBG 🔄 Step config processed with templates [36mprocessedConfig=[0m{"level":"info","message":"Hello"} [36mstep=[0mstep-2
+[90m2025-10-06T13:59:58-03:00[0m [32mINF[0m [1m🔔 Alert generated[0m
+[90m2025-10-06T13:59:58-03:00[0m [32mINF[0m [1mAlert (local only - no manager connection)[0m [36mdetails=[0m{"level":"info","message":"Hello"}
+[90m2025-10-06T13:59:58-03:00[0m [32mINF[0m [1m✅ Step completed successfully[0m [36mstep=[0mstep-2 [36mtype=[0malert
+[90m2025-10-06T13:59:58-03:00[0m DBG 🏁 Step has no next steps (end of branch) [36mstep=[0mstep-2
+[90m2025-10-06T13:59:58-03:00[0m [32mINF[0m [1m✅ Workflow completed successfully[0m [36mworkflow=[0mdf14be30-e984-4c84-96c2-4fc905a12e02
