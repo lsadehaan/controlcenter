@@ -35,6 +35,7 @@ const Database = require('./db/database');
 const WebSocketServer = require('./websocket/server');
 const GitServer = require('./git/server');
 const GitHttpServer = require('./git/http-server');
+const GitSSHServer = require('./git/ssh-server');
 const apiRoutes = require('./routes/api');
 
 const app = express();
@@ -46,6 +47,8 @@ const db = new Database();
 // Initialize Git server
 const gitServer = new GitServer();
 const gitHttpServer = new GitHttpServer(gitServer, console);
+const gitSSHPort = process.env.GIT_SSH_PORT || 2223;
+const gitSSHServer = new GitSSHServer(gitServer, db, console, gitSSHPort);
 
 // Middleware
 app.use(express.json());
@@ -263,4 +266,9 @@ server.listen(PORT, () => {
   console.log(`Manager listening on http://localhost:${PORT}`);
   console.log(`WebSocket endpoint: ws://localhost:${PORT}/ws`);
   console.log(`API endpoint: http://localhost:${PORT}/api`);
+
+  // Start Git SSH server
+  gitSSHServer.start().catch(err => {
+    console.error('Failed to start Git SSH server:', err);
+  });
 });

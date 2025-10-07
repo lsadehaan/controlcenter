@@ -201,16 +201,25 @@ func main() {
 
 	// Initialize Git sync only if not in standalone mode
 	if !*standalone {
-		gitURL := strings.Replace(cfg.ManagerURL, "ws://", "http://", 1)
-		gitURL = strings.Replace(gitURL, "wss://", "https://", 1)
-		gitURL = gitURL + "/git/config-repo"
+		// Construct Git SSH URL from manager URL
+		// Extract host from manager URL (e.g., ws://localhost:3000 -> localhost)
+		var gitURL string
+		managerURL := cfg.ManagerURL
+		managerURL = strings.Replace(managerURL, "ws://", "", 1)
+		managerURL = strings.Replace(managerURL, "wss://", "", 1)
+		managerURL = strings.Replace(managerURL, "http://", "", 1)
+		managerURL = strings.Replace(managerURL, "https://", "", 1)
+
+		// Remove port if present (we'll use SSH port 2223)
+		host := strings.Split(managerURL, ":")[0]
+		gitURL = fmt.Sprintf("ssh://git@%s:2223/config-repo", host)
 
 		// Set default config repo path if not specified
 		if cfg.ConfigRepoPath == "" {
 			cfg.ConfigRepoPath = filepath.Join(getDefaultConfigDir(), "config-repo")
 		}
 
-		agent.gitSync = gitsync.New(cfg.ConfigRepoPath, gitURL, cfg.AgentID, logger)
+		agent.gitSync = gitsync.New(cfg.ConfigRepoPath, gitURL, cfg.AgentID, cfg.SSHPrivateKeyPath, logger)
 
 		// Initialize the git repository
 		if err := agent.gitSync.Initialize(); err != nil {

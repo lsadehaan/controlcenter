@@ -13,18 +13,21 @@ import (
 )
 
 type GitSync struct {
-	repoPath   string
-	remoteURL  string
-	agentID    string
-	logger     zerolog.Logger
+	repoPath      string
+	remoteURL     string
+	agentID       string
+	logger        zerolog.Logger
+	sshKeyPath    string
+	sshKnownHosts string
 }
 
-func New(repoPath, remoteURL, agentID string, logger zerolog.Logger) *GitSync {
+func New(repoPath, remoteURL, agentID, sshKeyPath string, logger zerolog.Logger) *GitSync {
 	return &GitSync{
-		repoPath:  repoPath,
-		remoteURL: remoteURL,
-		agentID:   agentID,
-		logger:    logger.With().Str("component", "gitsync").Logger(),
+		repoPath:   repoPath,
+		remoteURL:  remoteURL,
+		agentID:    agentID,
+		sshKeyPath: sshKeyPath,
+		logger:     logger.With().Str("component", "gitsync").Logger(),
 	}
 }
 
@@ -33,6 +36,10 @@ func (g *GitSync) Initialize() error {
 	// Check if repo already exists
 	if _, err := os.Stat(filepath.Join(g.repoPath, ".git")); err == nil {
 		g.logger.Info().Msg("Git repository already exists")
+		// Configure git settings even for existing repos
+		if err := g.SetupGitConfig(); err != nil {
+			g.logger.Warn().Err(err).Msg("Failed to setup git config")
+		}
 		return nil
 	}
 
@@ -41,15 +48,31 @@ func (g *GitSync) Initialize() error {
 		return fmt.Errorf("failed to create repo directory: %w", err)
 	}
 
+	// Set GIT_SSH_COMMAND environment variable for clone operation
+	var cmd *exec.Cmd
+	if g.sshKeyPath != "" {
+		cmd = exec.Command("git", "clone", g.remoteURL, g.repoPath)
+		sshCmd := fmt.Sprintf("ssh -i \"%s\" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null", g.sshKeyPath)
+		cmd.Env = append(os.Environ(), fmt.Sprintf("GIT_SSH_COMMAND=%s", sshCmd))
+		g.logger.Info().Str("ssh_key", g.sshKeyPath).Msg("Using SSH key for clone")
+	} else {
+		cmd = exec.Command("git", "clone", g.remoteURL, g.repoPath)
+	}
+
 	// Clone the repository
 	g.logger.Info().Str("url", g.remoteURL).Str("path", g.repoPath).Msg("Cloning repository")
-	cmd := exec.Command("git", "clone", g.remoteURL, g.repoPath)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("git clone failed: %w - output: %s", err, string(output))
 	}
 
 	g.logger.Info().Msg("Repository cloned successfully")
+
+	// Setup git config after cloning
+	if err := g.SetupGitConfig(); err != nil {
+		g.logger.Warn().Err(err).Msg("Failed to setup git config")
+	}
+
 	return nil
 }
 
@@ -164,8 +187,14 @@ func (g *GitSync) SetupGitConfig() error {
 	configs := map[string]string{
 		"user.name":  fmt.Sprintf("Agent-%s", g.agentID),
 		"user.email": fmt.Sprintf("%s@controlcenter.local", g.agentID),
-		// Disable SSL verification for local testing
-		"http.sslVerify": "false",
+	}
+
+	// Configure SSH if key path is provided
+	if g.sshKeyPath != "" {
+		// Set GIT_SSH_COMMAND to use our SSH key and disable strict host key checking
+		sshCmd := fmt.Sprintf("ssh -i \"%s\" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null", g.sshKeyPath)
+		configs["core.sshCommand"] = sshCmd
+		g.logger.Info().Str("ssh_key", g.sshKeyPath).Msg("Configured Git to use SSH key")
 	}
 
 	for key, value := range configs {
