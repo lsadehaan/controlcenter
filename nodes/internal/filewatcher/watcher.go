@@ -109,6 +109,7 @@ type Watcher struct {
 // WorkflowExecutor interface for executing workflows
 type WorkflowExecutor interface {
 	ExecuteWorkflow(workflowName string, context map[string]interface{}) error
+	ExecuteWorkflowSync(workflowName string, context map[string]interface{}) error
 }
 
 // NewWatcher creates a new file watcher
@@ -729,8 +730,8 @@ func (w *Watcher) executeProgram(program, filePath string) {
 	// Check if this is a workflow execution request
 	if strings.HasPrefix(program, "WF:") {
 		workflowName := strings.TrimPrefix(program, "WF:")
-		w.logger.Info().Str("workflow", workflowName).Str("file", filePath).Msg("Executing workflow")
-		
+		w.logger.Info().Str("workflow", workflowName).Str("file", filePath).Msg("Executing workflow (synchronous - will wait for completion)")
+
 		if w.workflowExecutor != nil {
 			context := map[string]interface{}{
 				"trigger":   "filewatcher",
@@ -738,9 +739,13 @@ func (w *Watcher) executeProgram(program, filePath string) {
 				"fileName":  filepath.Base(filePath),
 				"directory": filepath.Dir(filePath),
 			}
-			
-			if err := w.workflowExecutor.ExecuteWorkflow(workflowName, context); err != nil {
-				w.logger.Error().Err(err).Str("workflow", workflowName).Msg("Failed to execute workflow")
+
+			// Use synchronous execution to wait for workflow completion
+			// This prevents file operations from happening while workflow is still running
+			if err := w.workflowExecutor.ExecuteWorkflowSync(workflowName, context); err != nil {
+				w.logger.Error().Err(err).Str("workflow", workflowName).Msg("❌ Failed to execute workflow")
+			} else {
+				w.logger.Info().Str("workflow", workflowName).Msg("✅ Workflow completed successfully")
 			}
 		} else {
 			w.logger.Warn().Msg("Workflow executor not available")

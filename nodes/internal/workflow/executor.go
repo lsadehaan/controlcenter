@@ -619,24 +619,46 @@ func (e *Executor) GetWorkflows() []config.Workflow {
 	return workflows
 }
 
-// ExecuteWorkflow executes a workflow by ID with an external trigger
+// ExecuteWorkflow executes a workflow by ID with an external trigger (async)
 func (e *Executor) ExecuteWorkflow(workflowID string, trigger TriggerEvent) error {
 	e.mu.RLock()
 	instance, exists := e.workflows[workflowID]
 	e.mu.RUnlock()
-	
+
 	if !exists {
 		return fmt.Errorf("workflow %s not found", workflowID)
 	}
-	
+
 	// Create context with trigger data
 	context := make(map[string]interface{})
 	for k, v := range trigger.Data {
 		context[k] = v
 	}
 	context["triggerType"] = trigger.Type
-	
-	// Execute the workflow
+
+	// Execute the workflow asynchronously
 	go e.executeWorkflow(workflowID, instance, context)
+	return nil
+}
+
+// ExecuteWorkflowSync executes a workflow by ID with an external trigger and waits for completion
+func (e *Executor) ExecuteWorkflowSync(workflowID string, trigger TriggerEvent) error {
+	e.mu.RLock()
+	instance, exists := e.workflows[workflowID]
+	e.mu.RUnlock()
+
+	if !exists {
+		return fmt.Errorf("workflow %s not found", workflowID)
+	}
+
+	// Create context with trigger data
+	context := make(map[string]interface{})
+	for k, v := range trigger.Data {
+		context[k] = v
+	}
+	context["triggerType"] = trigger.Type
+
+	// Execute the workflow synchronously (wait for completion)
+	e.executeWorkflow(workflowID, instance, context)
 	return nil
 }
