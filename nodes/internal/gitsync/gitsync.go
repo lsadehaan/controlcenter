@@ -13,12 +13,11 @@ import (
 )
 
 type GitSync struct {
-	repoPath      string
-	remoteURL     string
-	agentID       string
-	logger        zerolog.Logger
-	sshKeyPath    string
-	sshKnownHosts string
+	repoPath   string
+	remoteURL  string
+	agentID    string
+	logger     zerolog.Logger
+	sshKeyPath string
 }
 
 func New(repoPath, remoteURL, agentID, sshKeyPath string, logger zerolog.Logger) *GitSync {
