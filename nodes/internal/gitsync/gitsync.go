@@ -1,6 +1,7 @@
 package gitsync
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -255,10 +256,14 @@ func (g *GitSync) HasLocalChanges() (bool, error) {
 
 // HasCommitsAhead checks if local branch has commits ahead of remote
 func (g *GitSync) HasCommitsAhead() (bool, error) {
-	// First fetch to ensure we have latest remote info
-	cmd := exec.Command("git", "-C", g.repoPath, "fetch", "origin")
+	// First fetch to ensure we have latest remote info (with timeout)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	cmd := exec.CommandContext(ctx, "git", "-C", g.repoPath, "fetch", "origin")
 	if err := cmd.Run(); err != nil {
-		return false, fmt.Errorf("failed to fetch: %w", err)
+		g.logger.Warn().Err(err).Msg("Failed to fetch from remote, checking local state only")
+		// Continue anyway - we can still check local state
 	}
 
 	// Check if we're ahead of remote
