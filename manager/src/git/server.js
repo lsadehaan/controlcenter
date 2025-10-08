@@ -23,20 +23,20 @@ class GitServer {
     try {
       // Check if already initialized
       const isRepo = await this.git.checkIsRepo();
-      
+
       if (!isRepo) {
         await this.git.init();
         await this.git.addConfig('user.name', 'Control Center');
         await this.git.addConfig('user.email', 'admin@controlcenter.local');
         // Allow updating the checked-out branch via pushes
         await this.git.addConfig('receive.denyCurrentBranch', 'updateInstead');
-        
+
         // Create initial structure
         this.createInitialStructure();
-        
+
         await this.git.add('.');
         await this.git.commit('Initial configuration repository');
-        
+
         this.logger.log('Git repository initialized at', this.repoPath);
       } else {
         // Ensure config is set for existing repositories
@@ -46,9 +46,34 @@ class GitServer {
         } catch (cfgErr) {
           this.logger.warn("Failed to set 'receive.denyCurrentBranch' (non-fatal):", cfgErr.message || cfgErr);
         }
+
+        // Auto-commit any unstaged changes to keep working directory clean
+        await this.autoCommitPendingChanges();
       }
     } catch (err) {
       this.logger.error('Failed to initialize git repository:', err);
+    }
+  }
+
+  async autoCommitPendingChanges() {
+    try {
+      const status = await this.git.status();
+
+      // Check if there are any changes (staged, unstaged, or untracked)
+      if (!status.isClean()) {
+        this.logger.log('Auto-committing pending changes in config-repo');
+
+        // Add all changes
+        await this.git.add('.');
+
+        // Commit with timestamp
+        const timestamp = new Date().toISOString();
+        await this.git.commit(`Auto-commit pending changes at ${timestamp}`);
+
+        this.logger.log('Pending changes committed successfully');
+      }
+    } catch (err) {
+      this.logger.warn('Failed to auto-commit pending changes (non-fatal):', err.message || err);
     }
   }
 

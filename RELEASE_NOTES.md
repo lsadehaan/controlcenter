@@ -55,6 +55,31 @@ This release adds extensive logging to help diagnose Git SSH push/pull issues. N
 
 ---
 
+## v0.11.7
+
+### Critical Fixes
+
+- **Fix "Working directory has unstaged changes" push rejection**: Manager now auto-commits any pending changes in config-repo on startup to ensure clean working directory
+- This allows agents to push successfully when using `receive.denyCurrentBranch=updateInstead`
+
+### Improvements
+
+- Added `autoCommitPendingChanges()` method to GitServer that runs on startup for existing repositories
+- Automatically stages and commits all changes with timestamped message
+
+### Impact
+
+- Agents can now reliably push configurations without "Working directory has unstaged changes" errors
+- Manager working directory stays clean automatically
+- No manual intervention required after manager updates
+
+### Deployment
+
+1. Update Manager to v0.11.7 and restart
+2. Agents do not require changes
+
+---
+
 ## v0.11.6
 
 ### Improvements
