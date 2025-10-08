@@ -156,18 +156,19 @@ jobs:
           VERSION=${{ steps.get_version.outputs.VERSION }}
 
           # Extract section for this version from RELEASE_NOTES.md
-          # Look for ## VERSION heading and capture content until next ## or end of file
-          NOTES=$(awk "/^## ${VERSION}\$/,/^## /{if(/^## ${VERSION}\$/)next;if(/^## /)exit;print}" RELEASE_NOTES.md)
+          # Use sed to find the version heading and extract until the next ## heading
+          sed -n "/^## ${VERSION}\$/,/^## /p" RELEASE_NOTES.md | sed '$d' > release_notes.txt
 
-          if [ -z "$NOTES" ]; then
+          # Remove the version heading line itself
+          sed -i '1d' release_notes.txt
+
+          # Check if we got any content
+          if [ ! -s release_notes.txt ]; then
             echo "ERROR: No release notes found for version $VERSION in RELEASE_NOTES.md"
+            cat RELEASE_NOTES.md
             exit 1
           fi
 
-          # Save to file for gh release create
-          echo "$NOTES" > release_notes.txt
-
-          # Also output for GitHub Actions
           echo "NOTES_FILE=release_notes.txt" >> $GITHUB_OUTPUT
 
       - name: Create GitHub Release
