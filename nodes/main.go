@@ -330,6 +330,9 @@ func main() {
 					if *pushConfig {
 						logger.Info().Msg("Pushing local changes to manager...")
 
+						// Track if push was successful
+						pushSuccessful := false
+
 						// Save current config to git repo
 						configData := make(map[string]interface{})
 						if configJSON, err := json.Marshal(cfg); err == nil {
@@ -342,11 +345,20 @@ func main() {
 						// Commit and push
 						commitMsg := fmt.Sprintf("Agent %s: Push local configuration changes", cfg.AgentID)
 						if err := agent.gitSync.CommitLocalChanges(commitMsg); err != nil {
-							logger.Error().Err(err).Msg("Failed to commit changes")
+							logger.Error().Err(err).Msg("❌ Failed to commit changes")
 						} else if err := agent.gitSync.Push(); err != nil {
-							logger.Error().Err(err).Msg("Failed to push changes")
+							logger.Error().Err(err).Msg("❌ Failed to push changes to manager")
 						} else {
-							logger.Info().Msg("✅ Local changes pushed successfully")
+							logger.Info().Msg("✅ Configuration successfully pushed to manager")
+							pushSuccessful = true
+						}
+
+						// Exit with appropriate status
+						if pushSuccessful {
+							return
+						} else {
+							logger.Error().Msg("Push failed. Please review the errors above and try again.")
+							os.Exit(1)
 						}
 					}
 				} else if *checkChanges {
@@ -358,7 +370,7 @@ func main() {
 					return
 				}
 				if *pushConfig {
-					logger.Info().Msg("Configuration pushed. Exiting.")
+					logger.Info().Msg("No local changes to push.")
 					return
 				}
 			}
