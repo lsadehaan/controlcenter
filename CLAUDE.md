@@ -37,6 +37,65 @@ go run . -recover-backup   # Recover from backup (stash or branch)
 # SSH server: port 2222
 ```
 
+## Creating Releases
+
+### ⚠️ IMPORTANT: Always Use CI/CD for Releases
+
+**NEVER manually build and upload binaries.** The CI/CD pipeline properly cross-compiles binaries for all platforms.
+
+### Correct Release Process
+
+```bash
+# 1. Create a release using GitHub CLI (this triggers CI/CD)
+gh release create vX.Y.Z \
+  --title "vX.Y.Z - Release Title" \
+  --notes "## Changes
+- Feature 1
+- Feature 2
+
+## Breaking Changes
+- List any breaking changes
+
+## Deployment
+Any deployment notes"
+
+# 2. Wait for CI/CD to complete (builds all binaries)
+gh run watch
+
+# 3. Verify release artifacts
+gh release view vX.Y.Z
+```
+
+### What CI/CD Does Automatically
+
+- Cross-compiles agent binary for Linux (amd64, arm64)
+- Cross-compiles agent binary for Windows (amd64)
+- Cross-compiles agent binary for macOS (amd64, arm64)
+- Builds and pushes Docker images for manager
+- Uploads all binaries to the GitHub release
+
+### Common Mistakes to Avoid
+
+❌ **DO NOT** create releases with local binaries:
+```bash
+# WRONG - This uploads Windows binaries as Linux binaries
+go build -o agent-linux-amd64 .
+gh release create v1.0.0 --attach agent-linux-amd64
+```
+
+❌ **DO NOT** manually tag and push without creating a release:
+```bash
+# WRONG - Tag push alone doesn't trigger release workflow
+git tag v1.0.0
+git push origin v1.0.0
+```
+
+✅ **CORRECT** - Use `gh release create`:
+```bash
+# CORRECT - This triggers CI/CD to build properly
+gh release create v1.0.0 --title "Release" --notes "Changes"
+```
+
 ## Testing Workflows
 
 ### Quick Test Setup
