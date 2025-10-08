@@ -8,6 +8,30 @@ Each release should have a section with the version number as a heading level 2 
 
 ---
 
+## v0.11.2
+
+### Fixes
+
+- **Fixed push-config not detecting committed changes**: Agent now properly detects local commits ahead of remote, not just uncommitted files
+- **Auto-update git remote URL on startup**: Agents automatically update from HTTP to SSH URLs when needed
+- **Improved push error reporting**: Clear error messages with proper exit codes
+- **Better change detection**: Separate warnings for uncommitted changes vs committed changes ahead of remote
+
+### Changes
+
+- Added `HasCommitsAhead()` function to detect local commits that need pushing
+- Push operation now works with both uncommitted and already-committed changes
+- Remote URL automatically updated during git config setup
+
+### Upgrading from v0.11.0 or v0.11.1
+
+This release fixes the issues discovered in v0.11.0/v0.11.1:
+1. Agents with existing HTTP URLs will automatically switch to SSH
+2. Push operations will now properly detect and push all local changes
+3. Better error messages help diagnose push failures
+
+---
+
 ## v0.11.1
 
 ### Fixes
