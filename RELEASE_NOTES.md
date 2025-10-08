@@ -30,6 +30,31 @@ This release adds extensive logging to help diagnose Git SSH push/pull issues. N
 
 ---
 
+## v0.11.5
+
+### Critical Fixes
+
+- Fix Git-over-SSH push hang: Use stateful SSH protocol (no `--stateless-rpc`) and correct bidirectional piping
+- Send SSH exit-status properly and avoid premature channel close; client now receives exit code 0 on success
+- Forward git stderr to SSH channel for proper client-side progress/errors
+
+### Improvements
+
+- Hardened stream handling: prevent auto-ending SSH channel by using `{ end: false }` on stdout/stderr pipes
+- More robust lifecycle logging for git child process and SSH channel
+
+### Impact
+
+- Agents and developers can push to `ssh://<manager>:2223/config-repo` reliably without hangs
+- No schema changes; Manager restart required
+
+### Upgrading
+
+1. Update Manager to v0.11.5 and restart
+2. Agents do not require changes for this fix
+
+---
+
 ## v0.11.3
 
 ### Critical Fixes

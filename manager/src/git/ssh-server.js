@@ -168,23 +168,33 @@ class GitSSHServer {
     const targetPath = fs.existsSync(gitDir) ? gitDir : repoPath;
 
     this.logger.log(`Using git directory: ${targetPath}`);
-    this.logger.log(`Git command: ${gitCmd} --stateless-rpc ${targetPath}`);
+    this.logger.log(`Git command: ${gitCmd} ${targetPath}`);
 
-    const gitProcess = spawn(gitCmd, ['--stateless-rpc', targetPath]);
+    // For SSH, use stateful protocol (no --stateless-rpc)
+    const gitProcess = spawn(gitCmd, [targetPath]);
 
-    // Log stderr for debugging
+    // Log and forward stderr for debugging and client progress
     let stderrData = '';
     gitProcess.stderr.on('data', (data) => {
-      stderrData += data.toString();
-      this.logger.warn(`Git stderr: ${data.toString().trim()}`);
+      const text = data.toString();
+      stderrData += text;
+      this.logger.warn(`Git stderr: ${text.trim()}`);
     });
+
+    if (stream.stderr && typeof stream.stderr.write === 'function') {
+      // Do not auto-end SSH channel on stderr finish; we'll close explicitly
+      gitProcess.stderr.pipe(stream.stderr, { end: false }).on('error', (err) => {
+        this.logger.error(`Stderr to SSH channel error: ${err.message}`);
+      });
+    }
 
     // Pipe streams with error handling
     stream.pipe(gitProcess.stdin).on('error', (err) => {
       this.logger.error(`Stream to stdin error: ${err.message}`);
     });
 
-    gitProcess.stdout.pipe(stream).on('error', (err) => {
+    // Do not auto-end SSH channel on stdout finish; we'll close explicitly
+    gitProcess.stdout.pipe(stream, { end: false }).on('error', (err) => {
       this.logger.error(`Stdout to stream error: ${err.message}`);
     });
 
@@ -206,10 +216,12 @@ class GitSSHServer {
 
     gitProcess.on('error', (err) => {
       this.logger.error(`Git process error: ${err.message}`);
-      this.logger.error(`Command was: ${gitCmd} --stateless-rpc ${targetPath}`);
+      this.logger.error(`Command was: ${gitCmd} ${targetPath}`);
       stream.exit(1);
       stream.end();
     });
+
+    let gitClosed = false;
 
     gitProcess.on('exit', (code, signal) => {
       if (code !== 0 || signal) {
@@ -220,14 +232,35 @@ class GitSSHServer {
       } else {
         this.logger.log(`Git process completed successfully`);
       }
-      stream.exit(code || 0);
-      stream.end();
+      // Send exit status before closing the channel
+      try {
+        stream.exit(Number.isInteger(code) ? code : 0);
+      } catch (e) {
+        this.logger.error(`Error sending SSH exit status: ${e.message}`);
+      }
+      // Close channel on next tick to ensure exit-status is flushed first
+      process.nextTick(() => {
+        try {
+          if (typeof stream.close === 'function') {
+            stream.close();
+          } else {
+            stream.end();
+          }
+        } catch (e) {
+          this.logger.error(`Error closing SSH stream: ${e.message}`);
+        }
+      });
+    });
+
+    gitProcess.on('close', (code, signal) => {
+      gitClosed = true;
+      this.logger.log(`Git process streams closed (code=${code}, signal=${signal})`);
     });
 
     stream.on('close', () => {
       this.logger.log('SSH stream closed');
-      if (!gitProcess.killed) {
-        this.logger.log('Killing git process due to stream close');
+      if (!gitClosed && !gitProcess.killed) {
+        this.logger.log('Killing git process due to premature stream close');
         gitProcess.kill();
       }
     });
