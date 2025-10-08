@@ -28,6 +28,8 @@ class GitServer {
         await this.git.init();
         await this.git.addConfig('user.name', 'Control Center');
         await this.git.addConfig('user.email', 'admin@controlcenter.local');
+        // Allow updating the checked-out branch via pushes
+        await this.git.addConfig('receive.denyCurrentBranch', 'updateInstead');
         
         // Create initial structure
         this.createInitialStructure();
@@ -36,6 +38,14 @@ class GitServer {
         await this.git.commit('Initial configuration repository');
         
         this.logger.log('Git repository initialized at', this.repoPath);
+      } else {
+        // Ensure config is set for existing repositories
+        try {
+          await this.git.addConfig('receive.denyCurrentBranch', 'updateInstead');
+          this.logger.log("Configured 'receive.denyCurrentBranch=updateInstead' for repo", this.repoPath);
+        } catch (cfgErr) {
+          this.logger.warn("Failed to set 'receive.denyCurrentBranch' (non-fatal):", cfgErr.message || cfgErr);
+        }
       }
     } catch (err) {
       this.logger.error('Failed to initialize git repository:', err);
