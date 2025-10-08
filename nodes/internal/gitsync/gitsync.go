@@ -253,6 +253,30 @@ func (g *GitSync) HasLocalChanges() (bool, error) {
 	return len(strings.TrimSpace(string(output))) > 0, nil
 }
 
+// HasCommitsAhead checks if local branch has commits ahead of remote
+func (g *GitSync) HasCommitsAhead() (bool, error) {
+	// First fetch to ensure we have latest remote info
+	cmd := exec.Command("git", "-C", g.repoPath, "fetch", "origin")
+	if err := cmd.Run(); err != nil {
+		return false, fmt.Errorf("failed to fetch: %w", err)
+	}
+
+	// Check if we're ahead of remote
+	cmd = exec.Command("git", "-C", g.repoPath, "rev-list", "--count", "origin/master..HEAD")
+	output, err := cmd.Output()
+	if err != nil {
+		// Try with 'main' if 'master' doesn't exist
+		cmd = exec.Command("git", "-C", g.repoPath, "rev-list", "--count", "origin/main..HEAD")
+		output, err = cmd.Output()
+		if err != nil {
+			return false, fmt.Errorf("failed to check commits ahead: %w", err)
+		}
+	}
+
+	count := strings.TrimSpace(string(output))
+	return count != "0" && count != "", nil
+}
+
 // HasDiverged checks if local and remote have diverged
 func (g *GitSync) HasDiverged() (bool, error) {
 	// Fetch latest from remote without merging

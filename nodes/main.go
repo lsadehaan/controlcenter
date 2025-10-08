@@ -317,8 +317,11 @@ func main() {
 
 			// Check for local changes if requested
 			if *checkChanges || *pushConfig {
-				if hasChanges, err := agent.gitSync.HasLocalChanges(); err == nil && hasChanges {
-					logger.Warn().Msg("⚠️  LOCAL CONFIGURATION CHANGES DETECTED")
+				hasUncommittedChanges, _ := agent.gitSync.HasLocalChanges()
+				hasCommitsAhead, _ := agent.gitSync.HasCommitsAhead()
+
+				if hasUncommittedChanges {
+					logger.Warn().Msg("⚠️  UNCOMMITTED CONFIGURATION CHANGES DETECTED")
 					logger.Warn().Msg("Changes will be automatically backed up before sync")
 					logger.Warn().Msg("Use -push-config to save to manager, or -list-backups to see backups")
 
@@ -326,28 +329,44 @@ func main() {
 						logger.Info().Msg("Local changes:")
 						fmt.Println(diff)
 					}
+				}
 
-					if *pushConfig {
+				if hasCommitsAhead {
+					logger.Warn().Msg("⚠️  LOCAL COMMITS AHEAD OF REMOTE")
+					logger.Warn().Msg("Use -push-config to push to manager")
+				}
+
+				if *pushConfig {
+					if hasUncommittedChanges || hasCommitsAhead {
 						logger.Info().Msg("Pushing local changes to manager...")
 
 						// Track if push was successful
 						pushSuccessful := false
 
-						// Save current config to git repo
-						configData := make(map[string]interface{})
-						if configJSON, err := json.Marshal(cfg); err == nil {
-							json.Unmarshal(configJSON, &configData)
-							if err := agent.gitSync.SaveAgentConfig(configData); err != nil {
-								logger.Error().Err(err).Msg("Failed to save config to repository")
+						// Save current config to git repo if there are uncommitted changes
+						if hasUncommittedChanges {
+							configData := make(map[string]interface{})
+							if configJSON, err := json.Marshal(cfg); err == nil {
+								json.Unmarshal(configJSON, &configData)
+								if err := agent.gitSync.SaveAgentConfig(configData); err != nil {
+									logger.Error().Err(err).Msg("Failed to save config to repository")
+								}
+							}
+
+							// Commit changes
+							commitMsg := fmt.Sprintf("Agent %s: Push local configuration changes", cfg.AgentID)
+							if err := agent.gitSync.CommitLocalChanges(commitMsg); err != nil {
+								logger.Error().Err(err).Msg("❌ Failed to commit changes")
+								logger.Error().Msg("Push failed. Please review the errors above and try again.")
+								os.Exit(1)
 							}
 						}
 
-						// Commit and push
-						commitMsg := fmt.Sprintf("Agent %s: Push local configuration changes", cfg.AgentID)
-						if err := agent.gitSync.CommitLocalChanges(commitMsg); err != nil {
-							logger.Error().Err(err).Msg("❌ Failed to commit changes")
-						} else if err := agent.gitSync.Push(); err != nil {
+						// Push to remote
+						if err := agent.gitSync.Push(); err != nil {
 							logger.Error().Err(err).Msg("❌ Failed to push changes to manager")
+							logger.Error().Msg("Push failed. Please review the errors above and try again.")
+							os.Exit(1)
 						} else {
 							logger.Info().Msg("✅ Configuration successfully pushed to manager")
 							pushSuccessful = true
@@ -356,21 +375,19 @@ func main() {
 						// Exit with appropriate status
 						if pushSuccessful {
 							return
-						} else {
-							logger.Error().Msg("Push failed. Please review the errors above and try again.")
-							os.Exit(1)
 						}
+					} else {
+						logger.Info().Msg("No local changes to push.")
+						return
 					}
 				} else if *checkChanges {
-					logger.Info().Msg("No local configuration changes detected")
+					if !hasUncommittedChanges && !hasCommitsAhead {
+						logger.Info().Msg("No local configuration changes detected")
+					}
 				}
 
-				// Exit if we were just checking or pushing
+				// Exit if we were just checking
 				if *checkChanges && !*pushConfig {
-					return
-				}
-				if *pushConfig {
-					logger.Info().Msg("No local changes to push.")
 					return
 				}
 			}
