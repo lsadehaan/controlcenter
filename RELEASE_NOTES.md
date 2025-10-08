@@ -10,25 +10,36 @@ Each release should have a section with the version number as a heading level 2 
 
 ## v0.11.2
 
-### Fixes
+### Critical Fixes
 
+- **Fixed Git SSH server hanging**: Manager now correctly uses `.git` directory for git-upload-pack, resolving infinite hang on git operations
 - **Fixed push-config not detecting committed changes**: Agent now properly detects local commits ahead of remote, not just uncommitted files
+- **Fixed agent hanging on git fetch**: Added 10-second timeout to prevent indefinite hangs when manager is unreachable
 - **Auto-update git remote URL on startup**: Agents automatically update from HTTP to SSH URLs when needed
-- **Improved push error reporting**: Clear error messages with proper exit codes
+
+### Improvements
+
+- **Better error logging**: Manager logs detailed git process errors, exit codes, and stderr output
+- **Improved push error reporting**: Agent shows clear error messages with proper exit codes
 - **Better change detection**: Separate warnings for uncommitted changes vs committed changes ahead of remote
+- **Cross-platform compatibility**: All git operations work correctly on both Windows and Linux
 
 ### Changes
 
-- Added `HasCommitsAhead()` function to detect local commits that need pushing
-- Push operation now works with both uncommitted and already-committed changes
-- Remote URL automatically updated during git config setup
+- Manager: Use `.git` directory path for git commands in non-bare repositories
+- Manager: Remove `shell: true` from spawn to fix deprecation warning
+- Agent: Added `HasCommitsAhead()` function to detect local commits that need pushing
+- Agent: Push operation now works with both uncommitted and already-committed changes
+- Agent: Remote URL automatically updated during git config setup
+- Agent: Git fetch operations timeout after 10 seconds instead of hanging forever
 
 ### Upgrading from v0.11.0 or v0.11.1
 
-This release fixes the issues discovered in v0.11.0/v0.11.1:
-1. Agents with existing HTTP URLs will automatically switch to SSH
-2. Push operations will now properly detect and push all local changes
-3. Better error messages help diagnose push failures
+This release fixes critical issues discovered in v0.11.0/v0.11.1:
+1. **Manager upgrade required**: The git-upload-pack hanging issue is fixed
+2. **Agent upgrade required**: Agents will handle network issues gracefully with timeouts
+3. Agents with existing HTTP URLs will automatically switch to SSH
+4. Push operations will properly detect and push all local changes
 
 ---
 
