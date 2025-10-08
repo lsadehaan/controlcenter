@@ -168,6 +168,7 @@ class GitSSHServer {
     const targetPath = fs.existsSync(gitDir) ? gitDir : repoPath;
 
     this.logger.log(`Using git directory: ${targetPath}`);
+    this.logger.log(`Git command: ${gitCmd} --stateless-rpc ${targetPath}`);
 
     const gitProcess = spawn(gitCmd, ['--stateless-rpc', targetPath]);
 
@@ -175,15 +176,37 @@ class GitSSHServer {
     let stderrData = '';
     gitProcess.stderr.on('data', (data) => {
       stderrData += data.toString();
+      this.logger.warn(`Git stderr: ${data.toString().trim()}`);
     });
 
-    stream.pipe(gitProcess.stdin);
-    gitProcess.stdout.pipe(stream);
-    gitProcess.stderr.pipe(stream.stderr);
+    // Pipe streams with error handling
+    stream.pipe(gitProcess.stdin).on('error', (err) => {
+      this.logger.error(`Stream to stdin error: ${err.message}`);
+    });
+
+    gitProcess.stdout.pipe(stream).on('error', (err) => {
+      this.logger.error(`Stdout to stream error: ${err.message}`);
+    });
+
+    // Handle stream errors
+    stream.on('error', (err) => {
+      this.logger.error(`SSH stream error: ${err.message}`);
+      if (!gitProcess.killed) {
+        gitProcess.kill();
+      }
+    });
+
+    gitProcess.stdin.on('error', (err) => {
+      this.logger.error(`Git stdin error: ${err.message}`);
+    });
+
+    gitProcess.stdout.on('error', (err) => {
+      this.logger.error(`Git stdout error: ${err.message}`);
+    });
 
     gitProcess.on('error', (err) => {
       this.logger.error(`Git process error: ${err.message}`);
-      this.logger.error(`Command was: ${gitCmd} --stateless-rpc ${repoPath}`);
+      this.logger.error(`Command was: ${gitCmd} --stateless-rpc ${targetPath}`);
       stream.exit(1);
       stream.end();
     });
@@ -192,7 +215,7 @@ class GitSSHServer {
       if (code !== 0 || signal) {
         this.logger.warn(`Git process exited with code ${code}, signal ${signal}`);
         if (stderrData) {
-          this.logger.error(`Git stderr: ${stderrData}`);
+          this.logger.error(`Git stderr summary: ${stderrData}`);
         }
       } else {
         this.logger.log(`Git process completed successfully`);
@@ -202,7 +225,9 @@ class GitSSHServer {
     });
 
     stream.on('close', () => {
+      this.logger.log('SSH stream closed');
       if (!gitProcess.killed) {
+        this.logger.log('Killing git process due to stream close');
         gitProcess.kill();
       }
     });
