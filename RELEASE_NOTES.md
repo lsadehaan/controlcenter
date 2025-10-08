@@ -55,6 +55,22 @@ This release adds extensive logging to help diagnose Git SSH push/pull issues. N
 
 ---
 
+## v0.11.6
+
+### Improvements
+
+- Manager automatically configures the config-repo to accept pushes to the checked-out branch by setting `receive.denyCurrentBranch=updateInstead` during startup (and ensures it for existing repos).
+
+### Impact
+
+- Eliminates manual server-side configuration after install/upgrade when agents push configs via SSH.
+
+### Deployment
+
+- Restart the Manager service after upgrade; no agent changes required.
+
+---
+
 ## v0.11.3
 
 ### Critical Fixes
