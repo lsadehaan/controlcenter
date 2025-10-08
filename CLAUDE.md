@@ -39,61 +39,101 @@ go run . -recover-backup   # Recover from backup (stash or branch)
 
 ## Creating Releases
 
-### ⚠️ IMPORTANT: Always Use CI/CD for Releases
+### ⚠️ IMPORTANT: Always Use Automated Release Process
 
-**NEVER manually build and upload binaries.** The CI/CD pipeline properly cross-compiles binaries for all platforms.
+**NEVER manually create releases or upload binaries.** The CI/CD pipeline automatically creates releases and properly cross-compiles binaries for all platforms.
 
-### Correct Release Process
+### Automated Release Process
 
-```bash
-# 1. Create a release using GitHub CLI (this triggers CI/CD)
-gh release create vX.Y.Z \
-  --title "vX.Y.Z - Release Title" \
-  --notes "## Changes
-- Feature 1
-- Feature 2
+1. **Update RELEASE_NOTES.md** with your version's notes:
+   ```markdown
+   ## v0.12.0
 
-## Breaking Changes
-- List any breaking changes
+   ### New Features
+   - Feature description
 
-## Deployment
-Any deployment notes"
+   ### Fixes
+   - Bug fix description
+   ```
 
-# 2. Wait for CI/CD to complete (builds all binaries)
-gh run watch
+2. **Commit and push** the changes:
+   ```bash
+   git add RELEASE_NOTES.md
+   git commit -m "Prepare release v0.12.0"
+   git push
+   ```
 
-# 3. Verify release artifacts
-gh release view vX.Y.Z
-```
+3. **Create and push a tag**:
+   ```bash
+   git tag v0.12.0
+   git push origin v0.12.0
+   ```
+
+4. **CI/CD automatically**:
+   - Extracts release notes from RELEASE_NOTES.md
+   - Creates the GitHub release with those notes
+   - Cross-compiles all binaries (Linux, Windows, macOS)
+   - Uploads all artifacts to the release
+   - Builds and pushes Docker images
+
+5. **Monitor the build**:
+   ```bash
+   gh run watch
+   ```
+
+6. **Verify the release**:
+   ```bash
+   gh release view v0.12.0
+   ```
 
 ### What CI/CD Does Automatically
 
-- Cross-compiles agent binary for Linux (amd64, arm64)
-- Cross-compiles agent binary for Windows (amd64)
-- Cross-compiles agent binary for macOS (amd64, arm64)
-- Builds and pushes Docker images for manager
-- Uploads all binaries to the GitHub release
+When you push a tag matching `v*.*.*`:
+- ✅ Extracts release notes from RELEASE_NOTES.md for that version
+- ✅ Creates GitHub release with proper title and notes
+- ✅ Cross-compiles agent binary for Linux (amd64, arm64)
+- ✅ Cross-compiles agent binary for Windows (amd64)
+- ✅ Cross-compiles agent binary for macOS (amd64, arm64)
+- ✅ Packages manager (tar.gz)
+- ✅ Builds and pushes Docker images for manager
+- ✅ Uploads all binaries to the GitHub release
 
 ### Common Mistakes to Avoid
 
-❌ **DO NOT** create releases with local binaries:
+❌ **DO NOT** manually create releases:
+```bash
+# WRONG - Skip the manual creation step
+gh release create v1.0.0 --title "Release" --notes "Changes"
+```
+
+❌ **DO NOT** upload local binaries:
 ```bash
 # WRONG - This uploads Windows binaries as Linux binaries
 go build -o agent-linux-amd64 .
 gh release create v1.0.0 --attach agent-linux-amd64
 ```
 
-❌ **DO NOT** manually tag and push without creating a release:
+❌ **DO NOT** forget to update RELEASE_NOTES.md:
 ```bash
-# WRONG - Tag push alone doesn't trigger release workflow
+# WRONG - Tag without release notes will cause CI to fail
 git tag v1.0.0
 git push origin v1.0.0
+# Error: No release notes found for version v1.0.0 in RELEASE_NOTES.md
 ```
 
-✅ **CORRECT** - Use `gh release create`:
+✅ **CORRECT** - Update RELEASE_NOTES.md, commit, then push tag:
 ```bash
-# CORRECT - This triggers CI/CD to build properly
-gh release create v1.0.0 --title "Release" --notes "Changes"
+# 1. Update RELEASE_NOTES.md with version notes
+# 2. Commit the file
+git add RELEASE_NOTES.md
+git commit -m "Prepare release v1.0.0"
+git push
+
+# 3. Create and push tag
+git tag v1.0.0
+git push origin v1.0.0
+
+# 4. CI/CD does the rest automatically
 ```
 
 ## Testing Workflows

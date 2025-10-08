@@ -3,6 +3,8 @@ name: CI/CD Pipeline
 on:
   push:
     branches: [ main, develop ]
+    tags:
+      - 'v*.*.*'
   pull_request:
     branches: [ main ]
   release:
@@ -130,11 +132,59 @@ jobs:
           name: agent-${{ matrix.os }}
           path: nodes/agent${{ matrix.os == 'windows-latest' && '.exe' || '' }}
 
-  # Release job - only runs on release
-  release:
-    name: Release
+  # Create release when tag is pushed
+  create-release:
+    name: Create Release
     needs: [security-scan, build-manager, build-nodes]
-    if: github.event_name == 'release'
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      upload_url: ${{ steps.create_release.outputs.upload_url }}
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Extract version from tag
+        id: get_version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+      - name: Extract release notes
+        id: get_notes
+        run: |
+          VERSION=${{ steps.get_version.outputs.VERSION }}
+
+          # Extract section for this version from RELEASE_NOTES.md
+          # Look for ## VERSION heading and capture content until next ## or end of file
+          NOTES=$(awk "/^## ${VERSION}\$/,/^## /{if(/^## ${VERSION}\$/)next;if(/^## /)exit;print}" RELEASE_NOTES.md)
+
+          if [ -z "$NOTES" ]; then
+            echo "ERROR: No release notes found for version $VERSION in RELEASE_NOTES.md"
+            exit 1
+          fi
+
+          # Save to file for gh release create
+          echo "$NOTES" > release_notes.txt
+
+          # Also output for GitHub Actions
+          echo "NOTES_FILE=release_notes.txt" >> $GITHUB_OUTPUT
+
+      - name: Create GitHub Release
+        id: create_release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION=${{ steps.get_version.outputs.VERSION }}
+          gh release create "$VERSION" \
+            --title "$VERSION" \
+            --notes-file release_notes.txt
+
+  # Release job - uploads assets to existing release
+  release:
+    name: Upload Release Assets
+    needs: [create-release]
+    if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     permissions:
       contents: write
