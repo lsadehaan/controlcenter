@@ -8,6 +8,28 @@ Each release should have a section with the version number as a heading level 2 
 
 ---
 
+## v0.11.4
+
+### Improvements
+
+- **Enhanced Git SSH server logging**: Comprehensive error logging for all stream and process errors
+- **Real-time stderr logging**: Git errors logged immediately as they occur
+- **Stream error handling**: Added error handlers for all pipe connections
+- **Better debugging**: Logs when streams close and processes are killed
+
+### Changes
+
+- Manager: Log all git stderr output in real-time
+- Manager: Add error handlers for stdin/stdout pipes
+- Manager: Log SSH stream closure events
+- Manager: Track and log all git process lifecycle events
+
+### Purpose
+
+This release adds extensive logging to help diagnose Git SSH push/pull issues. No functional changes, only improved observability.
+
+---
+
 ## v0.11.3
 
 ### Critical Fixes
