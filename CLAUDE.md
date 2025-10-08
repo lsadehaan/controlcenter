@@ -164,7 +164,8 @@ mkdir -p C:\temp\watch C:\temp\backup C:\temp\processed
 ### Manager Architecture
 - **Core Server** (`src/server.js`): Express app orchestrating all services
 - **WebSocket Server** (`src/websocket/server.js`): Real-time agent communication and heartbeats
-- **Git Server** (`src/git/server.js`): Configuration repository management
+- **Git Server** (`src/git/server.js`): Configuration repository management with simple-git
+- **Git SSH Server** (`src/git/ssh-server.js`): SSH server for Git-over-SSH (port 2223)
 - **Database** (`src/db/database.js`): SQLite for agents, workflows, alerts, logs
 - **API Routes** (`src/routes/api.js`): RESTful endpoints for all operations
 - **Web UI** (`views/`): EJS templates with Drawflow.js visual workflow editor
@@ -177,35 +178,79 @@ mkdir -p C:\temp\watch C:\temp\backup C:\temp\processed
 - **WebSocket Client** (`internal/websocket/`): Manager connection and heartbeat
 - **Workflow Executor** (`internal/workflow/`): Step execution engine
 - **SSH Server** (`internal/sshserver/`): Embedded SSH/SFTP server on port 2222
-- **Git Sync** (`internal/gitsync/`): Configuration repository cloning
+- **Git Sync** (`internal/gitsync/`): Configuration repository cloning and push/pull via SSH
 - **File Watcher** (`internal/filewatcher/`): File system trigger monitoring
 - **Configuration** (`internal/config/`): JSON-based configuration management
 - **Alert System** (`internal/alert/`): Alert forwarding to manager
 
 ### Communication Flow
-1. **Agent Registration**: Agent generates SSH keys → registers with token → receives agent ID
+1. **Agent Registration**: Agent generates SSH keys → registers with token → receives agent ID → public key stored in manager database
 2. **Heartbeat**: WebSocket connection maintains 30-second heartbeat intervals
-3. **Configuration**: Manager commits to git → sends reload command → agent pulls config
-4. **Workflow Execution**: Triggers fire → executor runs steps → alerts sent to manager
+3. **Configuration Sync**:
+   - **Pull**: Manager commits to git → sends reload command → agent pulls config via Git-over-SSH (port 2223)
+   - **Push**: Agent makes local config changes → commits → pushes to manager via Git-over-SSH
+4. **Workflow Execution**: Triggers fire → executor runs steps → alerts sent to manager via WebSocket
 
 ### Security Model
-- Agents generate unique SSH key pairs on first run
-- Public keys registered with manager during registration
-- Manager distributes keys for agent-to-agent communication
-- All inter-agent communication uses SSH authentication
-- Registration tokens expire after 1 hour
-- WebSocket connections authenticated via agent ID
+- **Agent Identity**: Agents generate unique SSH key pairs on first run (RSA 2048-bit)
+- **Registration**: Public keys registered with manager during registration via WebSocket
+- **Git Authentication**: Git SSH server authenticates agents by matching public keys in database
+- **SSH Commands**: Only git-upload-pack and git-receive-pack allowed; only config-repo accessible
+- **Token Expiry**: Registration tokens expire after 1 hour
+- **WebSocket Auth**: WebSocket connections authenticated via agent ID
+- **Host Keys**: Manager generates SSH host key on first run for Git SSH server
+- **Agent-to-Agent**: SSH server on port 2222 for future agent-to-agent communication
+
+### Git-over-SSH Technical Details
+
+The Git SSH server (port 2223) implements the Git protocol over SSH for secure configuration synchronization:
+
+**SSH Server Implementation** (`manager/src/git/ssh-server.js`):
+- Uses `ssh2` npm library for SSH server functionality
+- Authenticates agents by comparing incoming public key with database records
+- Accepts `git-upload-pack` (fetch/pull) and `git-receive-pack` (push) commands
+- Repository access restricted to `config-repo` only
+
+**Stream Piping** (Critical for preventing hangs):
+- **Stateful protocol**: Uses git commands without `--stateless-rpc` flag
+- **Bidirectional piping**:
+  - stdin: SSH stream → git process
+  - stdout: git process → SSH stream (with `{ end: false }`)
+  - stderr: git process → SSH stderr channel (with `{ end: false }`)
+- **Lifecycle management**: Send exit status before closing SSH channel on `process.nextTick()`
+
+**Agent Git Configuration** (`nodes/internal/gitsync/gitsync.go`):
+- SSH command: `ssh -i <key> -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o BatchMode=yes`
+- `BatchMode=yes` prevents interactive prompts on Windows
+- Graceful clone failure on first run (public key not yet in database)
+- Auto-retry after registration completes and public key is stored
+
+**Repository Configuration**:
+- Manager sets `receive.denyCurrentBranch=updateInstead` to allow pushing to checked-out branch
+- Non-bare repository with working directory for easy inspection
+- Automatic structure initialization (agents/, workflows/ directories)
 
 ## Implementation Status
 
-### ✅ Completed (v0.5.3)
-- **Core Infrastructure**
+### ✅ Completed
+- **Core Infrastructure** (v0.5.3+)
   - Agent registration and token validation
   - WebSocket heartbeat system with reconnection
   - Git configuration sync with automatic backups
   - SSH server in agents (port 2222)
   - SQLite database with full schema
   - Alert forwarding to manager with WebSocket
+
+- **Git-over-SSH** (v0.11.5)
+  - Manager Git SSH server on port 2223 using ssh2 library
+  - Public key authentication using agent SSH keys
+  - Bidirectional git-upload-pack (clone/fetch/pull) and git-receive-pack (push)
+  - Stateful SSH protocol with proper stream piping (`{ end: false }`)
+  - Proper exit status handling and SSH channel lifecycle
+  - Git stderr forwarded to SSH client for progress visibility
+  - Repository configured with `receive.denyCurrentBranch=updateInstead`
+  - Agent SSH configuration with BatchMode=yes to prevent interactive prompts
+  - Graceful clone failure on first registration (retries after public key is registered)
 
 - **File Watcher System**
   - Pattern-based file watching (ScanDir + regex patterns)
@@ -361,10 +406,29 @@ GET    /api/tokens                    # List active tokens
 - Review agent logs for errors
 - Ensure file permissions are correct
 
-### SSH Connection Issues
+### SSH Connection Issues (Agent Port 2222)
 - Port 2222 may conflict with existing services
 - Check authorized_keys configuration
 - Verify agent private key exists
+
+### Git-over-SSH Issues (Manager Port 2223)
+
+**Clone/Pull Failures**:
+- **"Permission denied"**: Agent's public key not in manager database. Check agent is registered successfully.
+- **"Authentication failed"**: Public key mismatch. Verify agent is using correct SSH key (`~/.controlcenter-agent/agent_key`).
+- **Interactive prompt on Windows**: Ensure agent has BatchMode=yes in SSH command (fixed in v0.11.5).
+- **First clone fails**: Normal on first registration - agent retries after public key is stored (fixed in v0.11.5).
+
+**Push Failures**:
+- **Hangs indefinitely**: Fixed in v0.11.5. Update manager to latest version.
+- **"denyCurrentBranch" error**: Fixed in v0.11.5. Manager sets `receive.denyCurrentBranch=updateInstead`.
+- **"fatal: the remote end hung up unexpectedly"**: Check manager logs for git process errors.
+
+**Debugging**:
+- Check manager logs: `docker logs control-center-manager-1` or console output
+- Check agent logs: `~/.controlcenter-agent/agent.log`
+- Test SSH connection manually: `ssh -p 2223 -i ~/.controlcenter-agent/agent_key git@<manager-host>`
+- Verify port 2223 is open: `netstat -an | grep 2223` or `telnet <manager-host> 2223`
 
 ## WebSocket Communication
 
@@ -413,20 +477,30 @@ GET    /api/tokens                    # List active tokens
 
 ## Recent Fixes & Improvements
 
-### v0.5.3 (Latest)
+### v0.11.5 (Latest)
+- **Fixed Git-over-SSH push hang**: Removed `--stateless-rpc`, using stateful SSH protocol with proper bidirectional piping
+- **Fixed SSH exit status**: Properly send exit status and close channel on `process.nextTick()` to ensure flush
+- **Fixed stream lifecycle**: Use `{ end: false }` on stdout/stderr pipes to prevent premature SSH channel closure
+- **Added stderr forwarding**: Git stderr now forwarded to SSH client for progress/error visibility
+- **Set receive.denyCurrentBranch**: Manager configures `updateInstead` to allow pushing to checked-out branch
+- **Added BatchMode SSH option**: Prevents interactive prompts on Windows during git operations
+- **Graceful clone failure**: Agent doesn't fail on first clone attempt (public key not yet registered)
+
+### v0.11.4
+- **Enhanced Git SSH server logging**: Comprehensive error logging for all stream and process errors
+- **Real-time stderr logging**: Git errors logged immediately as they occur
+
+### v0.11.3
+- **Fixed git-upload-pack hanging**: Use `.git` directory for non-bare repos
+- **Added remote URL auto-update**: Agents automatically update from HTTP to SSH URLs
+- **Added git fetch timeout**: 10-second timeout prevents indefinite hangs
+- **Fixed push-config exit codes**: Proper error reporting and exit status
+
+### v0.5.3
 - **Fixed duplicate file processing**: Files were being processed twice due to multiple watchers
 - **Fixed workflow trigger recognition**: Added support for 'filewatcher' trigger type
 - **Fixed variable substitution**: Template variables like {{.fileName}} now work in all workflow steps
 - **Improved watcher lifecycle**: Proper start/stop management prevents duplicate event handlers
-
-### v0.5.2
-- **Fixed workflow editor**: Node drag-and-drop positioning now works correctly
-- **Fixed copy button**: Template variable copy buttons now work without errors
-
-### v0.5.1
-- **Workflow editor improvements**: Canvas navigation (pan/zoom), resizable panels
-- **File watcher trigger**: Special trigger type for file watcher-invoked workflows
-- **Inputs tab**: Shows available template variables for each workflow node
 
 ## Known Issues & Limitations
 
