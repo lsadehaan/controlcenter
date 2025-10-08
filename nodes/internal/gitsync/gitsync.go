@@ -203,6 +203,41 @@ func (g *GitSync) SetupGitConfig() error {
 		}
 	}
 
+	// Ensure the remote URL is set correctly (in case it was changed from HTTP to SSH)
+	if err := g.UpdateRemoteURL(); err != nil {
+		g.logger.Warn().Err(err).Msg("Failed to update remote URL")
+	}
+
+	return nil
+}
+
+// UpdateRemoteURL updates the origin remote URL to match the configured URL
+func (g *GitSync) UpdateRemoteURL() error {
+	// Get current remote URL
+	cmd := exec.Command("git", "-C", g.repoPath, "remote", "get-url", "origin")
+	output, err := cmd.Output()
+	if err != nil {
+		g.logger.Warn().Err(err).Msg("Failed to get current remote URL")
+		return err
+	}
+
+	currentURL := strings.TrimSpace(string(output))
+
+	// If the URLs are different, update it
+	if currentURL != g.remoteURL {
+		g.logger.Info().
+			Str("old_url", currentURL).
+			Str("new_url", g.remoteURL).
+			Msg("Updating remote URL")
+
+		cmd = exec.Command("git", "-C", g.repoPath, "remote", "set-url", "origin", g.remoteURL)
+		if err := cmd.Run(); err != nil {
+			return fmt.Errorf("failed to update remote URL: %w", err)
+		}
+
+		g.logger.Info().Msg("Remote URL updated successfully")
+	}
+
 	return nil
 }
 
