@@ -160,8 +160,15 @@ class GitSSHServer {
   executeGitCommand(command, repoPath, stream, agentId) {
     this.logger.log(`Executing ${command} for agent ${agentId} in ${repoPath}`);
 
-    const gitProcess = spawn(command, ['--stateless-rpc', repoPath], {
-      shell: true
+    // Use explicit git command path without shell
+    const gitCmd = command.includes('upload-pack') ? 'git-upload-pack' : 'git-receive-pack';
+
+    const gitProcess = spawn(gitCmd, ['--stateless-rpc', repoPath]);
+
+    // Log stderr for debugging
+    let stderrData = '';
+    gitProcess.stderr.on('data', (data) => {
+      stderrData += data.toString();
     });
 
     stream.pipe(gitProcess.stdin);
@@ -170,20 +177,28 @@ class GitSSHServer {
 
     gitProcess.on('error', (err) => {
       this.logger.error(`Git process error: ${err.message}`);
+      this.logger.error(`Command was: ${gitCmd} --stateless-rpc ${repoPath}`);
       stream.exit(1);
       stream.end();
     });
 
-    gitProcess.on('exit', (code) => {
-      if (code !== 0) {
-        this.logger.warn(`Git process exited with code ${code}`);
+    gitProcess.on('exit', (code, signal) => {
+      if (code !== 0 || signal) {
+        this.logger.warn(`Git process exited with code ${code}, signal ${signal}`);
+        if (stderrData) {
+          this.logger.error(`Git stderr: ${stderrData}`);
+        }
+      } else {
+        this.logger.log(`Git process completed successfully`);
       }
       stream.exit(code || 0);
       stream.end();
     });
 
     stream.on('close', () => {
-      gitProcess.kill();
+      if (!gitProcess.killed) {
+        gitProcess.kill();
+      }
     });
   }
 
