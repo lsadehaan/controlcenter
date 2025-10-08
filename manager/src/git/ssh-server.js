@@ -163,7 +163,13 @@ class GitSSHServer {
     // Use explicit git command path without shell
     const gitCmd = command.includes('upload-pack') ? 'git-upload-pack' : 'git-receive-pack';
 
-    const gitProcess = spawn(gitCmd, ['--stateless-rpc', repoPath]);
+    // For non-bare repos, we need to pass the .git directory
+    const gitDir = path.join(repoPath, '.git');
+    const targetPath = fs.existsSync(gitDir) ? gitDir : repoPath;
+
+    this.logger.log(`Using git directory: ${targetPath}`);
+
+    const gitProcess = spawn(gitCmd, ['--stateless-rpc', targetPath]);
 
     // Log stderr for debugging
     let stderrData = '';
