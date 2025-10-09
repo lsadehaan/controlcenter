@@ -35,6 +35,7 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/your-org/controlcenter/nodes/internal/api"
 	"github.com/your-org/controlcenter/nodes/internal/config"
+	"github.com/your-org/controlcenter/nodes/internal/filebrowser"
 	"github.com/your-org/controlcenter/nodes/internal/filewatcher"
 	"github.com/your-org/controlcenter/nodes/internal/gitsync"
 	"github.com/your-org/controlcenter/nodes/internal/identity"
@@ -536,6 +537,10 @@ func (a *Agent) startHealthEndpoint() {
 	apiServer := api.NewServer(a.config, a.executor, a.logger, a.logLevel)
 	apiServer.RegisterHandlers()
 
+	// Register file browser endpoints (if enabled)
+	fileBrowser := filebrowser.New(a.config, a.logger)
+	fileBrowser.RegisterHandlers()
+
 	a.logger.Info().Msg("Agent API listening on :8088")
 	a.logger.Info().Msg("  GET /healthz - Health check")
 	a.logger.Info().Msg("  GET /info - Agent information")
@@ -546,6 +551,18 @@ func (a *Agent) startHealthEndpoint() {
 	a.logger.Info().Msg("  GET /api/metrics - Agent metrics")
 	a.logger.Info().Msg("  GET /api/loglevel - Get current log level")
 	a.logger.Info().Msg("  POST /api/loglevel {\"level\":\"debug\"} - Change log level")
+
+	// Log file browser status
+	if a.config.FileBrowserSettings.Enabled {
+		a.logger.Info().Msg("  📁 File Browser: ENABLED")
+		a.logger.Info().Msg("    GET /api/files/browse?path=/path - Browse directory")
+		a.logger.Info().Msg("    GET /api/files/download?path=/file - Download file")
+		a.logger.Info().Msg("    POST /api/files/upload - Upload file")
+		a.logger.Info().Msg("    POST /api/files/mkdir?path=/path - Create directory")
+		a.logger.Info().Msg("    DELETE /api/files/delete?path=/path - Delete file/folder")
+	} else {
+		a.logger.Info().Msg("  📁 File Browser: DISABLED (set fileBrowserSettings.enabled=true to enable)")
+	}
 
 	if err := http.ListenAndServe(":8088", nil); err != nil {
 		a.logger.Error().Err(err).Msg("Agent API server failed")

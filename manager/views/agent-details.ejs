@@ -304,6 +304,82 @@
       color: white;
       border-color: #007bff;
     }
+    .file-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+    .file-item {
+      display: flex;
+      align-items: center;
+      padding: 10px;
+      border-bottom: 1px solid #dee2e6;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .file-item:hover {
+      background: #f8f9fa;
+    }
+    .file-item.directory {
+      font-weight: 500;
+    }
+    .file-icon {
+      font-size: 20px;
+      margin-right: 12px;
+      min-width: 24px;
+      text-align: center;
+    }
+    .file-name {
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .file-size {
+      color: #6c757d;
+      font-size: 13px;
+      margin-right: 15px;
+      min-width: 80px;
+      text-align: right;
+    }
+    .file-date {
+      color: #6c757d;
+      font-size: 13px;
+      margin-right: 15px;
+      min-width: 140px;
+    }
+    .file-actions {
+      display: flex;
+      gap: 5px;
+    }
+    .file-action-btn {
+      padding: 4px 8px;
+      font-size: 12px;
+      border: 1px solid #ced4da;
+      background: white;
+      cursor: pointer;
+      border-radius: 3px;
+      transition: all 0.2s;
+    }
+    .file-action-btn:hover {
+      background: #e9ecef;
+    }
+    .file-action-btn.delete {
+      color: #dc3545;
+      border-color: #dc3545;
+    }
+    .file-action-btn.delete:hover {
+      background: #dc3545;
+      color: white;
+    }
+    .breadcrumb-link {
+      color: #007bff;
+      cursor: pointer;
+      text-decoration: none;
+    }
+    .breadcrumb-link:hover {
+      text-decoration: underline;
+    }
   </style>
 </head>
 <body>
@@ -338,6 +414,7 @@
         <button class="tab" onclick="switchTab('logs')">Logs</button>
         <button class="tab" onclick="switchTab('workflows')">Workflows</button>
         <button class="tab" onclick="switchTab('metrics')">Metrics</button>
+        <button class="tab" onclick="switchTab('files')">Files</button>
         <a href="/agents/<%= agent.id %>/filewatcher" class="tab" style="text-decoration: none;">File Watchers</a>
         <a href="/agents/<%= agent.id %>/configure" class="tab" style="text-decoration: none;">Configure</a>
       </div>
@@ -558,6 +635,77 @@
         <button class="btn" onclick="loadMetrics()" style="margin-bottom: 15px;">Refresh Metrics</button>
         <div id="metrics-content">
           <p style="color: #666;">Click "Refresh Metrics" to load agent metrics</p>
+        </div>
+      </div>
+
+      <!-- Files Tab -->
+      <div id="files-tab" class="tab-content">
+        <div style="margin-bottom: 15px;">
+          <h3>File Browser</h3>
+          <p style="color: #666; font-size: 14px;">Browse, download, upload, and manage files on the agent.</p>
+        </div>
+
+        <!-- File browser controls -->
+        <div style="display: flex; gap: 10px; margin-bottom: 15px; align-items: center;">
+          <button class="btn" onclick="loadFileBrowser()">🔄 Refresh</button>
+          <button class="btn" onclick="showUploadDialog()">📤 Upload File</button>
+          <button class="btn" onclick="showCreateFolderDialog()">📁 New Folder</button>
+          <div style="flex: 1;"></div>
+          <div id="file-browser-status" style="font-size: 13px; color: #666;"></div>
+        </div>
+
+        <!-- Breadcrumb navigation -->
+        <div id="breadcrumb" style="background: #f8f9fa; padding: 10px; border-radius: 4px; margin-bottom: 15px; font-size: 14px; display: none;">
+          <span style="color: #666;">Path:</span>
+          <span id="breadcrumb-path"></span>
+        </div>
+
+        <!-- File browser content -->
+        <div id="file-browser-content">
+          <p style="color: #666;">Click "Refresh" to browse files on the agent</p>
+        </div>
+
+        <!-- Upload dialog (hidden by default) -->
+        <div id="upload-dialog" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center;">
+          <div style="background: white; padding: 30px; border-radius: 8px; max-width: 500px; width: 90%;">
+            <h3 style="margin-top: 0;">Upload File</h3>
+            <div style="margin-bottom: 15px;">
+              <label style="display: block; margin-bottom: 5px;">Destination Path:</label>
+              <input type="text" id="upload-path" class="form-control" readonly style="background: #e9ecef;">
+            </div>
+            <div style="margin-bottom: 20px;">
+              <label style="display: block; margin-bottom: 5px;">Select File:</label>
+              <input type="file" id="upload-file-input" class="form-control">
+            </div>
+            <div style="display: flex; gap: 10px; justify-content: flex-end;">
+              <button class="btn" onclick="hideUploadDialog()">Cancel</button>
+              <button class="btn" onclick="performUpload()" style="background: #007bff; color: white;">Upload</button>
+            </div>
+            <div id="upload-progress" style="margin-top: 15px; display: none;">
+              <div style="background: #e9ecef; border-radius: 4px; overflow: hidden;">
+                <div id="upload-progress-bar" style="background: #007bff; height: 30px; width: 0%; transition: width 0.3s; display: flex; align-items: center; justify-content: center; color: white; font-size: 12px;"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Create folder dialog (hidden by default) -->
+        <div id="create-folder-dialog" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center;">
+          <div style="background: white; padding: 30px; border-radius: 8px; max-width: 500px; width: 90%;">
+            <h3 style="margin-top: 0;">Create Folder</h3>
+            <div style="margin-bottom: 15px;">
+              <label style="display: block; margin-bottom: 5px;">Parent Path:</label>
+              <input type="text" id="create-folder-parent" class="form-control" readonly style="background: #e9ecef;">
+            </div>
+            <div style="margin-bottom: 20px;">
+              <label style="display: block; margin-bottom: 5px;">Folder Name:</label>
+              <input type="text" id="create-folder-name" class="form-control" placeholder="New Folder">
+            </div>
+            <div style="display: flex; gap: 10px; justify-content: flex-end;">
+              <button class="btn" onclick="hideCreateFolderDialog()">Cancel</button>
+              <button class="btn" onclick="performCreateFolder()" style="background: #007bff; color: white;">Create</button>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -1203,6 +1351,282 @@
       resultDiv.style.color = '#721c24';
       resultDiv.textContent = `✗ Error: ${error.message}`;
     }
+  }
+
+  // File Browser State
+  let currentPath = '';
+
+  async function loadFileBrowser(path = '') {
+    currentPath = path;
+    const statusDiv = document.getElementById('file-browser-status');
+    const contentDiv = document.getElementById('file-browser-content');
+
+    statusDiv.textContent = 'Loading...';
+    statusDiv.style.color = '#666';
+
+    try {
+      const url = `/api/agents/${agentId}/files/browse?path=${encodeURIComponent(path)}`;
+      const response = await fetch(url);
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to browse directory');
+      }
+
+      renderFileBrowser(data);
+      statusDiv.textContent = `${data.files?.length || 0} items`;
+      statusDiv.style.color = '#28a745';
+
+    } catch (error) {
+      contentDiv.innerHTML = `<div style="color: #dc3545; padding: 20px; text-align: center;">❌ Error: ${escapeHtml(error.message)}</div>`;
+      statusDiv.textContent = 'Error';
+      statusDiv.style.color = '#dc3545';
+    }
+  }
+
+  function renderFileBrowser(data) {
+    const contentDiv = document.getElementById('file-browser-content');
+    const breadcrumbDiv = document.getElementById('breadcrumb');
+    const breadcrumbPath = document.getElementById('breadcrumb-path');
+
+    // Update breadcrumb
+    if (data.path) {
+      breadcrumbDiv.style.display = 'block';
+      breadcrumbPath.innerHTML = renderBreadcrumb(data.path);
+    } else {
+      breadcrumbDiv.style.display = 'none';
+    }
+
+    if (!data.files || data.files.length === 0) {
+      contentDiv.innerHTML = '<div style="color: #666; padding: 20px; text-align: center;">📁 Empty directory</div>';
+      return;
+    }
+
+    // Sort: directories first, then files
+    const sorted = data.files.sort((a, b) => {
+      if (a.isDir && !b.isDir) return -1;
+      if (!a.isDir && b.isDir) return 1;
+      return a.name.localeCompare(b.name);
+    });
+
+    let html = '<ul class="file-list">';
+
+    sorted.forEach(item => {
+      const icon = item.isDir ? '📁' : getFileIcon(item.name);
+      const sizeText = item.isDir ? '' : formatBytes(item.size);
+      const dateText = item.modTime ? new Date(item.modTime).toLocaleString() : '';
+      const itemPath = data.path ? `${data.path}/${item.name}` : item.name;
+
+      html += `
+        <li class="file-item ${item.isDir ? 'directory' : 'file'}">
+          <span class="file-icon">${icon}</span>
+          <span class="file-name" onclick="${item.isDir ? `loadFileBrowser('${escapeJsString(itemPath)}')` : ''}" style="${item.isDir ? 'cursor: pointer;' : ''}">
+            ${escapeHtml(item.name)}
+          </span>
+          <span class="file-size">${sizeText}</span>
+          <span class="file-date">${dateText}</span>
+          <div class="file-actions">
+            ${!item.isDir ? `<button class="file-action-btn" onclick="downloadFile('${escapeJsString(itemPath)}', '${escapeJsString(item.name)}')">⬇️ Download</button>` : ''}
+            <button class="file-action-btn delete" onclick="deleteFileOrFolder('${escapeJsString(itemPath)}', ${item.isDir})">🗑️ Delete</button>
+          </div>
+        </li>
+      `;
+    });
+
+    html += '</ul>';
+    contentDiv.innerHTML = html;
+  }
+
+  function renderBreadcrumb(path) {
+    if (!path) return '<a class="breadcrumb-link" onclick="loadFileBrowser(\'\')">Home</a>';
+
+    const parts = path.split('/').filter(p => p);
+    let html = '<a class="breadcrumb-link" onclick="loadFileBrowser(\'\')">Home</a>';
+    let accumulated = '';
+
+    parts.forEach((part, idx) => {
+      accumulated += (accumulated ? '/' : '') + part;
+      const isLast = idx === parts.length - 1;
+      if (isLast) {
+        html += ` / <span style="color: #212529;">${escapeHtml(part)}</span>`;
+      } else {
+        html += ` / <a class="breadcrumb-link" onclick="loadFileBrowser('${escapeJsString(accumulated)}')">${escapeHtml(part)}</a>`;
+      }
+    });
+
+    return html;
+  }
+
+  function getFileIcon(filename) {
+    const ext = filename.split('.').pop().toLowerCase();
+    const icons = {
+      'txt': '📄', 'md': '📄', 'log': '📄',
+      'js': '📜', 'json': '📜', 'ts': '📜', 'go': '📜', 'py': '📜',
+      'jpg': '🖼️', 'jpeg': '🖼️', 'png': '🖼️', 'gif': '🖼️',
+      'zip': '📦', 'tar': '📦', 'gz': '📦',
+      'exe': '⚙️', 'dll': '⚙️', 'so': '⚙️',
+      'pdf': '📕', 'doc': '📘', 'docx': '📘'
+    };
+    return icons[ext] || '📄';
+  }
+
+  async function downloadFile(path, filename) {
+    try {
+      const url = `/api/agents/${agentId}/files/download?path=${encodeURIComponent(path)}`;
+      const response = await fetch(url);
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Download failed');
+      }
+
+      const blob = await response.blob();
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = downloadUrl;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(downloadUrl);
+
+    } catch (error) {
+      alert('Download failed: ' + error.message);
+    }
+  }
+
+  async function deleteFileOrFolder(path, isDir) {
+    const itemType = isDir ? 'folder' : 'file';
+    if (!confirm(`Are you sure you want to delete this ${itemType}?\n\n${path}`)) {
+      return;
+    }
+
+    try {
+      const url = `/api/agents/${agentId}/files/delete?path=${encodeURIComponent(path)}`;
+      const response = await fetch(url, { method: 'DELETE' });
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Delete failed');
+      }
+
+      alert(`✓ ${itemType.charAt(0).toUpperCase() + itemType.slice(1)} deleted successfully`);
+      loadFileBrowser(currentPath);
+
+    } catch (error) {
+      alert('Delete failed: ' + error.message);
+    }
+  }
+
+  function showUploadDialog() {
+    document.getElementById('upload-path').value = currentPath || '/';
+    document.getElementById('upload-file-input').value = '';
+    document.getElementById('upload-dialog').style.display = 'flex';
+    document.getElementById('upload-progress').style.display = 'none';
+  }
+
+  function hideUploadDialog() {
+    document.getElementById('upload-dialog').style.display = 'none';
+  }
+
+  async function performUpload() {
+    const fileInput = document.getElementById('upload-file-input');
+    const file = fileInput.files[0];
+
+    if (!file) {
+      alert('Please select a file to upload');
+      return;
+    }
+
+    const progressDiv = document.getElementById('upload-progress');
+    const progressBar = document.getElementById('upload-progress-bar');
+    progressDiv.style.display = 'block';
+    progressBar.style.width = '0%';
+    progressBar.textContent = '0%';
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('path', currentPath);
+
+      const url = `/api/agents/${agentId}/files/upload`;
+
+      const xhr = new XMLHttpRequest();
+
+      xhr.upload.addEventListener('progress', (e) => {
+        if (e.lengthComputable) {
+          const percent = Math.round((e.loaded / e.total) * 100);
+          progressBar.style.width = percent + '%';
+          progressBar.textContent = percent + '%';
+        }
+      });
+
+      xhr.addEventListener('load', () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          alert('✓ File uploaded successfully');
+          hideUploadDialog();
+          loadFileBrowser(currentPath);
+        } else {
+          const data = JSON.parse(xhr.responseText);
+          alert('Upload failed: ' + (data.error || 'Unknown error'));
+          progressDiv.style.display = 'none';
+        }
+      });
+
+      xhr.addEventListener('error', () => {
+        alert('Upload failed: Network error');
+        progressDiv.style.display = 'none';
+      });
+
+      xhr.open('POST', url);
+      xhr.send(formData);
+
+    } catch (error) {
+      alert('Upload failed: ' + error.message);
+      progressDiv.style.display = 'none';
+    }
+  }
+
+  function showCreateFolderDialog() {
+    document.getElementById('create-folder-parent').value = currentPath || '/';
+    document.getElementById('create-folder-name').value = '';
+    document.getElementById('create-folder-dialog').style.display = 'flex';
+  }
+
+  function hideCreateFolderDialog() {
+    document.getElementById('create-folder-dialog').style.display = 'none';
+  }
+
+  async function performCreateFolder() {
+    const folderName = document.getElementById('create-folder-name').value.trim();
+
+    if (!folderName) {
+      alert('Please enter a folder name');
+      return;
+    }
+
+    const newPath = currentPath ? `${currentPath}/${folderName}` : folderName;
+
+    try {
+      const url = `/api/agents/${agentId}/files/mkdir?path=${encodeURIComponent(newPath)}`;
+      const response = await fetch(url, { method: 'POST' });
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Create folder failed');
+      }
+
+      alert('✓ Folder created successfully');
+      hideCreateFolderDialog();
+      loadFileBrowser(currentPath);
+
+    } catch (error) {
+      alert('Create folder failed: ' + error.message);
+    }
+  }
+
+  function escapeJsString(str) {
+    return str.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '\\"').replace(/\n/g, '\\n').replace(/\r/g, '\\r');
   }
   </script>
 </body>

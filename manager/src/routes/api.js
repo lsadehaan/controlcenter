@@ -636,5 +636,176 @@ module.exports = (db, wsServer, gitServer) => {
     }
   });
 
+  // File Browser Proxy Endpoints
+
+  // Browse files/directories
+  router.get('/agents/:id/files/browse', async (req, res) => {
+    try {
+      const agent = await db.getAgent(req.params.id);
+      if (!agent) {
+        return res.status(404).json({ error: 'Agent not found' });
+      }
+      if (agent.status !== 'online') {
+        return res.status(503).json({ error: 'Agent is offline' });
+      }
+
+      const agentUrl = getAgentUrl(agent);
+      const queryParams = new URLSearchParams(req.query).toString();
+      const url = `${agentUrl}/api/files/browse?${queryParams}`;
+
+      const response = await fetch(url);
+      const data = await response.json();
+
+      res.json(data);
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // Download file
+  router.get('/agents/:id/files/download', async (req, res) => {
+    try {
+      const agent = await db.getAgent(req.params.id);
+      if (!agent) {
+        return res.status(404).json({ error: 'Agent not found' });
+      }
+      if (agent.status !== 'online') {
+        return res.status(503).json({ error: 'Agent is offline' });
+      }
+
+      const agentUrl = getAgentUrl(agent);
+      const queryParams = new URLSearchParams(req.query).toString();
+      const url = `${agentUrl}/api/files/download?${queryParams}`;
+
+      const response = await fetch(url);
+
+      if (!response.ok) {
+        return res.status(response.status).send(await response.text());
+      }
+
+      // Forward headers and stream the response
+      if (response.headers.get('content-type')) {
+        res.setHeader('Content-Type', response.headers.get('content-type'));
+      }
+      if (response.headers.get('content-disposition')) {
+        res.setHeader('Content-Disposition', response.headers.get('content-disposition'));
+      }
+      if (response.headers.get('content-length')) {
+        res.setHeader('Content-Length', response.headers.get('content-length'));
+      }
+
+      response.body.pipe(res);
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // Upload file
+  router.post('/agents/:id/files/upload', async (req, res) => {
+    try {
+      const agent = await db.getAgent(req.params.id);
+      if (!agent) {
+        return res.status(404).json({ error: 'Agent not found' });
+      }
+      if (agent.status !== 'online') {
+        return res.status(503).json({ error: 'Agent is offline' });
+      }
+
+      const agentUrl = getAgentUrl(agent);
+      const url = `${agentUrl}/api/files/upload`;
+
+      // Forward the multipart form data directly
+      const FormData = require('form-data');
+      const multer = require('multer');
+      const upload = multer();
+
+      // Use multer to parse multipart form data
+      upload.single('file')(req, res, async (err) => {
+        if (err) {
+          return res.status(400).json({ error: 'File upload error: ' + err.message });
+        }
+
+        if (!req.file) {
+          return res.status(400).json({ error: 'No file uploaded' });
+        }
+
+        // Create form data to forward to agent
+        const form = new FormData();
+        form.append('file', req.file.buffer, {
+          filename: req.file.originalname,
+          contentType: req.file.mimetype
+        });
+        form.append('path', req.body.path || '');
+
+        try {
+          const response = await fetch(url, {
+            method: 'POST',
+            body: form,
+            headers: form.getHeaders()
+          });
+
+          const data = await response.json();
+          res.status(response.status).json(data);
+        } catch (fetchErr) {
+          res.status(500).json({ error: 'Failed to forward upload to agent: ' + fetchErr.message });
+        }
+      });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // Create directory
+  router.post('/agents/:id/files/mkdir', async (req, res) => {
+    try {
+      const agent = await db.getAgent(req.params.id);
+      if (!agent) {
+        return res.status(404).json({ error: 'Agent not found' });
+      }
+      if (agent.status !== 'online') {
+        return res.status(503).json({ error: 'Agent is offline' });
+      }
+
+      const agentUrl = getAgentUrl(agent);
+      const queryParams = new URLSearchParams(req.query).toString();
+      const url = `${agentUrl}/api/files/mkdir?${queryParams}`;
+
+      const response = await fetch(url, {
+        method: 'POST'
+      });
+
+      const data = await response.json();
+      res.status(response.status).json(data);
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // Delete file or directory
+  router.delete('/agents/:id/files/delete', async (req, res) => {
+    try {
+      const agent = await db.getAgent(req.params.id);
+      if (!agent) {
+        return res.status(404).json({ error: 'Agent not found' });
+      }
+      if (agent.status !== 'online') {
+        return res.status(503).json({ error: 'Agent is offline' });
+      }
+
+      const agentUrl = getAgentUrl(agent);
+      const queryParams = new URLSearchParams(req.query).toString();
+      const url = `${agentUrl}/api/files/delete?${queryParams}`;
+
+      const response = await fetch(url, {
+        method: 'DELETE'
+      });
+
+      const data = await response.json();
+      res.status(response.status).json(data);
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   return router;
 };

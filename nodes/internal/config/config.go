@@ -29,6 +29,9 @@ type Config struct {
 	// Log Management Settings
 	LogSettings LogSettings `json:"logSettings,omitempty"`
 
+	// File Browser Settings
+	FileBrowserSettings FileBrowserSettings `json:"fileBrowserSettings,omitempty"`
+
 	Extra            map[string]interface{} `json:"extra,omitempty"`
 }
 
@@ -43,6 +46,13 @@ type LogSettings struct {
 type FileWatcherSettings struct {
 	ScanDir    string `json:"scanDir"`    // Root directory for pattern-based watching
 	ScanSubDir bool   `json:"scanSubDir"` // Whether to recursively watch matched directories
+}
+
+type FileBrowserSettings struct {
+	Enabled        bool     `json:"enabled"`        // Enable/disable file browser (default: false)
+	AllowedPaths   []string `json:"allowedPaths"`   // Whitelist of allowed base paths (default: agent data dir only)
+	MaxUploadSize  int64    `json:"maxUploadSize"`  // Max upload file size in bytes (default: 100MB)
+	MaxListItems   int      `json:"maxListItems"`   // Max items to list per directory (default: 1000)
 }
 
 type Workflow struct {
@@ -115,6 +125,8 @@ func (c *Config) Save(path string) error {
 		AuthorizedSSHKeys   []string               `json:"authorizedSshKeys"`
 		Workflows           []Workflow             `json:"workflows"`
 		FileWatcherSettings FileWatcherSettings    `json:"fileWatcherSettings,omitempty"`
+		LogSettings         LogSettings            `json:"logSettings,omitempty"`
+		FileBrowserSettings FileBrowserSettings    `json:"fileBrowserSettings,omitempty"`
 		Extra               map[string]interface{} `json:"extra,omitempty"`
 	}{
 		AgentID:             c.AgentID,
@@ -130,6 +142,8 @@ func (c *Config) Save(path string) error {
 		AuthorizedSSHKeys:   c.AuthorizedSSHKeys,
 		Workflows:           c.Workflows,
 		FileWatcherSettings: c.FileWatcherSettings,
+		LogSettings:         c.LogSettings,
+		FileBrowserSettings: c.FileBrowserSettings,
 		Extra:               c.Extra,
 	}
 
@@ -171,9 +185,17 @@ func (c *Config) Reload(path string) error {
 	c.AuthorizedSSHKeys = tempCfg.AuthorizedSSHKeys
 	c.Workflows = tempCfg.Workflows
 	c.FileWatcherSettings = tempCfg.FileWatcherSettings
+	c.LogSettings = tempCfg.LogSettings
+	c.FileBrowserSettings = tempCfg.FileBrowserSettings
 	c.Extra = tempCfg.Extra
 	
 	return nil
+}
+
+func (c *Config) GetFileBrowserSettings() FileBrowserSettings {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return c.FileBrowserSettings
 }
 
 func getDataDir() string {
