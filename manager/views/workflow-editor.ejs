@@ -486,7 +486,8 @@
   let currentNodeId = null;
   let nodeIdCounter = 1;
   let currentWorkflowId = null;
-  
+  let hasUnsavedChanges = false;
+
   // Workflow data from server
   const workflowData = <%- workflow ? JSON.stringify(workflow) : 'null' %>;
   
@@ -625,12 +626,19 @@
       currentNodeId = id;
       showNodeProperties(id);
     });
-    
+
     editor.on('nodeUnselected', () => {
       currentNodeId = null;
-      document.getElementById('properties-content').innerHTML = 
+      document.getElementById('properties-content').innerHTML =
         '<p class="no-selection">Select a node to edit properties</p>';
     });
+
+    // Track changes for unsaved warning
+    editor.on('nodeCreated', () => { hasUnsavedChanges = true; updateSaveButtonState(); });
+    editor.on('nodeRemoved', () => { hasUnsavedChanges = true; updateSaveButtonState(); });
+    editor.on('nodeMoved', () => { hasUnsavedChanges = true; updateSaveButtonState(); });
+    editor.on('connectionCreated', () => { hasUnsavedChanges = true; updateSaveButtonState(); });
+    editor.on('connectionRemoved', () => { hasUnsavedChanges = true; updateSaveButtonState(); });
     
     // Load workflow if editing existing one
     if (workflowData) {
@@ -657,8 +665,33 @@
         }
       }
     }
+
+    // Warn before leaving with unsaved changes
+    window.addEventListener('beforeunload', (e) => {
+      if (hasUnsavedChanges) {
+        e.preventDefault();
+        e.returnValue = 'You have unsaved changes. Are you sure you want to leave?';
+        return e.returnValue;
+      }
+    });
   };
-  
+
+  // Update save button to show unsaved state
+  function updateSaveButtonState() {
+    const saveBtn = document.querySelector('[onclick="saveWorkflow()"]');
+    if (saveBtn) {
+      if (hasUnsavedChanges) {
+        saveBtn.textContent = 'Save Workflow *';
+        saveBtn.style.background = '#dc3545'; // Red to indicate unsaved
+        saveBtn.style.borderColor = '#dc3545';
+      } else {
+        saveBtn.textContent = 'Save Workflow';
+        saveBtn.style.background = '#007bff';
+        saveBtn.style.borderColor = '#007bff';
+      }
+    }
+  }
+
   function addNode(type, pos_x, pos_y) {
     const nodeConfigs = {
       'file-trigger': {
@@ -1542,16 +1575,18 @@
   
   function updateNodeProperties() {
     if (!currentNodeId) return;
-    
+
     const inputs = document.querySelectorAll('#properties-content .form-input');
     const newData = {};
-    
+
     inputs.forEach(input => {
       const key = input.dataset.key;
       newData[key] = input.value;
     });
-    
+
     editor.updateNodeDataFromId(currentNodeId, newData);
+    hasUnsavedChanges = true;
+    updateSaveButtonState();
   }
   
   function saveWorkflow() {
@@ -1586,10 +1621,109 @@
     })
     .then(r => r.json())
     .then(data => {
-      alert(currentWorkflowId ? 'Workflow updated successfully!' : 'Workflow created successfully!');
-      window.location.href = '/workflows';
+      hasUnsavedChanges = false;
+      updateSaveButtonState();
+
+      // If this is an update to an existing workflow, ask about deploying to agents
+      if (currentWorkflowId) {
+        showDeploymentDialog(currentWorkflowId);
+      } else {
+        // New workflow - just show success and redirect
+        alert('Workflow created successfully!');
+        window.location.href = '/workflows';
+      }
     })
     .catch(err => alert('Failed to save workflow: ' + err.message));
+  }
+
+  function showDeploymentDialog(workflowId) {
+    // Fetch agents that have this workflow
+    fetch(`/api/workflows/${workflowId}/agents`)
+      .then(r => r.json())
+      .then(agents => {
+        if (agents.length === 0) {
+          if (confirm('Workflow updated successfully! This workflow is not deployed to any agents yet. Go to workflows page?')) {
+            window.location.href = '/workflows';
+          }
+          return;
+        }
+
+        // Create modal dialog
+        const modal = document.createElement('div');
+        modal.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 10000;';
+
+        const dialog = document.createElement('div');
+        dialog.style.cssText = 'background: white; padding: 30px; border-radius: 8px; max-width: 600px; max-height: 80vh; overflow-y: auto;';
+
+        let dialogHTML = `
+          <h3 style="margin-top: 0;">Workflow Updated Successfully!</h3>
+          <p>This workflow is currently deployed to the following agents. Select which agents to update:</p>
+          <div style="margin: 20px 0;">
+        `;
+
+        agents.forEach((agent, index) => {
+          dialogHTML += `
+            <label style="display: block; margin: 10px 0; padding: 10px; border: 1px solid #ddd; border-radius: 4px; cursor: pointer;">
+              <input type="checkbox" name="agent-${agent.id}" value="${agent.id}" checked style="margin-right: 10px;">
+              <strong>${agent.hostname || agent.id}</strong>
+              <span style="color: #666; margin-left: 10px;">(${agent.status})</span>
+            </label>
+          `;
+        });
+
+        dialogHTML += `
+          </div>
+          <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
+            <button onclick="closeDeploymentDialog()" class="btn">Skip</button>
+            <button onclick="deployToSelectedAgents('${workflowId}')" class="btn btn-primary">Update Selected Agents</button>
+          </div>
+        `;
+
+        dialog.innerHTML = dialogHTML;
+        modal.appendChild(dialog);
+        document.body.appendChild(modal);
+
+        window.deploymentModal = modal;
+      })
+      .catch(err => {
+        console.error('Error fetching agents:', err);
+        if (confirm('Workflow updated successfully! Go to workflows page?')) {
+          window.location.href = '/workflows';
+        }
+      });
+  }
+
+  function closeDeploymentDialog() {
+    if (window.deploymentModal) {
+      document.body.removeChild(window.deploymentModal);
+      window.deploymentModal = null;
+    }
+    window.location.href = '/workflows';
+  }
+
+  function deployToSelectedAgents(workflowId) {
+    const checkboxes = document.querySelectorAll('[name^="agent-"]:checked');
+    const agentIds = Array.from(checkboxes).map(cb => cb.value);
+
+    if (agentIds.length === 0) {
+      alert('Please select at least one agent, or click Skip.');
+      return;
+    }
+
+    // Deploy to selected agents
+    fetch(`/api/workflows/${workflowId}/deploy`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ agentIds })
+    })
+    .then(r => r.json())
+    .then(data => {
+      alert(`Successfully deployed to ${data.deployed} agent(s)!`);
+      closeDeploymentDialog();
+    })
+    .catch(err => {
+      alert('Error deploying workflow: ' + err.message);
+    });
   }
   
   function convertDrawflowToSteps(drawflowData) {

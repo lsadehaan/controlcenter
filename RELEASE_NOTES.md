@@ -8,6 +8,45 @@ Each release should have a section with the version number as a heading level 2 
 
 ---
 
+## v0.11.10
+
+### UX Improvements
+
+- **Workflow Editor: Unsaved changes tracking**: Save button turns red with asterisk (*) when there are unsaved changes
+- **Workflow Editor: Navigation warning**: Browser warns before leaving page with unsaved changes
+- **Workflow Editor: Smart deployment dialog**: After saving existing workflows, shows dialog with agents that have the workflow deployed
+- **Workflow Editor: Selective agent updates**: Choose which agents to update with checkboxes (all selected by default)
+- **API: Get workflow agents**: New endpoint `GET /api/workflows/:id/agents` to list agents using a workflow
+
+### Improvements
+
+- Track all workflow changes: node creation/deletion/movement, connections, and property updates
+- Prevent accidental loss of work with browser beforeunload warning
+- Streamlined workflow update process with immediate deployment option
+- Better visibility into which agents are using workflows
+
+### Impact
+
+- Users won't accidentally lose workflow edits
+- Clear indication when changes need to be saved
+- Faster workflow deployment with selective agent targeting
+- Eliminates confusion about whether changes were saved
+
+### Technical Details
+
+- Added change tracking for all Drawflow events (nodeCreated, nodeRemoved, nodeMoved, connectionCreated, connectionRemoved)
+- Property updates via "Update" button now mark workflow as changed
+- After saving existing workflow, fetches agents with that workflow and displays modal dialog
+- All agents pre-selected in dialog with option to uncheck specific agents
+- Skip option available if user doesn't want to deploy immediately
+
+### Deployment
+
+1. Update Manager to v0.11.10 (workflow editor changes only)
+2. No agent changes required
+
+---
+
 ## v0.11.9
 
 ### Critical Fixes

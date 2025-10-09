@@ -198,6 +198,38 @@ module.exports = (db, wsServer, gitServer) => {
     }
   });
 
+  // Get agents that have a specific workflow deployed
+  router.get('/workflows/:id/agents', async (req, res) => {
+    try {
+      const workflowId = req.params.id;
+      const allAgents = await db.getAllAgents();
+
+      // Filter agents that have this workflow in their config
+      const agentsWithWorkflow = allAgents.filter(agent => {
+        try {
+          const config = JSON.parse(agent.config || '{}');
+          const workflows = config.workflows || [];
+          return workflows.some(w => w.id === workflowId);
+        } catch (err) {
+          return false;
+        }
+      });
+
+      // Return simplified agent data
+      const agentData = agentsWithWorkflow.map(agent => ({
+        id: agent.id,
+        hostname: agent.hostname,
+        status: agent.status,
+        platform: agent.platform
+      }));
+
+      res.json(agentData);
+    } catch (err) {
+      console.error('Error fetching agents for workflow:', err);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   // Deploy workflow to agents
   router.post('/workflows/:id/deploy', async (req, res) => {
     try {
