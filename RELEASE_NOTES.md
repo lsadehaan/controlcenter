@@ -8,6 +8,56 @@ Each release should have a section with the version number as a heading level 2 
 
 ---
 
+## v0.11.12
+
+### UX Improvements
+
+- **Workflow Executions UI Overhaul**: Complete redesign of the workflow executions page with modern, professional interface
+- **Fixed "undefined" workflow name bug**: Now displays actual workflow names instead of "undefined"
+- **Advanced filtering system**: Filter by workflow, status, date range, and search through errors/context
+- **Real-time statistics dashboard**: Total executions, success rate, average duration, and breakdown by status
+- **Auto-refresh capability**: Automatic updates every 5s/10s/30s/60s with toggle control
+- **Expandable execution details**: Click any execution to view context, completed steps, and error details
+- **Flexible pagination**: 10/25/50/100 executions per page with smart navigation
+- **Multiple sorting options**: Sort by newest/oldest, longest/shortest duration
+- **Compact and detailed view modes**: Switch between concise and comprehensive displays
+- **Visual enhancements**: Status badges, trigger icons, relative timestamps, hover effects
+
+### New Features
+
+- **Workflow name lookup**: Fetches workflow configurations to display friendly names
+- **Trigger type icons**: Visual indicators (📁 file, 📅 schedule, 🔗 webhook, 👤 manual)
+- **Time ago display**: Shows "2m ago", "5h ago" with full timestamp on hover
+- **Step-by-step execution view**: See exactly which steps completed with their names and IDs
+- **Context viewer**: JSON-formatted display of workflow trigger context
+- **Error detail formatting**: Monospace code blocks for easy error reading
+- **Smart empty states**: Clear messaging when no executions match filters
+
+### Technical Improvements
+
+- **Client-side filtering**: Fast, responsive filtering without server calls
+- **Efficient rendering**: Only renders visible page items for better performance
+- **Memory management**: Auto-refresh automatically stops when leaving page
+- **Graceful degradation**: Handles offline agents and missing data properly
+- **Responsive design**: Flexbox layout adapts to different screen sizes
+- **Modular code structure**: Clean separation of rendering, filtering, and statistics logic
+
+### Impact
+
+- Users can now easily track workflow execution history
+- Quick identification of failed executions with detailed error information
+- Better understanding of workflow performance with statistics
+- Improved troubleshooting with detailed step-by-step execution logs
+- Professional, modern UI that scales with large execution histories
+
+### Deployment
+
+1. Update Manager to v0.11.12 (UI changes only in `agent-details.ejs`)
+2. No agent changes required
+3. No database schema changes
+
+---
+
 ## v0.11.11
 
 ### Fixes

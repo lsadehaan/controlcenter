@@ -106,13 +106,203 @@
       padding: 15px;
       border-radius: 4px;
       margin-bottom: 10px;
-      border-left: 4px solid #007bff;
+      border-left: 4px solid #28a745;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .workflow-execution:hover {
+      background: #e9ecef;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     }
     .workflow-execution.failed {
       border-left-color: #dc3545;
     }
     .workflow-execution.running {
       border-left-color: #ffc107;
+    }
+    .workflow-execution.completed {
+      border-left-color: #28a745;
+    }
+    .workflow-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 10px;
+    }
+    .workflow-title {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex: 1;
+    }
+    .workflow-title h4 {
+      margin: 0;
+      font-size: 16px;
+      color: #212529;
+    }
+    .workflow-title .workflow-id {
+      font-size: 12px;
+      color: #6c757d;
+      font-family: monospace;
+    }
+    .workflow-meta {
+      display: flex;
+      gap: 15px;
+      font-size: 13px;
+      color: #495057;
+      flex-wrap: wrap;
+    }
+    .workflow-meta-item {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .workflow-details {
+      display: none;
+      margin-top: 15px;
+      padding-top: 15px;
+      border-top: 1px solid #dee2e6;
+    }
+    .workflow-details.expanded {
+      display: block;
+    }
+    .step-list {
+      list-style: none;
+      padding: 0;
+      margin: 10px 0;
+    }
+    .step-item {
+      padding: 8px;
+      margin-bottom: 5px;
+      background: white;
+      border-radius: 3px;
+      border-left: 3px solid #28a745;
+      font-size: 13px;
+    }
+    .step-item.failed {
+      border-left-color: #dc3545;
+      background: #fff5f5;
+    }
+    .status-badge {
+      display: inline-block;
+      padding: 3px 8px;
+      border-radius: 3px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+    .status-badge.completed {
+      background: #d4edda;
+      color: #155724;
+    }
+    .status-badge.failed {
+      background: #f8d7da;
+      color: #721c24;
+    }
+    .status-badge.running {
+      background: #fff3cd;
+      color: #856404;
+    }
+    .trigger-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px 8px;
+      border-radius: 3px;
+      font-size: 11px;
+      background: #e7f3ff;
+      color: #004085;
+    }
+    .execution-filters {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 15px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .execution-filters select,
+    .execution-filters input {
+      padding: 6px 10px;
+      border: 1px solid #ced4da;
+      border-radius: 4px;
+      font-size: 14px;
+    }
+    .execution-stats {
+      background: #e7f3ff;
+      padding: 12px;
+      border-radius: 4px;
+      margin-bottom: 15px;
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+      font-size: 13px;
+    }
+    .execution-stats .stat {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .execution-stats .stat-value {
+      font-weight: bold;
+      color: #004085;
+    }
+    .execution-pagination {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 15px;
+      padding-top: 15px;
+      border-top: 1px solid #dee2e6;
+    }
+    .error-details {
+      background: #fff5f5;
+      border: 1px solid #f8d7da;
+      border-radius: 4px;
+      padding: 10px;
+      margin-top: 10px;
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+      color: #721c24;
+      white-space: pre-wrap;
+    }
+    .context-viewer {
+      background: #f8f9fa;
+      border: 1px solid #dee2e6;
+      border-radius: 4px;
+      padding: 10px;
+      margin-top: 10px;
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+    .auto-refresh-control {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+    }
+    .auto-refresh-control input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      cursor: pointer;
+    }
+    .view-toggle {
+      display: flex;
+      gap: 5px;
+    }
+    .view-toggle button {
+      padding: 4px 10px;
+      font-size: 12px;
+      border: 1px solid #ced4da;
+      background: white;
+      cursor: pointer;
+      border-radius: 3px;
+    }
+    .view-toggle button.active {
+      background: #007bff;
+      color: white;
+      border-color: #007bff;
     }
   </style>
 </head>
@@ -267,9 +457,99 @@
       <!-- Workflows Tab -->
       <div id="workflows-tab" class="tab-content">
         <h3>Workflow Executions</h3>
-        <button class="btn" onclick="loadWorkflowExecutions()" style="margin-bottom: 15px;">Load Executions</button>
+
+        <!-- Control Bar -->
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
+          <div style="display: flex; gap: 10px; align-items: center;">
+            <button class="btn" onclick="loadWorkflowExecutions()">🔄 Refresh</button>
+            <div class="auto-refresh-control">
+              <input type="checkbox" id="auto-refresh-toggle" onchange="toggleAutoRefresh()">
+              <label for="auto-refresh-toggle">Auto-refresh</label>
+              <select id="auto-refresh-interval" style="padding: 4px 8px; font-size: 13px;" disabled>
+                <option value="5000">5s</option>
+                <option value="10000" selected>10s</option>
+                <option value="30000">30s</option>
+                <option value="60000">60s</option>
+              </select>
+            </div>
+          </div>
+          <div class="view-toggle">
+            <button class="active" onclick="setViewMode('compact')">Compact</button>
+            <button onclick="setViewMode('detailed')">Detailed</button>
+          </div>
+        </div>
+
+        <!-- Filters -->
+        <div class="execution-filters">
+          <select id="filter-workflow" onchange="applyFilters()">
+            <option value="">All Workflows</option>
+          </select>
+          <select id="filter-status" onchange="applyFilters()">
+            <option value="">All Statuses</option>
+            <option value="completed">Completed</option>
+            <option value="failed">Failed</option>
+            <option value="running">Running</option>
+          </select>
+          <select id="filter-date" onchange="applyFilters()">
+            <option value="all">All Time</option>
+            <option value="1h">Last Hour</option>
+            <option value="24h">Last 24 Hours</option>
+            <option value="7d" selected>Last 7 Days</option>
+            <option value="30d">Last 30 Days</option>
+          </select>
+          <input type="text" id="filter-search" placeholder="Search errors, context..." onkeyup="applyFilters()" style="flex: 1; min-width: 200px;">
+          <select id="sort-by" onchange="applyFilters()">
+            <option value="newest">Newest First</option>
+            <option value="oldest">Oldest First</option>
+            <option value="duration-desc">Longest Duration</option>
+            <option value="duration-asc">Shortest Duration</option>
+          </select>
+        </div>
+
+        <!-- Statistics -->
+        <div class="execution-stats" id="execution-stats" style="display: none;">
+          <div class="stat">
+            <span>📊 Total:</span>
+            <span class="stat-value" id="stat-total">0</span>
+          </div>
+          <div class="stat">
+            <span>✅ Success:</span>
+            <span class="stat-value" style="color: #28a745;" id="stat-success">0</span>
+          </div>
+          <div class="stat">
+            <span>❌ Failed:</span>
+            <span class="stat-value" style="color: #dc3545;" id="stat-failed">0</span>
+          </div>
+          <div class="stat">
+            <span>⏱️ Avg Duration:</span>
+            <span class="stat-value" id="stat-avg-duration">0s</span>
+          </div>
+          <div class="stat">
+            <span>📈 Success Rate:</span>
+            <span class="stat-value" id="stat-success-rate">0%</span>
+          </div>
+        </div>
+
+        <!-- Executions List -->
         <div id="workflow-executions">
-          <p style="color: #666;">Click "Load Executions" to view workflow execution history</p>
+          <p style="color: #666;">Click "Refresh" to view workflow execution history</p>
+        </div>
+
+        <!-- Pagination -->
+        <div class="execution-pagination" id="execution-pagination" style="display: none;">
+          <div>
+            <button class="btn" onclick="prevExecutionPage()" id="exec-prev-btn">← Previous</button>
+            <button class="btn" onclick="nextExecutionPage()" id="exec-next-btn">Next →</button>
+          </div>
+          <div id="exec-page-info" style="font-size: 13px; color: #666;">Page 1 of 1</div>
+          <div>
+            <select id="exec-page-size" onchange="changePageSize()" style="padding: 6px 10px; font-size: 13px;">
+              <option value="10" selected>10 per page</option>
+              <option value="25">25 per page</option>
+              <option value="50">50 per page</option>
+              <option value="100">100 per page</option>
+            </select>
+          </div>
         </div>
       </div>
 
@@ -293,6 +573,15 @@
   const agentConfig = <%- JSON.stringify(agent) %>;
   let currentPage = 1;
   let totalPages = 1;
+
+  // Workflow execution state
+  let allExecutions = [];
+  let filteredExecutions = [];
+  let workflowsMap = {};
+  let currentExecutionPage = 1;
+  let executionsPerPage = 10;
+  let viewMode = 'compact';
+  let autoRefreshInterval = null;
 
   function switchTab(tabName) {
     // Hide all tabs
@@ -399,41 +688,349 @@
 
   async function loadWorkflowExecutions() {
     try {
-      // Use Manager proxy to fetch workflow executions from agent
+      // Fetch workflow configurations first (for names)
+      const workflowsResponse = await fetch(`/api/workflows`);
+      const workflowsData = await workflowsResponse.json();
+      workflowsMap = {};
+      workflowsData.forEach(wf => {
+        workflowsMap[wf.id] = wf;
+      });
+
+      // Populate workflow filter dropdown
+      const filterWorkflow = document.getElementById('filter-workflow');
+      filterWorkflow.innerHTML = '<option value="">All Workflows</option>';
+      workflowsData.forEach(wf => {
+        filterWorkflow.innerHTML += `<option value="${wf.id}">${wf.name || wf.id}</option>`;
+      });
+
+      // Fetch executions from agent
       const response = await fetch(`/api/agents/${agentId}/workflows/executions`);
       const data = await response.json();
 
-      if (data.executions.length === 0) {
+      if (!data.executions || data.executions.length === 0) {
         document.getElementById('workflow-executions').innerHTML =
           '<p style="color: #666;">No workflow executions found</p>';
+        document.getElementById('execution-stats').style.display = 'none';
+        document.getElementById('execution-pagination').style.display = 'none';
         return;
       }
 
-      let html = '';
-      data.executions.forEach(exec => {
-        const duration = exec.endTime ?
-          ((new Date(exec.endTime) - new Date(exec.startTime)) / 1000).toFixed(2) + 's' :
-          'Running...';
-
-        html += `
-          <div class="workflow-execution ${exec.status}">
-            <h4>${exec.workflowID} - ${exec.status.toUpperCase()}</h4>
-            <p><strong>Started:</strong> ${new Date(exec.startTime).toLocaleString()}</p>
-            ${exec.endTime ? `<p><strong>Ended:</strong> ${new Date(exec.endTime).toLocaleString()}</p>` : ''}
-            <p><strong>Duration:</strong> ${duration}</p>
-            <p><strong>Steps Completed:</strong> ${exec.completedSteps ? exec.completedSteps.length : 0}</p>
-            ${exec.error ? `<p style="color: #f44336;"><strong>Error:</strong> ${exec.error}</p>` : ''}
-          </div>
-        `;
-      });
-
-      document.getElementById('workflow-executions').innerHTML = html;
+      allExecutions = data.executions;
+      applyFilters();
 
     } catch (error) {
       document.getElementById('workflow-executions').innerHTML =
         `<div style="color: #f44336;">Error: ${error.message}</div>`;
     }
   }
+
+  function applyFilters() {
+    const workflowFilter = document.getElementById('filter-workflow').value;
+    const statusFilter = document.getElementById('filter-status').value;
+    const dateFilter = document.getElementById('filter-date').value;
+    const searchQuery = document.getElementById('filter-search').value.toLowerCase();
+    const sortBy = document.getElementById('sort-by').value;
+
+    // Apply filters
+    filteredExecutions = allExecutions.filter(exec => {
+      // Workflow filter
+      if (workflowFilter && exec.workflowId !== workflowFilter) return false;
+
+      // Status filter
+      if (statusFilter && exec.status !== statusFilter) return false;
+
+      // Date filter
+      if (dateFilter !== 'all') {
+        const execTime = new Date(exec.startTime).getTime();
+        const now = Date.now();
+        const cutoff = {
+          '1h': now - (60 * 60 * 1000),
+          '24h': now - (24 * 60 * 60 * 1000),
+          '7d': now - (7 * 24 * 60 * 60 * 1000),
+          '30d': now - (30 * 24 * 60 * 60 * 1000)
+        }[dateFilter];
+        if (execTime < cutoff) return false;
+      }
+
+      // Search filter
+      if (searchQuery) {
+        const searchableText = [
+          exec.error || '',
+          JSON.stringify(exec.context || {}),
+          exec.workflowId,
+          workflowsMap[exec.workflowId]?.name || ''
+        ].join(' ').toLowerCase();
+        if (!searchableText.includes(searchQuery)) return false;
+      }
+
+      return true;
+    });
+
+    // Apply sorting
+    filteredExecutions.sort((a, b) => {
+      const aTime = new Date(a.startTime).getTime();
+      const bTime = new Date(b.startTime).getTime();
+      const aDuration = a.endTime ? (new Date(a.endTime) - new Date(a.startTime)) / 1000 : 0;
+      const bDuration = b.endTime ? (new Date(b.endTime) - new Date(b.startTime)) / 1000 : 0;
+
+      switch (sortBy) {
+        case 'newest': return bTime - aTime;
+        case 'oldest': return aTime - bTime;
+        case 'duration-desc': return bDuration - aDuration;
+        case 'duration-asc': return aDuration - bDuration;
+        default: return bTime - aTime;
+      }
+    });
+
+    // Update statistics
+    updateStatistics();
+
+    // Reset to page 1 and render
+    currentExecutionPage = 1;
+    renderExecutions();
+  }
+
+  function updateStatistics() {
+    const total = filteredExecutions.length;
+    const success = filteredExecutions.filter(e => e.status === 'completed').length;
+    const failed = filteredExecutions.filter(e => e.status === 'failed').length;
+
+    const durations = filteredExecutions
+      .filter(e => e.endTime)
+      .map(e => (new Date(e.endTime) - new Date(e.startTime)) / 1000);
+    const avgDuration = durations.length > 0
+      ? (durations.reduce((a, b) => a + b, 0) / durations.length).toFixed(2)
+      : 0;
+
+    const successRate = total > 0 ? ((success / total) * 100).toFixed(1) : 0;
+
+    document.getElementById('stat-total').textContent = total;
+    document.getElementById('stat-success').textContent = success;
+    document.getElementById('stat-failed').textContent = failed;
+    document.getElementById('stat-avg-duration').textContent = avgDuration + 's';
+    document.getElementById('stat-success-rate').textContent = successRate + '%';
+    document.getElementById('execution-stats').style.display = total > 0 ? 'flex' : 'none';
+  }
+
+  function renderExecutions() {
+    const start = (currentExecutionPage - 1) * executionsPerPage;
+    const end = start + executionsPerPage;
+    const pageExecutions = filteredExecutions.slice(start, end);
+
+    if (pageExecutions.length === 0) {
+      document.getElementById('workflow-executions').innerHTML =
+        '<p style="color: #666;">No executions match the current filters</p>';
+      document.getElementById('execution-pagination').style.display = 'none';
+      return;
+    }
+
+    let html = '';
+    pageExecutions.forEach((exec, idx) => {
+      html += renderExecutionCard(exec, start + idx);
+    });
+
+    document.getElementById('workflow-executions').innerHTML = html;
+
+    // Update pagination
+    const totalPages = Math.ceil(filteredExecutions.length / executionsPerPage);
+    document.getElementById('exec-page-info').textContent =
+      `Page ${currentExecutionPage} of ${totalPages} (${filteredExecutions.length} total)`;
+    document.getElementById('exec-prev-btn').disabled = currentExecutionPage === 1;
+    document.getElementById('exec-next-btn').disabled = currentExecutionPage >= totalPages;
+    document.getElementById('execution-pagination').style.display = 'flex';
+  }
+
+  function renderExecutionCard(exec, index) {
+    const workflow = workflowsMap[exec.workflowId] || {};
+    const workflowName = workflow.name || exec.workflowId;
+    const duration = exec.endTime ?
+      ((new Date(exec.endTime) - new Date(exec.startTime)) / 1000).toFixed(2) + 's' :
+      'Running...';
+    const triggerIcon = {
+      'file': '📁',
+      'filewatcher': '📁',
+      'schedule': '📅',
+      'webhook': '🔗',
+      'manual': '👤'
+    }[exec.context?.trigger || 'manual'] || '❓';
+
+    const triggerType = exec.context?.trigger || 'manual';
+    const startTime = new Date(exec.startTime);
+    const timeAgo = getTimeAgo(startTime);
+
+    let detailsHtml = '';
+    if (viewMode === 'detailed' || exec.error) {
+      detailsHtml = `
+        <div class="workflow-details expanded">
+          ${renderExecutionDetails(exec)}
+        </div>
+      `;
+    }
+
+    return `
+      <div class="workflow-execution ${exec.status}" onclick="toggleExecutionDetails(${index})">
+        <div class="workflow-header">
+          <div class="workflow-title">
+            <h4>${escapeHtml(workflowName)}</h4>
+            <span class="workflow-id" title="${exec.workflowId}">${exec.workflowId.substring(0, 8)}...</span>
+            <span class="status-badge ${exec.status}">${exec.status}</span>
+          </div>
+        </div>
+        <div class="workflow-meta">
+          <div class="workflow-meta-item">
+            <span class="trigger-badge">${triggerIcon} ${triggerType}</span>
+          </div>
+          <div class="workflow-meta-item">
+            ⏱️ ${duration}
+          </div>
+          <div class="workflow-meta-item">
+            🕒 ${timeAgo}
+          </div>
+          <div class="workflow-meta-item">
+            ✓ ${exec.completedSteps ? exec.completedSteps.length : 0} steps
+          </div>
+        </div>
+        ${detailsHtml}
+      </div>
+    `;
+  }
+
+  function renderExecutionDetails(exec) {
+    const workflow = workflowsMap[exec.workflowId] || {};
+    let html = '';
+
+    // Context information
+    if (exec.context && Object.keys(exec.context).length > 0) {
+      html += `
+        <div style="margin-bottom: 10px;">
+          <strong style="font-size: 13px;">Context:</strong>
+          <div class="context-viewer">${JSON.stringify(exec.context, null, 2)}</div>
+        </div>
+      `;
+    }
+
+    // Steps
+    if (exec.completedSteps && exec.completedSteps.length > 0) {
+      html += `
+        <div style="margin-bottom: 10px;">
+          <strong style="font-size: 13px;">Completed Steps:</strong>
+          <ul class="step-list">
+      `;
+      exec.completedSteps.forEach(stepId => {
+        const step = workflow.config?.steps?.find(s => s.id === stepId);
+        const stepName = step?.name || stepId;
+        html += `<li class="step-item">✓ ${escapeHtml(stepName)} <span style="color: #6c757d; font-family: monospace; font-size: 11px;">(${stepId})</span></li>`;
+      });
+      html += '</ul></div>';
+    }
+
+    // Error details
+    if (exec.error) {
+      html += `
+        <div>
+          <strong style="font-size: 13px; color: #dc3545;">Error:</strong>
+          <div class="error-details">${escapeHtml(exec.error)}</div>
+        </div>
+      `;
+    }
+
+    // Timing
+    html += `
+      <div style="margin-top: 10px; font-size: 12px; color: #6c757d;">
+        <div><strong>Started:</strong> ${new Date(exec.startTime).toLocaleString()}</div>
+        ${exec.endTime ? `<div><strong>Ended:</strong> ${new Date(exec.endTime).toLocaleString()}</div>` : ''}
+      </div>
+    `;
+
+    return html;
+  }
+
+  function toggleExecutionDetails(index) {
+    // Prevent default if we're clicking on the card itself
+    if (viewMode === 'detailed') return; // Already showing details
+
+    const start = (currentExecutionPage - 1) * executionsPerPage;
+    const exec = filteredExecutions[start + index];
+
+    // Re-render just this execution with details toggled
+    const cards = document.querySelectorAll('.workflow-execution');
+    const card = cards[index];
+    const details = card.querySelector('.workflow-details');
+
+    if (details) {
+      details.remove();
+    } else {
+      const detailsDiv = document.createElement('div');
+      detailsDiv.className = 'workflow-details expanded';
+      detailsDiv.innerHTML = renderExecutionDetails(exec);
+      card.appendChild(detailsDiv);
+    }
+  }
+
+  function getTimeAgo(date) {
+    const seconds = Math.floor((Date.now() - date.getTime()) / 1000);
+    if (seconds < 60) return `${seconds}s ago`;
+    const minutes = Math.floor(seconds / 60);
+    if (minutes < 60) return `${minutes}m ago`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours}h ago`;
+    const days = Math.floor(hours / 24);
+    return `${days}d ago`;
+  }
+
+  function prevExecutionPage() {
+    if (currentExecutionPage > 1) {
+      currentExecutionPage--;
+      renderExecutions();
+    }
+  }
+
+  function nextExecutionPage() {
+    const totalPages = Math.ceil(filteredExecutions.length / executionsPerPage);
+    if (currentExecutionPage < totalPages) {
+      currentExecutionPage++;
+      renderExecutions();
+    }
+  }
+
+  function changePageSize() {
+    executionsPerPage = parseInt(document.getElementById('exec-page-size').value);
+    currentExecutionPage = 1;
+    renderExecutions();
+  }
+
+  function setViewMode(mode) {
+    viewMode = mode;
+    document.querySelectorAll('.view-toggle button').forEach(btn => {
+      btn.classList.remove('active');
+    });
+    event.target.classList.add('active');
+    renderExecutions();
+  }
+
+  function toggleAutoRefresh() {
+    const checkbox = document.getElementById('auto-refresh-toggle');
+    const intervalSelect = document.getElementById('auto-refresh-interval');
+
+    if (checkbox.checked) {
+      intervalSelect.disabled = false;
+      const interval = parseInt(intervalSelect.value);
+      autoRefreshInterval = setInterval(loadWorkflowExecutions, interval);
+    } else {
+      intervalSelect.disabled = true;
+      if (autoRefreshInterval) {
+        clearInterval(autoRefreshInterval);
+        autoRefreshInterval = null;
+      }
+    }
+  }
+
+  // Stop auto-refresh when leaving the page
+  window.addEventListener('beforeunload', () => {
+    if (autoRefreshInterval) {
+      clearInterval(autoRefreshInterval);
+    }
+  });
 
   async function loadMetrics() {
     try {
