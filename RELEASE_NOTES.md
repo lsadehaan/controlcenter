@@ -8,6 +8,41 @@ Each release should have a section with the version number as a heading level 2 
 
 ---
 
+## v0.12.1
+
+### UX Improvements
+
+- **File Browser Configuration UI**: Added dedicated File Browser Settings section to the agent configuration page
+  - Enable/disable toggle with clear description
+  - Allowed paths management with add/remove buttons
+  - Max upload size configuration with helpful default hint
+  - Max list items configuration with description
+  - Visual path list with individual remove buttons
+  - User-friendly interface eliminates need to edit JSON directly
+
+### Changes
+
+- Enhanced `agent-configure.ejs` with File Browser Settings section
+- Added JavaScript functions for managing allowed paths (add, remove, refresh)
+- Updated save configuration to include file browser settings
+- All file browser settings now configurable through the UI
+
+### Impact
+
+- Users can now easily enable/disable file browser without editing config files
+- Path management is more intuitive with visual add/remove interface
+- Clear descriptions help users understand each setting
+- Reduced errors from manual JSON editing
+
+### Deployment
+
+1. Update Manager to v0.12.1 (UI changes only in `agent-configure.ejs`)
+2. No agent changes required
+3. No database schema changes
+4. Existing configurations remain compatible
+
+---
+
 ## v0.12.0
 
 ### New Features

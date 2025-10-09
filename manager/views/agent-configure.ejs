@@ -174,16 +174,68 @@
         </div>
         
         <div class="form-section">
+          <h3>File Browser Settings</h3>
+          <div class="form-group">
+            <label>
+              <input type="checkbox" id="fileBrowserEnabled"
+                     <% if (agent.config.fileBrowserSettings?.enabled) { %>checked<% } %>>
+              Enable File Browser
+            </label>
+            <p style="color: #666; font-size: 13px; margin-top: 5px;">
+              Allows browsing, downloading, and uploading files on this agent through the manager UI.
+            </p>
+          </div>
+          <div class="form-group">
+            <label>Allowed Paths</label>
+            <p style="color: #666; font-size: 13px; margin-bottom: 10px;">
+              Whitelist of directories accessible via file browser. If empty, defaults to agent data directory only.
+            </p>
+            <div id="allowed-paths" class="ssh-key-list">
+              <% const allowedPaths = agent.config.fileBrowserSettings?.allowedPaths || []; %>
+              <% if (allowedPaths.length === 0) { %>
+                <p style="color: #999;">No paths configured (agent data directory only)</p>
+              <% } else { %>
+                <% allowedPaths.forEach((path, index) => { %>
+                  <div class="ssh-key-item">
+                    <input type="text" class="form-input" value="<%= path %>" data-path-index="<%= index %>">
+                    <button type="button" class="btn btn-sm btn-danger" onclick="removeAllowedPath(<%= index %>)">Remove</button>
+                  </div>
+                <% }) %>
+              <% } %>
+            </div>
+            <button type="button" class="btn btn-sm add-key-btn" onclick="addAllowedPath()">Add Path</button>
+          </div>
+          <div class="form-group">
+            <label>Max Upload Size (bytes)</label>
+            <input type="number" id="maxUploadSize" class="form-input"
+                   value="<%= agent.config.fileBrowserSettings?.maxUploadSize || 104857600 %>"
+                   min="1" placeholder="104857600">
+            <p style="color: #666; font-size: 13px; margin-top: 5px;">
+              Default: 104857600 (100MB)
+            </p>
+          </div>
+          <div class="form-group">
+            <label>Max List Items</label>
+            <input type="number" id="maxListItems" class="form-input"
+                   value="<%= agent.config.fileBrowserSettings?.maxListItems || 1000 %>"
+                   min="1" placeholder="1000">
+            <p style="color: #666; font-size: 13px; margin-top: 5px;">
+              Maximum number of files/folders to show per directory. Default: 1000
+            </p>
+          </div>
+        </div>
+
+        <div class="form-section">
           <h3>Advanced Configuration</h3>
           <div class="form-group">
             <label>Config Repository Path</label>
-            <input type="text" id="configRepoPath" class="form-input" 
-                   value="<%= agent.config.configRepoPath || '' %>" 
+            <input type="text" id="configRepoPath" class="form-input"
+                   value="<%= agent.config.configRepoPath || '' %>"
                    placeholder="e.g., /path/to/config/repo">
           </div>
           <div class="form-group">
             <label>Custom Configuration (JSON)</label>
-            <textarea id="customConfig" class="form-input" 
+            <textarea id="customConfig" class="form-input"
                       placeholder='{"key": "value"}'><%- JSON.stringify(agent.config.custom || {}, null, 2) %></textarea>
           </div>
         </div>
@@ -200,14 +252,17 @@
   // Initialize data from server
   let sshKeys = [];
   let workflows = [];
-  
+  let allowedPaths = [];
+
   try {
     sshKeys = <%- JSON.stringify(agent.config.authorizedSSHKeys || []) %>;
     workflows = <%- JSON.stringify(agent.config.workflows || []) %>;
+    allowedPaths = <%- JSON.stringify(agent.config.fileBrowserSettings?.allowedPaths || []) %>;
   } catch (e) {
     console.error('Failed to parse config data:', e);
     sshKeys = [];
     workflows = [];
+    allowedPaths = [];
   }
   
   // Make removeWorkflow available globally
@@ -265,22 +320,76 @@
       sshKeys.forEach((key, index) => {
         const div = document.createElement('div');
         div.className = 'ssh-key-item';
-        
+
         const input = document.createElement('input');
         input.type = 'text';
         input.className = 'form-input';
         input.value = key;
         input.setAttribute('data-index', index);
-        
+
         const button = document.createElement('button');
         button.type = 'button';
         button.className = 'btn btn-sm btn-danger';
         button.textContent = 'Remove';
         button.onclick = () => removeSSHKey(index);
-        
+
         div.appendChild(input);
         div.appendChild(button);
         keyList.appendChild(div);
+      });
+    }
+  }
+
+  function addAllowedPath() {
+    const pathList = document.getElementById('allowed-paths');
+    const newIndex = allowedPaths.length;
+    const div = document.createElement('div');
+    div.className = 'ssh-key-item';
+    div.innerHTML = `
+      <input type="text" class="form-input" placeholder="C:\\path\\to\\folder or /path/to/folder" data-path-index="${newIndex}">
+      <button type="button" class="btn btn-sm btn-danger" onclick="removeAllowedPath(${newIndex})">Remove</button>
+    `;
+
+    // Remove "no paths" message if it exists
+    const noPathsMsg = pathList.querySelector('p');
+    if (noPathsMsg) {
+      noPathsMsg.remove();
+    }
+
+    pathList.appendChild(div);
+    allowedPaths.push('');
+  }
+
+  function removeAllowedPath(index) {
+    allowedPaths.splice(index, 1);
+    refreshAllowedPaths();
+  }
+
+  function refreshAllowedPaths() {
+    const pathList = document.getElementById('allowed-paths');
+    if (allowedPaths.length === 0) {
+      pathList.innerHTML = '<p style="color: #999;">No paths configured (agent data directory only)</p>';
+    } else {
+      pathList.innerHTML = '';
+      allowedPaths.forEach((path, index) => {
+        const div = document.createElement('div');
+        div.className = 'ssh-key-item';
+
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.className = 'form-input';
+        input.value = path;
+        input.setAttribute('data-path-index', index);
+
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'btn btn-sm btn-danger';
+        button.textContent = 'Remove';
+        button.onclick = () => removeAllowedPath(index);
+
+        div.appendChild(input);
+        div.appendChild(button);
+        pathList.appendChild(div);
       });
     }
   }
@@ -288,13 +397,19 @@
   
   function saveConfig(event) {
     event.preventDefault();
-    
+
     // Collect SSH keys from inputs
     const keyInputs = document.querySelectorAll('#ssh-keys input[type="text"]');
     const authorizedSSHKeys = Array.from(keyInputs)
       .map(input => input.value.trim())
       .filter(key => key.length > 0);
-    
+
+    // Collect allowed paths from inputs
+    const pathInputs = document.querySelectorAll('#allowed-paths input[type="text"]');
+    const allowedPathsArray = Array.from(pathInputs)
+      .map(input => input.value.trim())
+      .filter(path => path.length > 0);
+
     // Parse custom config
     let customConfig = {};
     try {
@@ -306,12 +421,18 @@
       alert('Invalid JSON in custom configuration');
       return;
     }
-    
+
     const config = {
       sshServerPort: parseInt(document.getElementById('sshServerPort').value),
       configRepoPath: document.getElementById('configRepoPath').value,
       authorizedSSHKeys: authorizedSSHKeys,
       workflows: workflows,
+      fileBrowserSettings: {
+        enabled: document.getElementById('fileBrowserEnabled').checked,
+        allowedPaths: allowedPathsArray,
+        maxUploadSize: parseInt(document.getElementById('maxUploadSize').value),
+        maxListItems: parseInt(document.getElementById('maxListItems').value)
+      },
       custom: customConfig
     };
     
