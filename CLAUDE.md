@@ -180,6 +180,7 @@ mkdir -p C:\temp\watch C:\temp\backup C:\temp\processed
 - **SSH Server** (`internal/sshserver/`): Embedded SSH/SFTP server on port 2222
 - **Git Sync** (`internal/gitsync/`): Configuration repository cloning and push/pull via SSH
 - **File Watcher** (`internal/filewatcher/`): File system trigger monitoring
+- **File Browser** (`internal/filebrowser/`): HTTP API for browsing, downloading, and uploading files (disabled by default)
 - **Configuration** (`internal/config/`): JSON-based configuration management
 - **Alert System** (`internal/alert/`): Alert forwarding to manager
 
@@ -274,6 +275,16 @@ The Git SSH server (port 2223) implements the Git protocol over SSH for secure c
   - Alerts: alert (with template support)
   - All steps support template variable substitution
 
+- **File Browser** (v0.12.0+)
+  - Browse agent filesystem with directory navigation
+  - Download files from agent to browser
+  - Upload files from browser to agent
+  - Create directories on agent
+  - Delete files and folders
+  - Security features: disabled by default, path whitelist, size limits
+  - Manager proxy for all file operations
+  - WebUI with breadcrumb navigation and file icons
+
 ### ⚠️ Partially Implemented
 - **Workflow Steps (UI exists, backend stub)**
   - rename-file, archive-file, extract-archive
@@ -323,6 +334,13 @@ GET    /api/health                    # Manager health check
 # Registration
 POST   /api/tokens                    # Generate registration token
 GET    /api/tokens                    # List active tokens
+
+# File Browser (proxied through manager to agent)
+GET    /api/agents/:id/files/browse?path=...    # Browse directory
+GET    /api/agents/:id/files/download?path=...  # Download file
+POST   /api/agents/:id/files/upload             # Upload file (multipart/form-data)
+POST   /api/agents/:id/files/mkdir?path=...     # Create directory
+DELETE /api/agents/:id/files/delete?path=...    # Delete file/folder
 ```
 
 ## Workflow Configuration
@@ -377,6 +395,70 @@ GET    /api/tokens                    # List active tokens
 - **Network**: `send-file` (SFTP), `http-request`, `database-query`
 - **Communication**: `send-email`, `slack-message`
 - **Logic**: `condition`, `loop`, `javascript`
+
+## File Browser Configuration
+
+### Security Model
+The file browser is **disabled by default** for security. When enabled, it provides secure, controlled access to the agent's filesystem:
+
+- **Path Whitelist**: Only directories in the `allowedPaths` list can be accessed
+- **Path Traversal Protection**: Prevents `..` and other path traversal attempts
+- **Default Access**: If no `allowedPaths` configured, only agent data directory (`~/.controlcenter-agent`) is accessible
+- **Size Limits**: Configurable maximum upload file size (default: 100MB)
+- **List Limits**: Configurable maximum items per directory (default: 1000)
+
+### Configuration Example
+```json
+{
+  "fileBrowserSettings": {
+    "enabled": true,
+    "allowedPaths": [
+      "C:\\Projects\\myproject",
+      "/home/user/data",
+      "~/documents"
+    ],
+    "maxUploadSize": 104857600,
+    "maxListItems": 1000
+  }
+}
+```
+
+### Configuration Fields
+- **enabled** (bool): Enable/disable file browser (default: `false`)
+- **allowedPaths** ([]string): Whitelist of allowed base paths. Supports `~` for home directory. Default: agent data dir only
+- **maxUploadSize** (int64): Max upload file size in bytes (default: 100MB)
+- **maxListItems** (int): Max items to list per directory (default: 1000)
+
+### Accessing the File Browser
+1. Navigate to agent details page in manager UI
+2. Click the "Files" tab
+3. Click "Refresh" to browse the default directory
+4. Use breadcrumb navigation to navigate directories
+5. Click folders to enter them
+6. Use Download button to download files
+7. Use Upload File button to upload to current directory
+8. Use New Folder button to create directories
+9. Use Delete button to remove files/folders
+
+### API Usage
+```bash
+# Browse a directory
+curl "http://localhost:3000/api/agents/AGENT_ID/files/browse?path=/some/path"
+
+# Download a file
+curl "http://localhost:3000/api/agents/AGENT_ID/files/download?path=/some/file.txt" -o file.txt
+
+# Upload a file (multipart form data)
+curl -X POST "http://localhost:3000/api/agents/AGENT_ID/files/upload" \
+  -F "file=@localfile.txt" \
+  -F "path=/destination/directory"
+
+# Create a directory
+curl -X POST "http://localhost:3000/api/agents/AGENT_ID/files/mkdir?path=/new/directory"
+
+# Delete a file or folder
+curl -X DELETE "http://localhost:3000/api/agents/AGENT_ID/files/delete?path=/some/file.txt"
+```
 
 ## Key Files & Locations
 
