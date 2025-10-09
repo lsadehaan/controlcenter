@@ -55,6 +55,34 @@ This release adds extensive logging to help diagnose Git SSH push/pull issues. N
 
 ---
 
+## v0.11.8
+
+### Improvements
+
+- **Enhanced backup notifications when pulling config**: Agent now clearly warns when local changes are detected and backed up during pull
+- **Clear recovery instructions**: Shows exact commands to recover backed up changes (`./agent -recover-backup latest`)
+- **Abort on backup failure**: Pull now aborts if backup fails, preventing accidental data loss
+- **Better logging**: Uses warning level (yellow) for backup notifications to ensure visibility
+
+### Changes
+
+- Pull() now logs prominent warnings when backing up local changes
+- BackupLocalChanges() provides clear recovery instructions for both stash and branch backups
+- Failed backups now abort the pull operation instead of proceeding with caution
+
+### Impact
+
+- Users will no longer miss when their local changes are being backed up
+- Clearer path to recovery when changes diverge
+- Prevents data loss from failed backups
+
+### Deployment
+
+1. Update Agent to v0.11.8
+2. No manager changes required
+
+---
+
 ## v0.11.7
 
 ### Critical Fixes

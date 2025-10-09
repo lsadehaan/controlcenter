@@ -52,7 +52,7 @@ func (g *GitSync) Initialize() error {
 	var cmd *exec.Cmd
 	if g.sshKeyPath != "" {
 		cmd = exec.Command("git", "clone", g.remoteURL, g.repoPath)
-		sshCmd := fmt.Sprintf("ssh -i \"%s\" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null", g.sshKeyPath)
+		sshCmd := fmt.Sprintf("ssh -i \"%s\" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o BatchMode=yes", g.sshKeyPath)
 		cmd.Env = append(os.Environ(), fmt.Sprintf("GIT_SSH_COMMAND=%s", sshCmd))
 		g.logger.Info().Str("ssh_key", g.sshKeyPath).Msg("Using SSH key for clone")
 	} else {
@@ -63,7 +63,13 @@ func (g *GitSync) Initialize() error {
 	g.logger.Info().Str("url", g.remoteURL).Str("path", g.repoPath).Msg("Cloning repository")
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		return fmt.Errorf("git clone failed: %w - output: %s", err, string(output))
+		// Don't fail on clone error - this might be first-time registration
+		// where the agent's public key isn't in the manager's database yet.
+		// The agent will retry via reload-config after registration.
+		g.logger.Warn().Err(err).
+			Str("output", string(output)).
+			Msg("Failed to clone repository - will retry after registration")
+		return nil
 	}
 
 	g.logger.Info().Msg("Repository cloned successfully")
@@ -88,9 +94,14 @@ func (g *GitSync) Pull() error {
 
 	// Check for local changes and back them up if present
 	if hasChanges, _ := g.HasLocalChanges(); hasChanges {
+		g.logger.Warn().Msg("⚠️  LOCAL CHANGES DETECTED - Creating automatic backup before pulling from manager")
 		if err := g.BackupLocalChanges(); err != nil {
-			g.logger.Warn().Err(err).Msg("Failed to backup local changes, proceeding with caution")
+			g.logger.Error().Err(err).Msg("❌ FAILED to backup local changes - ABORTING pull to prevent data loss")
+			return fmt.Errorf("cannot pull with uncommitted changes and failed backup: %w", err)
 		}
+		g.logger.Warn().Msg("✅ Local changes backed up successfully")
+		g.logger.Warn().Msg("📋 To recover your changes: ./agent -recover-backup latest")
+		g.logger.Warn().Msg("📋 To list all backups: ./agent -list-backups")
 	}
 
 	// Fetch latest changes
@@ -192,7 +203,7 @@ func (g *GitSync) SetupGitConfig() error {
 	// Configure SSH if key path is provided
 	if g.sshKeyPath != "" {
 		// Set GIT_SSH_COMMAND to use our SSH key and disable strict host key checking
-		sshCmd := fmt.Sprintf("ssh -i \"%s\" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null", g.sshKeyPath)
+		sshCmd := fmt.Sprintf("ssh -i \"%s\" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o BatchMode=yes", g.sshKeyPath)
 		configs["core.sshCommand"] = sshCmd
 		g.logger.Info().Str("ssh_key", g.sshKeyPath).Msg("Configured Git to use SSH key")
 	}
@@ -394,17 +405,13 @@ func (g *GitSync) BackupLocalChanges() error {
 			}
 		}
 
-		g.logger.Info().Str("branch", branchName).Msg("Local changes backed up to branch")
-		g.logger.Info().Msg("To recover: git checkout " + branchName)
+		g.logger.Warn().Str("branch", branchName).Msg("💾 Local changes backed up to branch")
+		g.logger.Warn().Msg("To recover: ./agent -recover-backup " + branchName)
+		g.logger.Warn().Msg("Or manually: git checkout " + branchName)
 	} else {
-		g.logger.Info().Str("stash", stashMsg).Msg("Local changes stashed successfully")
-		g.logger.Info().Msg("To recover: git stash pop")
-
-		// Show stash list for reference
-		cmd = exec.Command("git", "-C", g.repoPath, "stash", "list", "--oneline", "-n", "5")
-		if output, err := cmd.Output(); err == nil && len(output) > 0 {
-			g.logger.Info().Str("recent_stashes", string(output)).Msg("Recent stashes available")
-		}
+		g.logger.Warn().Str("stash", stashMsg).Msg("💾 Local changes stashed successfully")
+		g.logger.Warn().Msg("To recover: ./agent -recover-backup latest")
+		g.logger.Warn().Msg("Or use: ./agent -recover-backup \"stash@{0}\"")
 	}
 
 	return nil
