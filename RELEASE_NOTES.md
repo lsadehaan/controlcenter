@@ -8,6 +8,25 @@ Each release should have a section with the version number as a heading level 2 
 
 ---
 
+## v0.11.11
+
+### Fixes
+
+- **Fix CI/CD workflow asset filenames**: Release assets now include version in filename (e.g., `agent-linux-v0.11.11.tar.gz` instead of `agent-linux-.tar.gz`)
+- Changed workflow to extract version from git ref instead of using empty `github.event.release.tag_name`
+
+### Impact
+
+- Proper asset filenames make it clear which version is being downloaded
+- Fixes issue where all versioned assets had empty version strings
+
+### Deployment
+
+1. This is a CI/CD fix only - no code changes
+2. No manager or agent updates required
+
+---
+
 ## v0.11.10
 
 ### UX Improvements

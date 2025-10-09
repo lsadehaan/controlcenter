@@ -202,9 +202,12 @@ jobs:
 
       - name: Create release archives
         run: |
+          # Extract version from tag (e.g., refs/tags/v0.11.10 -> v0.11.10)
+          VERSION="${GITHUB_REF#refs/tags/}"
+
           # Package Manager
           cd manager
-          tar -czf ../manager-${{ github.event.release.tag_name }}.tar.gz --exclude=node_modules --exclude=data .
+          tar -czf ../manager-${VERSION}.tar.gz --exclude=node_modules --exclude=data .
           cd ..
 
           # Package each agent binary
@@ -212,17 +215,17 @@ jobs:
             platform=$(basename $dir | sed 's/agent-//')
             cd $dir
             if [[ "$platform" == "windows-latest" ]]; then
-              zip ../../agent-windows-${{ github.event.release.tag_name }}.zip agent.exe
+              zip ../../agent-windows-${VERSION}.zip agent.exe
               # Also create unversioned name for 'latest' downloads
-              cp ../../agent-windows-${{ github.event.release.tag_name }}.zip ../../agent-windows.zip
+              cp ../../agent-windows-${VERSION}.zip ../../agent-windows.zip
             elif [[ "$platform" == "macos-latest" ]]; then
-              tar -czf ../../agent-macos-${{ github.event.release.tag_name }}.tar.gz agent
+              tar -czf ../../agent-macos-${VERSION}.tar.gz agent
               # Also create unversioned name for 'latest' downloads
-              cp ../../agent-macos-${{ github.event.release.tag_name }}.tar.gz ../../agent-macos.tar.gz
+              cp ../../agent-macos-${VERSION}.tar.gz ../../agent-macos.tar.gz
             else
-              tar -czf ../../agent-linux-${{ github.event.release.tag_name }}.tar.gz agent
+              tar -czf ../../agent-linux-${VERSION}.tar.gz agent
               # Also create unversioned name for 'latest' downloads
-              cp ../../agent-linux-${{ github.event.release.tag_name }}.tar.gz ../../agent-linux.tar.gz
+              cp ../../agent-linux-${VERSION}.tar.gz ../../agent-linux.tar.gz
             fi
             cd ../..
           done
