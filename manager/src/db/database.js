@@ -209,6 +209,19 @@ class Database {
     });
   }
 
+  updateAgentConfig(agentId, config) {
+    return new Promise((resolve, reject) => {
+      this.db.run(
+        'UPDATE agents SET config = ? WHERE id = ?',
+        [JSON.stringify(config), agentId],
+        (err) => {
+          if (err) reject(err);
+          else resolve();
+        }
+      );
+    });
+  }
+
   // Token methods
   createToken(token, expiresIn = 3600000, metadata = null) { // 1 hour default
     return new Promise((resolve, reject) => {

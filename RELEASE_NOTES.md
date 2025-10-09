@@ -8,6 +8,41 @@ Each release should have a section with the version number as a heading level 2 
 
 ---
 
+## v0.11.9
+
+### Critical Fixes
+
+- **Fix UI not showing agent config after Git push**: Manager now automatically syncs database from Git repository after agents push configuration changes
+- Database is updated immediately after successful `git-receive-pack` completes
+
+### Improvements
+
+- Added `syncDatabaseAfterPush()` method to GitSSHServer that reads config from Git and updates database
+- Added `updateAgentConfig()` method to Database class for targeted config updates
+- Automatic sync ensures UI always reflects latest agent configuration
+
+### Impact
+
+- UI now displays current agent configuration immediately after agent pushes changes
+- No manual intervention required to sync database with Git repository
+- Resolves discrepancy between Git repository (source of truth) and database (UI state)
+
+### Technical Details
+
+When an agent pushes configuration via Git SSH:
+1. `git-receive-pack` completes successfully
+2. Git repository is updated with new configuration
+3. Manager reads the updated config file from Git
+4. Manager updates the agent's config column in database
+5. UI immediately reflects the changes on next page load/refresh
+
+### Deployment
+
+1. Update Manager to v0.11.9 and restart
+2. Agents do not require changes for this fix
+
+---
+
 ## v0.11.4
 
 ### Improvements

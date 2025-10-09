@@ -162,6 +162,7 @@ class GitSSHServer {
 
     // Use explicit git command path without shell
     const gitCmd = command.includes('upload-pack') ? 'git-upload-pack' : 'git-receive-pack';
+    const isPush = command.includes('receive-pack');
 
     // For non-bare repos, we need to pass the .git directory
     const gitDir = path.join(repoPath, '.git');
@@ -231,6 +232,13 @@ class GitSSHServer {
         }
       } else {
         this.logger.log(`Git process completed successfully`);
+
+        // If this was a push, sync the database with the updated config
+        if (isPush && code === 0) {
+          this.syncDatabaseAfterPush(agentId).catch(err => {
+            this.logger.error(`Failed to sync database after push for agent ${agentId}:`, err);
+          });
+        }
       }
       // Send exit status before closing the channel
       try {
@@ -264,6 +272,28 @@ class GitSSHServer {
         gitProcess.kill();
       }
     });
+  }
+
+  async syncDatabaseAfterPush(agentId) {
+    try {
+      this.logger.log(`Syncing database for agent ${agentId} after push`);
+
+      // Read the agent's config from the Git repository
+      const agentConfig = await this.gitServer.getAgentConfig(agentId);
+
+      if (!agentConfig) {
+        this.logger.warn(`No config file found for agent ${agentId} in repository`);
+        return;
+      }
+
+      // Update the agent's config in the database
+      await this.db.updateAgentConfig(agentId, agentConfig);
+
+      this.logger.log(`Successfully synced database for agent ${agentId}`);
+    } catch (err) {
+      this.logger.error(`Error syncing database for agent ${agentId}:`, err);
+      throw err;
+    }
   }
 
   stop() {
