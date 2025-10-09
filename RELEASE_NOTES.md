@@ -8,6 +8,90 @@ Each release should have a section with the version number as a heading level 2 
 
 ---
 
+## v0.12.0
+
+### New Features
+
+- **File Browser**: Complete file management interface for browsing, downloading, and uploading files on agents through the manager UI
+  - Browse directories with breadcrumb navigation
+  - Download files from agent to browser
+  - Upload files from browser to agent with progress indicator
+  - Create new directories
+  - Delete files and folders
+  - File/folder icons based on type
+  - File size and modification date display
+
+### Security Model
+
+- **Disabled by default**: File browser must be explicitly enabled in agent configuration
+- **Path whitelist**: Only configured paths are accessible (defaults to agent data directory only)
+- **Path traversal protection**: Prevents `..` attacks and validates all paths
+- **Upload size limits**: Configurable maximum upload size (default: 100MB)
+- **Directory list limits**: Configurable maximum items per directory (default: 1000)
+
+### Configuration
+
+Add to agent configuration to enable:
+```json
+{
+  "fileBrowserSettings": {
+    "enabled": true,
+    "allowedPaths": [
+      "C:\\Projects\\myproject",
+      "/home/user/data",
+      "~/documents"
+    ],
+    "maxUploadSize": 104857600,
+    "maxListItems": 1000
+  }
+}
+```
+
+### API Endpoints
+
+All endpoints are proxied through the manager:
+- `GET /api/agents/:id/files/browse?path=...` - Browse directory
+- `GET /api/agents/:id/files/download?path=...` - Download file
+- `POST /api/agents/:id/files/upload` - Upload file (multipart/form-data)
+- `POST /api/agents/:id/files/mkdir?path=...` - Create directory
+- `DELETE /api/agents/:id/files/delete?path=...` - Delete file/folder
+
+### Implementation Details
+
+**Agent Side (Go)**:
+- New package: `nodes/internal/filebrowser/filebrowser.go`
+- 5 HTTP endpoints for file operations
+- Complete path validation and security checks
+- Added `FileBrowserSettings` to agent configuration
+
+**Manager Side (Node.js)**:
+- Proxy routes in `manager/src/routes/api.js`
+- Multipart form data support for uploads (using multer)
+- Stream-based file downloads
+- Error handling and agent status validation
+
+**UI (EJS/JavaScript)**:
+- New "Files" tab in agent details page (`manager/views/agent-details.ejs`)
+- Interactive file browser with modern UI
+- Upload/download dialogs with progress tracking
+- Breadcrumb navigation and file type icons
+
+### Impact
+
+- Remote file management without SSH/SFTP access
+- Centralized file operations through manager UI
+- Secure by default with granular path control
+- Useful for log collection, config file editing, and data transfers
+
+### Deployment
+
+1. Update Manager to v0.12.0 (includes new UI and API routes)
+2. Update Agent to v0.12.0 (includes file browser endpoints)
+3. Configure `fileBrowserSettings` in agent config to enable feature
+4. No database schema changes
+
+---
+
 ## v0.11.12
 
 ### UX Improvements
