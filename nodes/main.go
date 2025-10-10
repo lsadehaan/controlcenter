@@ -712,15 +712,9 @@ func (a *Agent) handleCommand(payload json.RawMessage) {
 		
 		if removed {
 			a.config.Workflows = newWorkflows
-			
-			// Save config if we have a path
-			if a.configPath != "" {
-				if err := a.config.Save(a.configPath); err != nil {
-					a.logger.Error().Err(err).Msg("Failed to save config after removing workflow")
-				}
-			}
-			
+
 			// Reload workflows
+			// Note: Workflows are Git-managed, not saved to local config
 			a.reloadWorkflows()
 			a.wsClient.SendStatus("workflow-removed", map[string]interface{}{
 				"workflowId": workflowId,
@@ -803,14 +797,8 @@ func (a *Agent) handleCommand(payload json.RawMessage) {
 					}
 
 					if updated {
-						// Save the updated config locally
-						if a.configPath != "" {
-							if err := a.config.Save(a.configPath); err != nil {
-								a.logger.Error().Err(err).Msg("Failed to save config after git update")
-							}
-						}
-
 						// Reload workflows
+						// Note: Managed settings are not saved to local config
 						a.reloadWorkflows()
 
 						a.logger.Info().
@@ -923,19 +911,13 @@ func (a *Agent) handleConfigUpdate(payload json.RawMessage) {
 		a.config.SSHServerPort = update.Config.SSHServerPort
 		a.config.AuthorizedSSHKeys = update.Config.AuthorizedSSHKeys
 		a.config.ConfigRepoPath = update.Config.ConfigRepoPath
-		
-		// Save updated config
-		if a.configPath != "" {
-			if err := a.config.Save(a.configPath); err != nil {
-				a.logger.Error().Err(err).Msg("Failed to save updated config")
-			} else {
-				a.logger.Info().Msg("Config saved successfully")
-			}
-		}
-		
+
+		// Note: Managed settings (workflows, SSH settings) should come from Git only
+		// This WebSocket update path may need to be restricted to local settings only
+
 		// Reload workflows
 		a.reloadWorkflows()
-		
+
 		a.wsClient.SendStatus("config-updated", nil)
 	} else if update.ConfigPath != "" {
 		// Legacy path-based update
@@ -1032,14 +1014,7 @@ func (a *Agent) reloadConfig() error {
 				}
 
 				if updated {
-					// Save the updated config locally
-					if a.configPath != "" {
-						if err := a.config.Save(a.configPath); err != nil {
-							a.logger.Error().Err(err).Msg("Failed to save config after git update")
-						} else {
-							a.logger.Info().Msg("Config saved after git update")
-						}
-					}
+					// Note: Managed settings are not saved to local config
 					return nil
 				}
 			}

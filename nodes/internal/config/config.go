@@ -110,41 +110,28 @@ func (c *Config) Save(path string) error {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 
-	// Create a copy without the mutex for marshaling
+	// Only save LOCAL settings (machine-specific, not managed by Git)
+	// Managed settings (workflows, fileBrowserSettings, etc.) come from Git only
 	toSave := struct {
-		AgentID             string                 `json:"agentId"`
-		ManagerURL          string                 `json:"managerUrl"`
-		RegistrationToken   string                 `json:"registrationToken,omitempty"`
-		Registered          bool                   `json:"registered"`
-		SSHPrivateKeyPath   string                 `json:"sshPrivateKeyPath"`
-		SSHPublicKeyPath    string                 `json:"sshPublicKeyPath"`
-		ConfigRepoPath      string                 `json:"configRepoPath"`
-		StateFilePath       string                 `json:"stateFilePath"`
-		LogFilePath         string                 `json:"logFilePath"`
-		SSHServerPort       int                    `json:"sshServerPort"`
-		AuthorizedSSHKeys   []string               `json:"authorizedSshKeys"`
-		Workflows           []Workflow             `json:"workflows"`
-		FileWatcherSettings FileWatcherSettings    `json:"fileWatcherSettings,omitempty"`
-		LogSettings         LogSettings            `json:"logSettings,omitempty"`
-		FileBrowserSettings FileBrowserSettings    `json:"fileBrowserSettings,omitempty"`
-		Extra               map[string]interface{} `json:"extra,omitempty"`
+		AgentID           string `json:"agentId"`
+		ManagerURL        string `json:"managerUrl"`
+		RegistrationToken string `json:"registrationToken,omitempty"`
+		Registered        bool   `json:"registered"`
+		SSHPrivateKeyPath string `json:"sshPrivateKeyPath"`
+		SSHPublicKeyPath  string `json:"sshPublicKeyPath"`
+		ConfigRepoPath    string `json:"configRepoPath"`
+		StateFilePath     string `json:"stateFilePath"`
+		LogFilePath       string `json:"logFilePath"`
 	}{
-		AgentID:             c.AgentID,
-		ManagerURL:          c.ManagerURL,
-		RegistrationToken:   c.RegistrationToken,
-		Registered:          c.Registered,
-		SSHPrivateKeyPath:   c.SSHPrivateKeyPath,
-		SSHPublicKeyPath:    c.SSHPublicKeyPath,
-		ConfigRepoPath:      c.ConfigRepoPath,
-		StateFilePath:       c.StateFilePath,
-		LogFilePath:         c.LogFilePath,
-		SSHServerPort:       c.SSHServerPort,
-		AuthorizedSSHKeys:   c.AuthorizedSSHKeys,
-		Workflows:           c.Workflows,
-		FileWatcherSettings: c.FileWatcherSettings,
-		LogSettings:         c.LogSettings,
-		FileBrowserSettings: c.FileBrowserSettings,
-		Extra:               c.Extra,
+		AgentID:           c.AgentID,
+		ManagerURL:        c.ManagerURL,
+		RegistrationToken: c.RegistrationToken,
+		Registered:        c.Registered,
+		SSHPrivateKeyPath: c.SSHPrivateKeyPath,
+		SSHPublicKeyPath:  c.SSHPublicKeyPath,
+		ConfigRepoPath:    c.ConfigRepoPath,
+		StateFilePath:     c.StateFilePath,
+		LogFilePath:       c.LogFilePath,
 	}
 
 	data, err := json.MarshalIndent(toSave, "", "  ")

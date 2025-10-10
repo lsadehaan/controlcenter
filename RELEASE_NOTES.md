@@ -8,6 +8,57 @@ Each release should have a section with the version number as a heading level 2 
 
 ---
 
+## v0.12.2
+
+### Critical Architectural Fix
+
+- **Separated Local and Managed Configuration**: Agent configuration now properly distinguishes between local machine-specific settings and Git-managed settings
+  - Local settings (agentId, managerUrl, paths, etc.) saved to `agent-config.json`
+  - Managed settings (workflows, fileBrowserSettings, SSH settings, etc.) loaded from Git repository only
+  - Prevents configuration drift where settings duplicated in both local config and Git
+
+### Changes
+
+- **Modified `config.Save()`**: Now only persists local machine-specific settings
+  - Saves: agentId, managerUrl, registrationToken, registered, SSH key paths, config repo path, state file path, log file path
+  - Excludes: workflows, fileBrowserSettings, fileWatcherSettings, logSettings, sshServerPort, authorizedSSHKeys
+
+- **Removed inappropriate `Save()` calls**: Eliminated 4 Save() calls that were incorrectly persisting managed settings
+  - Line 718: After removing workflow (workflows are Git-managed)
+  - Line 808: After git-pull updates config
+  - Line 928: After WebSocket config update
+  - Line 1036: After reload-config from Git
+
+### Backwards Compatibility
+
+- **Automatic migration**: Agents with old-style configs (containing managed settings) are automatically cleaned on first Save()
+- Existing configurations work seamlessly - old managed settings are simply ignored and not re-saved
+- No manual migration required
+
+### Impact
+
+- **Eliminates config drift**: Settings no longer duplicated between local config and Git repository
+- **Single source of truth**: Git repository is definitive source for all managed settings
+- **Cleaner configuration files**: Local configs stay lean with only machine-specific data
+- **Better separation of concerns**: Clear distinction between local and managed configuration
+
+### Testing
+
+Verified scenarios:
+- ✅ Old-style config with managed settings automatically cleaned
+- ✅ agent-config.json stays clean through multiple operations (start/stop, Git sync, reloads)
+- ✅ Managed settings (fileBrowserSettings, workflows) load correctly from Git
+- ✅ No managed settings leak into local config file
+
+### Deployment
+
+1. Update Agent to v0.12.2
+2. On first start with new code, agent-config.json will be automatically cleaned (if it contains managed settings)
+3. No manager changes required
+4. No manual migration needed - fully backwards compatible
+
+---
+
 ## v0.12.1
 
 ### UX Improvements
