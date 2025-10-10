@@ -645,9 +645,17 @@
           <p style="color: #666; font-size: 14px;">Browse, download, upload, and manage files on the agent.</p>
         </div>
 
+        <!-- Path selector -->
+        <div style="margin-bottom: 15px;">
+          <label style="display: block; margin-bottom: 5px; font-weight: 500;">Select Path:</label>
+          <select id="path-selector" class="form-control" onchange="onPathSelected()" style="max-width: 500px;">
+            <option value="">Select a path to browse...</option>
+          </select>
+        </div>
+
         <!-- File browser controls -->
         <div style="display: flex; gap: 10px; margin-bottom: 15px; align-items: center;">
-          <button class="btn" onclick="loadFileBrowser()">🔄 Refresh</button>
+          <button class="btn" onclick="refreshCurrentPath()">🔄 Refresh</button>
           <button class="btn" onclick="showUploadDialog()">📤 Upload File</button>
           <button class="btn" onclick="showCreateFolderDialog()">📁 New Folder</button>
           <div style="flex: 1;"></div>
@@ -662,7 +670,7 @@
 
         <!-- File browser content -->
         <div id="file-browser-content">
-          <p style="color: #666;">Click "Refresh" to browse files on the agent</p>
+          <p style="color: #666;">Select a path from the dropdown above to browse files on the agent</p>
         </div>
 
         <!-- Upload dialog (hidden by default) -->
@@ -1355,6 +1363,56 @@
 
   // File Browser State
   let currentPath = '';
+
+  // Populate path selector on page load
+  function initializePathSelector() {
+    const selector = document.getElementById('path-selector');
+    const fileBrowserSettings = agentConfig.config?.fileBrowserSettings;
+
+    if (!fileBrowserSettings || !fileBrowserSettings.allowedPaths || fileBrowserSettings.allowedPaths.length === 0) {
+      selector.innerHTML = '<option value="">No allowed paths configured</option>';
+      selector.disabled = true;
+      return;
+    }
+
+    selector.innerHTML = '<option value="">Select a path to browse...</option>';
+    fileBrowserSettings.allowedPaths.forEach(path => {
+      selector.innerHTML += `<option value="${path}">${path}</option>`;
+    });
+
+    // Auto-select and load the first path
+    if (fileBrowserSettings.allowedPaths.length > 0) {
+      selector.selectedIndex = 1; // Skip the "Select a path..." option
+      loadFileBrowser(fileBrowserSettings.allowedPaths[0]);
+    }
+  }
+
+  // Called when dropdown selection changes
+  function onPathSelected() {
+    const selector = document.getElementById('path-selector');
+    const selectedPath = selector.value;
+    if (selectedPath) {
+      loadFileBrowser(selectedPath);
+    }
+  }
+
+  // Refresh the current path
+  function refreshCurrentPath() {
+    const selector = document.getElementById('path-selector');
+    const selectedPath = selector.value;
+
+    if (!selectedPath) {
+      alert('Please select a path first');
+      return;
+    }
+
+    loadFileBrowser(selectedPath);
+  }
+
+  // Initialize on page load
+  document.addEventListener('DOMContentLoaded', () => {
+    initializePathSelector();
+  });
 
   async function loadFileBrowser(path = '') {
     currentPath = path;

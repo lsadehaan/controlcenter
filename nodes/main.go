@@ -959,6 +959,8 @@ func (a *Agent) reloadConfig() error {
 			if err != nil {
 				a.logger.Error().Err(err).Msg("Failed to load config from git")
 			} else if gitConfig != nil {
+				updated := false
+
 				// Update workflows from git config
 				if workflows, ok := gitConfig["workflows"].([]interface{}); ok {
 					a.config.Workflows = []config.Workflow{}
@@ -970,15 +972,74 @@ func (a *Agent) reloadConfig() error {
 							}
 						}
 					}
-					
+					updated = true
+					a.logger.Info().Int("count", len(a.config.Workflows)).Msg("Loaded workflows from git")
+				}
+
+				// Update fileBrowserSettings from git config
+				if fbs, ok := gitConfig["fileBrowserSettings"].(map[string]interface{}); ok {
+					if fbsData, err := json.Marshal(fbs); err == nil {
+						var fileBrowserSettings config.FileBrowserSettings
+						if err := json.Unmarshal(fbsData, &fileBrowserSettings); err == nil {
+							a.config.FileBrowserSettings = fileBrowserSettings
+							updated = true
+							a.logger.Info().Int("allowedPaths", len(fileBrowserSettings.AllowedPaths)).Msg("Loaded fileBrowserSettings from git")
+						}
+					}
+				}
+
+				// Update logSettings from git config
+				if ls, ok := gitConfig["logSettings"].(map[string]interface{}); ok {
+					if lsData, err := json.Marshal(ls); err == nil {
+						var logSettings config.LogSettings
+						if err := json.Unmarshal(lsData, &logSettings); err == nil {
+							a.config.LogSettings = logSettings
+							updated = true
+							a.logger.Info().Msg("Loaded logSettings from git")
+						}
+					}
+				}
+
+				// Update fileWatcherSettings from git config
+				if fws, ok := gitConfig["fileWatcherSettings"].(map[string]interface{}); ok {
+					if fwsData, err := json.Marshal(fws); err == nil {
+						var fileWatcherSettings config.FileWatcherSettings
+						if err := json.Unmarshal(fwsData, &fileWatcherSettings); err == nil {
+							a.config.FileWatcherSettings = fileWatcherSettings
+							updated = true
+							a.logger.Info().Msg("Loaded fileWatcherSettings from git")
+						}
+					}
+				}
+
+				// Update sshServerPort from git config
+				if port, ok := gitConfig["sshServerPort"].(float64); ok {
+					a.config.SSHServerPort = int(port)
+					updated = true
+					a.logger.Info().Int("port", int(port)).Msg("Loaded sshServerPort from git")
+				}
+
+				// Update authorizedSSHKeys from git config
+				if keys, ok := gitConfig["authorizedSSHKeys"].([]interface{}); ok {
+					a.config.AuthorizedSSHKeys = []string{}
+					for _, k := range keys {
+						if key, ok := k.(string); ok {
+							a.config.AuthorizedSSHKeys = append(a.config.AuthorizedSSHKeys, key)
+						}
+					}
+					updated = true
+					a.logger.Info().Int("count", len(a.config.AuthorizedSSHKeys)).Msg("Loaded authorizedSSHKeys from git")
+				}
+
+				if updated {
 					// Save the updated config locally
 					if a.configPath != "" {
 						if err := a.config.Save(a.configPath); err != nil {
 							a.logger.Error().Err(err).Msg("Failed to save config after git update")
+						} else {
+							a.logger.Info().Msg("Config saved after git update")
 						}
 					}
-					
-					a.logger.Info().Int("count", len(a.config.Workflows)).Msg("Loaded workflows from git")
 					return nil
 				}
 			}
