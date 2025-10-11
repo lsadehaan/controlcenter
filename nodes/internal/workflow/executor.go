@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
@@ -280,10 +281,68 @@ func (e *Executor) handleScheduleTrigger(workflowID string, instance *WorkflowIn
 }
 
 func (e *Executor) handleWebhookTrigger(workflowID string, instance *WorkflowInstance, config map[string]interface{}) {
-	// TODO: Implement webhook server
-	e.logger.Warn().
+	// Register HTTP handler based on trigger config
+	path, _ := config["path"].(string)
+	if path == "" {
+		path = "/api/webhooks/" + workflowID
+	}
+
+	method, _ := config["method"].(string)
+	if method == "" {
+		method = http.MethodPost
+	}
+
+	// Register handler once per workflowID
+	http.HandleFunc(path, func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != method {
+			w.WriteHeader(http.StatusMethodNotAllowed)
+			fmt.Fprintf(w, "method not allowed")
+			return
+		}
+
+		// Parse payload (support JSON and form)
+		var payload map[string]interface{}
+		payload = make(map[string]interface{})
+		if strings.Contains(r.Header.Get("Content-Type"), "application/json") {
+			var body map[string]interface{}
+			if err := json.NewDecoder(r.Body).Decode(&body); err == nil {
+				for k, v := range body { payload[k] = v }
+			}
+		} else {
+			r.ParseForm()
+			for k, v := range r.Form { if len(v) > 0 { payload[k] = v[0] } }
+		}
+
+		// Include headers and query params for context
+		headers := make(map[string]string)
+		for k, v := range r.Header { if len(v) > 0 { headers[k] = v[0] } }
+		query := make(map[string]string)
+		for k := range r.URL.Query() { query[k] = r.URL.Query().Get(k) }
+
+		ctx := map[string]interface{}{
+			"trigger":          "webhook",
+			"webhookData":      payload,
+			"webhookHeaders":   headers,
+			"webhookQuery":     query,
+			"timestamp":        time.Now().Unix(),
+		}
+
+		// Execute workflow asynchronously
+		go e.executeWorkflow(workflowID, instance, ctx)
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusAccepted)
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
+			"status":   "queued",
+			"workflow": workflowID,
+		})
+	})
+
+	e.logger.Info().
 		Str("workflow", workflowID).
-		Msg("Webhook triggers not yet implemented")
+		Str("path", path).
+		Str("method", method).
+		Msg("Webhook trigger registered")
 }
 
 func (e *Executor) executeWorkflow(workflowID string, instance *WorkflowInstance, context map[string]interface{}) {

@@ -57,30 +57,7 @@ module.exports = (db, wsServer, gitServer) => {
     }
   });
 
-  // Update agent configuration
-  router.put('/agents/:id/config', async (req, res) => {
-    try {
-      const agent = await db.getAgent(req.params.id);
-      if (!agent) {
-        return res.status(404).json({ error: 'Agent not found' });
-      }
-      
-      // Update config in database
-      await db.db.run(
-        'UPDATE agents SET config = ? WHERE id = ?',
-        [JSON.stringify(req.body), req.params.id]
-      );
-      
-      // Notify agent to reload config
-      wsServer.sendToAgent(req.params.id, 'config', {
-        configPath: 'agent.json'
-      });
-      
-      res.json({ success: true });
-    } catch (err) {
-      res.status(500).json({ error: err.message });
-    }
-  });
+  // (Removed legacy config update handler in favor of Git-backed flow below)
 
   // Generate registration token
   router.post('/tokens', async (req, res) => {
