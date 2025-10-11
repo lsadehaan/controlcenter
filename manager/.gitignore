@@ -12,4 +12,7 @@ coverage/
 logs/
 *.log
 
+# Database and runtime data
+data/control-center.db
+data/config-repo/
 
