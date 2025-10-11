@@ -36,7 +36,12 @@
       "Bash(rm:*)",
       "Bash(powershell:*)",
       "Bash(netstat:*)",
-      "Bash(findstr:*)"
+      "Bash(findstr:*)",
+      "Bash(del agent-test.exe)",
+      "Bash(tasklist)",
+      "Bash(./agent-new.exe -config \"C:\\Users\\ade_h\\.controlcenter-agent\\agent-config-old-style.json\" -log-level debug -standalone)",
+      "Bash(./agent-new.exe -log-level debug)",
+      "Bash(gh run watch:*)"
     ],
     "deny": [],
     "ask": [],

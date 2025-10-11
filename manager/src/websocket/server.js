@@ -2,6 +2,7 @@
 
 const WebSocket = require('ws');
 const { v4: uuidv4 } = require('uuid');
+const fetch = require('node-fetch');
 
 class WebSocketServer {
   constructor(server, db, logger, gitServer) {
@@ -283,8 +284,35 @@ class WebSocketServer {
     await this.db.createAlert(agentId, level, message, details);
     
     this.logger.log(`Alert from ${agentId}: [${level}] ${message}`);
-    
-    // TODO: Send notifications to configured channels
+
+    // Send notifications to configured channels (webhook/Slack)
+    try {
+      const metadata = await this.db.get('SELECT metadata FROM agents WHERE id = ?', [agentId]);
+      const meta = metadata && metadata.metadata ? JSON.parse(metadata.metadata) : {};
+
+      // Webhook URL can be stored globally in meta.notificationWebhook or per-level in meta.notificationWebhook_<level>
+      const webhookUrl = meta[`notificationWebhook_${level}`] || meta.notificationWebhook;
+      if (webhookUrl) {
+        await this.sendWebhook(webhookUrl, {
+          type: 'alert',
+          agentId,
+          level,
+          message,
+          details,
+          timestamp: Date.now()
+        });
+      }
+
+      // Slack webhook support (simple payload)
+      const slackWebhook = meta[`slackWebhook_${level}`] || meta.slackWebhook;
+      if (slackWebhook) {
+        const text = `[*Alert*] [${level.toUpperCase()}] Agent ${agentId}: ${message}`;
+        const slackPayload = { text };
+        await this.sendWebhook(slackWebhook, slackPayload);
+      }
+    } catch (err) {
+      this.logger.error('Failed to send alert notifications:', err);
+    }
   }
 
   async handleLog(ws, agentId, payload) {
@@ -347,6 +375,22 @@ class WebSocketServer {
         ws.send(message);
       }
     });
+  }
+
+  // Generic webhook sender
+  async sendWebhook(url, body) {
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+      if (!response.ok) {
+        this.logger.warn(`Webhook responded with status ${response.status}`);
+      }
+    } catch (err) {
+      this.logger.error('Webhook send failed:', err);
+    }
   }
 }
 
