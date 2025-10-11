@@ -1,0 +1,12 @@
+{
+  "managerUrl": "http://localhost:3000",
+  "fileBrowserSettings": {
+    "enabled": true,
+    "allowedPaths": [
+      "C:\\Projects\\_personal\\controlcenter\\nodes",
+      "C:\\temp"
+    ],
+    "maxUploadSize": 104857600,
+    "maxListItems": 1000
+  }
+}

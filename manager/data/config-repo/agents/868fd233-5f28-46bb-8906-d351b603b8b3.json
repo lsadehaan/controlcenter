@@ -1,0 +1,16 @@
+{
+  "fileBrowserSettings": {
+    "enabled": true,
+    "allowedPaths": [
+      "C:\\Projects",
+      "C:\\Apps"
+    ],
+    "maxUploadSize": 104857600,
+    "maxListItems": 1000
+  },
+  "sshServerPort": 2222,
+  "configRepoPath": "",
+  "authorizedSSHKeys": [],
+  "workflows": [],
+  "custom": {}
+}

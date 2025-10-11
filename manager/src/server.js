@@ -68,6 +68,32 @@ const wsServer = new WebSocketServer(server, db, console, gitServer);
 // API routes
 app.use('/api', apiRoutes(db, wsServer, gitServer));
 
+// Health endpoints
+app.get('/api/health', async (req, res) => {
+  try {
+    const agents = await db.getAllAgents();
+    const totalAgents = agents.length;
+    const onlineAgents = agents.filter(a => a.status === 'online').length;
+    const workflows = await db.all('SELECT COUNT(1) as c FROM workflows');
+    const alerts = await db.all('SELECT COUNT(1) as c FROM alerts WHERE acknowledged = 0');
+
+    res.json({
+      status: 'ok',
+      uptimeMs: Math.round(process.uptime() * 1000),
+      agents: { total: totalAgents, online: onlineAgents },
+      workflows: workflows && workflows[0] ? workflows[0].c : 0,
+      unacknowledgedAlerts: alerts && alerts[0] ? alerts[0].c : 0
+    });
+  } catch (err) {
+    console.error('Health check failed:', err);
+    res.status(500).json({ status: 'error' });
+  }
+});
+
+app.get('/health', (req, res) => {
+  res.status(200).send('OK');
+});
+
 // Git HTTP server routes
 app.use('/git', gitHttpServer.getRouter());
 
