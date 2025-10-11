@@ -82,12 +82,42 @@ function authMiddleware(db, options = {}) {
   };
 }
 
+// Role-based access middleware
+function requireRole(role) {
+  return (req, res, next) => {
+    if (!req.user) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    if (req.user.role !== role) {
+      return res.status(403).json({ error: 'Forbidden: Insufficient permissions' });
+    }
+
+    next();
+  };
+}
+
+// Admin-only middleware (for write operations)
+function requireAdmin(req, res, next) {
+  if (!req.user) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
+  if (req.user.role !== 'admin') {
+    return res.status(403).json({ error: 'Forbidden: Admin access required' });
+  }
+
+  next();
+}
+
 module.exports = {
   signToken,
   verifyToken,
   setAuthCookie,
   clearAuthCookie,
   authMiddleware,
+  requireRole,
+  requireAdmin,
   COOKIE_NAME
 };
 
