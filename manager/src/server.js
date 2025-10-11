@@ -32,6 +32,9 @@ const path = require('path');
 const express = require('express');
 const http = require('http');
 const cookieParser = require('cookie-parser');
+const csurf = require('csurf');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
 const Database = require('./db/database');
 const WebSocketServer = require('./websocket/server');
 const GitServer = require('./git/server');
@@ -54,10 +57,31 @@ const gitSSHPort = process.env.GIT_SSH_PORT || 2223;
 const gitSSHServer = new GitSSHServer(gitServer, db, console, gitSSHPort);
 
 // Middleware
+app.use(helmet()); // Security headers
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, '..', 'public')));
+
+// Rate limiter for auth routes
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 5, // Max 5 requests per window per IP
+  message: 'Too many login attempts. Please try again later.',
+  standardHeaders: true,
+  legacyHeaders: false
+});
+
+// Rate limiter for API routes
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // Max 100 requests per window per IP
+  standardHeaders: true,
+  legacyHeaders: false
+});
+
+// CSRF protection for UI forms (cookie-based)
+const csrfProtection = csurf({ cookie: true });
 
 // View engine
 app.set('views', path.join(__dirname, '..', 'views'));
@@ -70,8 +94,8 @@ const server = http.createServer(app);
 const wsServer = new WebSocketServer(server, db, console, gitServer);
 
 // API routes
-app.use('/auth', authRoutes(db));
-app.use('/api', authMiddleware(db), apiRoutes(db, wsServer, gitServer));
+app.use('/auth', authLimiter, authRoutes(db, csrfProtection));
+app.use('/api', apiLimiter, authMiddleware(db), apiRoutes(db, wsServer, gitServer));
 
 // Health endpoints
 app.get('/api/health', async (req, res) => {
@@ -102,8 +126,11 @@ app.get('/health', (req, res) => {
 // Git HTTP server routes
 app.use('/git', gitHttpServer.getRouter());
 
+// Auth guard for all UI routes
+app.use(authMiddleware(db, { ui: true }));
+
 // Web UI routes
-app.get('/', authMiddleware(db, { ui: true }), (req, res) => {
+app.get('/', (req, res) => {
   res.render('index', { title: 'Control Center Manager' });
 });
 

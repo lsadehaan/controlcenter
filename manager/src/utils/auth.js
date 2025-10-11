@@ -5,10 +5,22 @@ const { v4: uuidv4 } = require('uuid');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'change-this-secret';
 const COOKIE_NAME = 'cc_auth';
+
+// Security warning for production
+if (JWT_SECRET === 'change-this-secret') {
+  console.warn('');
+  console.warn('⚠️  WARNING: Using default JWT_SECRET. This is INSECURE!');
+  console.warn('⚠️  Set JWT_SECRET environment variable in production.');
+  console.warn('');
+}
+
+// Cookie security options - secure flag enabled in production or when explicitly set
+const isProduction = process.env.NODE_ENV === 'production';
+const cookieSecureOverride = process.env.COOKIE_SECURE === 'true';
 const COOKIE_OPTIONS = {
   httpOnly: true,
   sameSite: 'lax',
-  secure: false,
+  secure: isProduction || cookieSecureOverride,
   path: '/',
   maxAge: 7 * 24 * 60 * 60 * 1000
 };

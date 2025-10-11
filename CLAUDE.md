@@ -16,6 +16,11 @@ The Control Center is a distributed automation platform with hub-and-spoke archi
 cd manager
 npm install         # Install dependencies
 npm start          # Start server on http://localhost:3000
+
+# Production environment variables
+export JWT_SECRET="your-secure-random-secret-here"  # REQUIRED for production
+export NODE_ENV="production"                         # Enables secure cookies (HTTPS)
+export COOKIE_SECURE="true"                          # Force secure cookies
 ```
 
 ### Nodes (Go Agent)
@@ -36,6 +41,55 @@ go run . -recover-backup   # Recover from backup (stash or branch)
 # Agent info: http://localhost:8088/info
 # SSH server: port 2222
 ```
+
+## Security & Authentication
+
+### Manager Authentication
+
+The manager uses JWT-based authentication for web UI and API access.
+
+#### Environment Variables
+
+**Required for Production:**
+- `JWT_SECRET`: Secret key for signing JWT tokens. **MUST** be set to a secure random value in production
+  - Default: `change-this-secret` (insecure, triggers warning on startup)
+  - Example: `export JWT_SECRET="$(openssl rand -base64 32)"`
+
+**Optional:**
+- `NODE_ENV`: Set to `production` to enable secure cookies (requires HTTPS)
+- `COOKIE_SECURE`: Set to `true` to force secure cookies regardless of NODE_ENV
+
+#### Security Features
+
+- **Password Requirements**: 8+ characters with uppercase, lowercase, and number
+- **Rate Limiting**: Max 5 login attempts per username/IP in 15-minute window
+- **Secure Cookies**: HttpOnly, SameSite=lax protection against XSS and CSRF
+- **Password Hashing**: Bcrypt with 10 salt rounds
+- **Token Expiration**: JWT tokens valid for 7 days
+- **Bootstrap Protection**: First-run setup only when no users exist
+
+#### Authentication Flow
+
+1. **Bootstrap** (first run): Visit http://localhost:3000 → redirected to /auth/bootstrap
+2. **Login**: Visit http://localhost:3000 → redirected to /auth/login if not authenticated
+3. **API Access**: Use Bearer token from POST /api/login for API requests
+4. **UI Access**: Automatic cookie-based authentication after login
+
+#### Password Manager Integration
+
+Login and bootstrap forms use standard autocomplete attributes:
+- Username field: `autocomplete="username"`
+- Login password: `autocomplete="current-password"`
+- New password: `autocomplete="new-password"`
+
+#### Sessions Table
+
+The database includes a `sessions` table for optional server-side session management:
+- **Current implementation**: Uses JWT cookies (stateless authentication)
+- **Sessions table purpose**: Reserved for future features requiring server-side session control
+- **Future use cases**: Token blacklisting, forced logout, session revocation, concurrent session limits
+
+The table exists for extensibility but is not currently used by the authentication system.
 
 ## Creating Releases
 

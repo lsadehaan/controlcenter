@@ -8,6 +8,100 @@ Each release should have a section with the version number as a heading level 2 
 
 ---
 
+## v0.13.0
+
+### Security Enhancements
+
+- **Enterprise-grade authentication system** with JWT-based security for both web UI and API access
+- **Password requirements**: Enforced 8+ character minimum with uppercase, lowercase, and number requirements
+- **Rate limiting**: Protection against brute force attacks (5 attempts per 15 minutes per IP/username)
+- **CSRF protection**: Cookie-based CSRF tokens on all authentication forms
+- **Security headers**: Helmet.js integration adds production-ready security headers
+  - Strict-Transport-Security, X-Content-Type-Options, X-Frame-Options, etc.
+- **Auth event logging**: Comprehensive audit trail for all authentication events (login success/failure, bootstrap, logout)
+- **Secure cookies**: HttpOnly, SameSite=lax cookies with configurable secure flag for production
+- **Bootstrap protection**: First-run setup only accessible when no users exist
+- **Complete route protection**: All UI and API routes require authentication
+
+### New Features
+
+- **Bootstrap flow**: First-run setup creates initial admin user via `/auth/bootstrap`
+- **Dual authentication modes**: Cookie-based for UI, Bearer token for API
+- **JWT_SECRET validation**: Startup warning if using default insecure secret
+- **Password manager integration**: Proper autocomplete attributes for password managers
+- **Error preservation**: Username preserved in login form after failed attempts
+- **Session management**: Database schema includes sessions table for future token blacklisting/revocation
+
+### Configuration
+
+**Required environment variables for production:**
+```bash
+export JWT_SECRET="$(openssl rand -base64 32)"  # Required
+export NODE_ENV="production"                     # Enables secure cookies (HTTPS)
+export COOKIE_SECURE="true"                      # Force secure cookies
+```
+
+### API Changes
+
+- **New endpoints**:
+  - `GET /auth/login` - Login page
+  - `POST /auth/login` - UI login form handler
+  - `POST /auth/api/login` - API login (returns JWT token)
+  - `GET /auth/bootstrap` - First-run admin setup page
+  - `POST /auth/bootstrap` - Create first admin user
+  - `POST /auth/logout` - Logout and clear session
+
+- **Protected endpoints**: All `/api/*` and UI routes now require authentication
+- **Health endpoints**: `/health` and `/api/health` remain publicly accessible
+
+### Security Features
+
+- **Bcrypt password hashing**: 10 salt rounds for secure password storage
+- **JWT token expiration**: 7-day token lifetime
+- **Rate limiting headers**: RateLimit-* headers per RFC 6585
+- **Comprehensive logging**: All auth events logged with timestamp, username, IP, and event type
+- **CSRF token rotation**: New token on every form render
+
+### Breaking Changes
+
+- **Authentication required**: All existing API integrations must now authenticate
+  - Use `POST /auth/api/login` to obtain JWT token
+  - Pass token as `Authorization: Bearer <token>` header
+  - Or use cookie-based authentication for browser access
+- **Database migration**: Adds `users` and `sessions` tables (automatic on startup)
+- **No anonymous access**: All UI pages redirect to login if unauthenticated
+
+### Upgrading from v0.12.x
+
+1. **Backup database** before upgrading
+2. **Update Manager** to v0.13.0
+3. **Set JWT_SECRET** environment variable (required for production)
+4. **First login**: Visit manager URL, will redirect to bootstrap to create admin user
+5. **Update API integrations**: Add authentication to all API calls
+6. **Test authentication**: Verify login/logout and API access work correctly
+
+### Database Schema Changes
+
+**New tables:**
+- `users` table: Stores admin users with bcrypt-hashed passwords
+- `sessions` table: Reserved for future session management features
+
+### Deployment Notes
+
+- JWT_SECRET warning appears on startup if using default value
+- Bootstrap page only accessible when no users exist in database
+- All authentication events logged to stdout in JSON format for audit trails
+- Rate limiting state is in-memory (resets on restart; use Redis for persistence in production)
+
+### Documentation Updates
+
+- Added comprehensive Security & Authentication section to CLAUDE.md
+- Documented environment variables and security features
+- Added sessions table usage documentation
+- Updated development commands with production environment variables
+
+---
+
 ## v0.12.2
 
 ### Critical Architectural Fix
