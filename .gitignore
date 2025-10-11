@@ -1,0 +1,16 @@
+# Test and temporary files
+SWAP_SQA*
+SWAP_SWP*
+*.swp
+*.swo
+*~
+nul
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+*.iml
