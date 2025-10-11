@@ -47,10 +47,15 @@ function clearAuthCookie(res) {
 
 function authMiddleware(db, options = {}) {
   return async (req, res, next) => {
-    // Allow bootstrap if no users exist
+    // Redirect to bootstrap if no users exist
     try {
       const row = await db.get('SELECT COUNT(1) as c FROM users');
       if (row && row.c === 0) {
+        // Redirect UI requests to bootstrap for first-time setup
+        if (options.ui) {
+          return res.redirect('/auth/bootstrap');
+        }
+        // Allow API requests through (for health checks, etc.)
         return next();
       }
     } catch (e) {}
