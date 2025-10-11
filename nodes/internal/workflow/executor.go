@@ -301,8 +301,7 @@ func (e *Executor) handleWebhookTrigger(workflowID string, instance *WorkflowIns
 		}
 
 		// Parse payload (support JSON and form)
-		var payload map[string]interface{}
-		payload = make(map[string]interface{})
+		payload := make(map[string]interface{})
 		if strings.Contains(r.Header.Get("Content-Type"), "application/json") {
 			var body map[string]interface{}
 			if err := json.NewDecoder(r.Body).Decode(&body); err == nil {
