@@ -2,6 +2,7 @@
 
 const WebSocket = require('ws');
 const { v4: uuidv4 } = require('uuid');
+const fetch = require('node-fetch');
 
 class WebSocketServer {
   constructor(server, db, logger, gitServer) {
@@ -379,7 +380,6 @@ class WebSocketServer {
   // Generic webhook sender
   async sendWebhook(url, body) {
     try {
-      const fetch = require('node-fetch');
       const response = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
