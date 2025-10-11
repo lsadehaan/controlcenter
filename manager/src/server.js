@@ -131,7 +131,7 @@ app.use(authMiddleware(db, { ui: true }));
 
 // Web UI routes
 app.get('/', (req, res) => {
-  res.render('index', { title: 'Control Center Manager' });
+  res.render('index', { title: 'Control Center Manager', user: req.user });
 });
 
 app.get('/agents', async (req, res) => {
