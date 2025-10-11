@@ -9,6 +9,7 @@
   },
   "dependencies": {
     "bcryptjs": "^3.0.2",
+    "cookie-parser": "^1.4.6",
     "drawflow": "^0.0.60",
     "ejs": "^3.1.9",
     "express": "^4.19.2",

@@ -31,12 +31,15 @@ process.on('uncaughtException', (err) => {
 const path = require('path');
 const express = require('express');
 const http = require('http');
+const cookieParser = require('cookie-parser');
 const Database = require('./db/database');
 const WebSocketServer = require('./websocket/server');
 const GitServer = require('./git/server');
 const GitHttpServer = require('./git/http-server');
 const GitSSHServer = require('./git/ssh-server');
 const apiRoutes = require('./routes/api');
+const authRoutes = require('./routes/auth');
+const { authMiddleware } = require('./utils/auth');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -53,6 +56,7 @@ const gitSSHServer = new GitSSHServer(gitServer, db, console, gitSSHPort);
 // Middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser());
 app.use(express.static(path.join(__dirname, '..', 'public')));
 
 // View engine
@@ -66,7 +70,8 @@ const server = http.createServer(app);
 const wsServer = new WebSocketServer(server, db, console, gitServer);
 
 // API routes
-app.use('/api', apiRoutes(db, wsServer, gitServer));
+app.use('/auth', authRoutes(db));
+app.use('/api', authMiddleware(db), apiRoutes(db, wsServer, gitServer));
 
 // Health endpoints
 app.get('/api/health', async (req, res) => {
@@ -98,7 +103,7 @@ app.get('/health', (req, res) => {
 app.use('/git', gitHttpServer.getRouter());
 
 // Web UI routes
-app.get('/', (req, res) => {
+app.get('/', authMiddleware(db, { ui: true }), (req, res) => {
   res.render('index', { title: 'Control Center Manager' });
 });
 
