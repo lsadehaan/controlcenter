@@ -56,7 +56,15 @@ const gitHttpServer = new GitHttpServer(gitServer, console);
 const gitSSHServer = new GitSSHServer(gitServer, db, console, config.GIT_SSH_PORT);
 
 // Middleware
-app.use(helmet()); // Security headers
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      ...helmet.contentSecurityPolicy.getDefaultDirectives(),
+      "script-src": ["'self'", "https://cdn.jsdelivr.net"],
+      "style-src": ["'self'", "https:", "'unsafe-inline'"]
+    }
+  }
+})); // Security headers
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
