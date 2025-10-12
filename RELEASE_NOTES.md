@@ -8,6 +8,32 @@ Each release should have a section with the version number as a heading level 2 
 
 ---
 
+## v0.14.0
+
+### Improvements
+
+- **Branch merge**: Merged feature/auth branch into main, bringing all v0.13.0 authentication features to the main branch
+- **Repository cleanup**: Added database and config-repo to .gitignore to prevent tracking runtime data
+- **Conflict resolution**: Resolved merge conflicts in .gitignore and websocket server
+
+### Technical Changes
+
+- `.gitignore`: Added `data/control-center.db` and `data/config-repo/` to prevent tracking runtime files
+- `websocket/server.js`: Removed duplicate node-fetch require statement
+- Deleted `.claude/settings.local.json` (local-only file)
+
+### Impact
+
+- Main branch now includes all authentication and security features from v0.13.0
+- Runtime data no longer tracked in git, preventing unnecessary merge conflicts
+- Clean repository structure with proper .gitignore rules
+
+### Upgrading from v0.13.0
+
+No changes required - v0.14.0 is v0.13.0 merged into main with minor cleanup. If you're on v0.13.0 from the feature/auth branch, v0.14.0 is functionally identical.
+
+---
+
 ## v0.13.0
 
 ### Security Enhancements
