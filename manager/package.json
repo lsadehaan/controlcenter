@@ -5,13 +5,23 @@
   "description": "Control Center Manager - Node.js/Express/EJS scaffold",
   "license": "AGPL-3.0",
   "scripts": {
-    "start": "node src/server.js"
+    "start": "node src/server.js",
+    "kill:port": "npx kill-port",
+    "kill:dev": "npx kill-port 3000 8088 2223",
+    "kill:node:win": "taskkill /F /IM node.exe",
+    "kill:node:nix": "pkill -f node || true",
+    "lint": "npx eslint src/**/*.js",
+    "lint:fix": "npx eslint src/**/*.js --fix"
   },
   "dependencies": {
     "bcryptjs": "^3.0.2",
+    "cookie-parser": "^1.4.6",
+    "csurf": "^1.11.0",
     "drawflow": "^0.0.60",
     "ejs": "^3.1.9",
     "express": "^4.19.2",
+    "express-rate-limit": "^8.1.0",
+    "helmet": "^8.1.0",
     "ini": "^5.0.0",
     "jsonwebtoken": "^9.0.2",
     "node-fetch": "^2.7.0",

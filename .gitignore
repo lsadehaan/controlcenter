@@ -1,0 +1,57 @@
+# Test and temporary files
+SWAP_SQA*
+SWAP_SWP*
+*.swp
+*.swo
+*~
+nul
+test-*.js
+test-*.html
+test-*.json
+*-test-*.json
+*.backup
+*.log
+progress.md
+
+# Config files (should not be committed)
+*-config.json
+!standalone-config-example.json
+update-*.json
+
+# Temporary directories
+tmp-*
+temp-*
+
+# Build artifacts
+nodes/agent-linux-*
+nodes/agent-windows-*
+nodes/agent-darwin-*
+nodes/agent.exe
+nodes/agent
+manager/agent-*
+
+# Keys and secrets (NEVER commit private keys!)
+*.key
+*.pem
+*_rsa_key
+*_rsa_key.pub
+*_dsa_key
+*_dsa_key.pub
+*_ecdsa_key
+*_ecdsa_key.pub
+*_ed25519_key
+*_ed25519_key.pub
+testkey
+testkey.pub
+
+# Claude Code local settings
+.claude/settings.local.json
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+*.iml

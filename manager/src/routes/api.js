@@ -2,9 +2,34 @@
 
 const express = require('express');
 const { v4: uuidv4 } = require('uuid');
-const { importFromINI, exportToINI } = require('../utils/ini-converter');
+const { importFromINI, exportToINI} = require('../utils/ini-converter');
 const fetch = require('node-fetch');
+const config = require('../config');
 const router = express.Router();
+
+/**
+ * Fetch with timeout using AbortController
+ * Prevents requests from hanging indefinitely when agents are unresponsive
+ */
+async function fetchWithTimeout(url, options = {}, timeoutMs = config.AGENT_PROXY_TIMEOUT) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    const response = await fetch(url, {
+      ...options,
+      signal: controller.signal
+    });
+    clearTimeout(timeout);
+    return response;
+  } catch (err) {
+    clearTimeout(timeout);
+    if (err.name === 'AbortError') {
+      throw new Error(`Request timeout after ${timeoutMs}ms`);
+    }
+    throw err;
+  }
+}
 
 module.exports = (db, wsServer, gitServer) => {
   // Get all agents
@@ -500,7 +525,7 @@ module.exports = (db, wsServer, gitServer) => {
       agentHost = `[${agentHost}]`;
     }
 
-    return `http://${agentHost}:8088`;
+    return `http://${agentHost}:${config.AGENT_DEFAULT_PORT}`;
   }
 
   // Proxy agent logs
@@ -520,7 +545,7 @@ module.exports = (db, wsServer, gitServer) => {
       const queryParams = new URLSearchParams(req.query).toString();
       const url = `${agentUrl}/api/logs?${queryParams}`;
 
-      const response = await fetch(url);
+      const response = await fetchWithTimeout(url);
 
       if (!response.ok) {
         return res.status(response.status).json({
@@ -552,7 +577,7 @@ module.exports = (db, wsServer, gitServer) => {
       const queryParams = new URLSearchParams(req.query).toString();
       const url = `${agentUrl}/api/logs/download?${queryParams}`;
 
-      const response = await fetch(url);
+      const response = await fetchWithTimeout(url);
 
       // Forward headers and stream the response
       res.setHeader('Content-Type', response.headers.get('content-type'));
@@ -580,7 +605,7 @@ module.exports = (db, wsServer, gitServer) => {
       const queryParams = new URLSearchParams(req.query).toString();
       const url = `${agentUrl}/api/workflows/executions?${queryParams}`;
 
-      const response = await fetch(url);
+      const response = await fetchWithTimeout(url);
       const data = await response.json();
 
       res.json(data);
@@ -604,7 +629,7 @@ module.exports = (db, wsServer, gitServer) => {
 
       const url = `${agentUrl}/api/metrics`;
 
-      const response = await fetch(url);
+      const response = await fetchWithTimeout(url);
       const data = await response.json();
 
       res.json(data);
@@ -630,7 +655,7 @@ module.exports = (db, wsServer, gitServer) => {
       const queryParams = new URLSearchParams(req.query).toString();
       const url = `${agentUrl}/api/files/browse?${queryParams}`;
 
-      const response = await fetch(url);
+      const response = await fetchWithTimeout(url);
       const data = await response.json();
 
       res.json(data);
@@ -654,7 +679,7 @@ module.exports = (db, wsServer, gitServer) => {
       const queryParams = new URLSearchParams(req.query).toString();
       const url = `${agentUrl}/api/files/download?${queryParams}`;
 
-      const response = await fetch(url);
+      const response = await fetchWithTimeout(url);
 
       if (!response.ok) {
         return res.status(response.status).send(await response.text());
@@ -715,7 +740,7 @@ module.exports = (db, wsServer, gitServer) => {
         form.append('path', req.body.path || '');
 
         try {
-          const response = await fetch(url, {
+          const response = await fetchWithTimeout(url, {
             method: 'POST',
             body: form,
             headers: form.getHeaders()
@@ -747,7 +772,7 @@ module.exports = (db, wsServer, gitServer) => {
       const queryParams = new URLSearchParams(req.query).toString();
       const url = `${agentUrl}/api/files/mkdir?${queryParams}`;
 
-      const response = await fetch(url, {
+      const response = await fetchWithTimeout(url, {
         method: 'POST'
       });
 
@@ -773,7 +798,7 @@ module.exports = (db, wsServer, gitServer) => {
       const queryParams = new URLSearchParams(req.query).toString();
       const url = `${agentUrl}/api/files/delete?${queryParams}`;
 
-      const response = await fetch(url, {
+      const response = await fetchWithTimeout(url, {
         method: 'DELETE'
       });
 

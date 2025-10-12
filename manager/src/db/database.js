@@ -102,6 +102,18 @@ class Database {
           last_login INTEGER
         )
       `);
+
+      // Sessions (optional, for cookie-based auth)
+      this.db.run(`
+        CREATE TABLE IF NOT EXISTS sessions (
+          id TEXT PRIMARY KEY,
+          user_id TEXT,
+          token TEXT,
+          expires_at INTEGER,
+          created_at INTEGER,
+          FOREIGN KEY (user_id) REFERENCES users(id)
+        )
+      `);
     });
   }
 
@@ -320,6 +332,38 @@ class Database {
 
   close() {
     this.db.close();
+  }
+
+  // User helpers
+  async findUserByUsername(username) {
+    return this.get('SELECT * FROM users WHERE username = ?', [username]);
+  }
+
+  async createUser(id, username, passwordHash, role = 'admin') {
+    return this.run(
+      'INSERT INTO users (id, username, password_hash, role, created_at) VALUES (?, ?, ?, ?, ?)',
+      [id, username, passwordHash, role, Date.now()]
+    );
+  }
+
+  async updateLastLogin(userId) {
+    return this.run('UPDATE users SET last_login = ? WHERE id = ?', [Date.now(), userId]);
+  }
+
+  // Session helpers
+  async createSession(id, userId, token, expiresAt) {
+    return this.run(
+      'INSERT INTO sessions (id, user_id, token, expires_at, created_at) VALUES (?, ?, ?, ?, ?)',
+      [id, userId, token, expiresAt, Date.now()]
+    );
+  }
+
+  async findSession(token) {
+    return this.get('SELECT * FROM sessions WHERE token = ? AND expires_at > ?', [token, Date.now()]);
+  }
+
+  async deleteSession(token) {
+    return this.run('DELETE FROM sessions WHERE token = ?', [token]);
   }
 }
 
