@@ -19,7 +19,7 @@
           <p>Optionally specify the agent's API address for HTTP calls (e.g., 192.168.1.50:8088 or agent1.internal:8088)</p>
           <div class="form-group">
             <label for="api-address">Agent API Address (optional):</label>
-            <input type="text" id="api-address" placeholder="Leave empty to auto-detect" />
+            <input type="text" id="api-address" class="form-input" placeholder="Leave empty to auto-detect" />
             <small>If empty, will auto-detect from WebSocket connection</small>
           </div>
           <div class="modal-actions">
@@ -80,69 +80,7 @@
   </main>
   
   <%- include('partials/footer') %>
-  
-  <script>
-  function showTokenDialog() {
-    document.getElementById('token-dialog').style.display = 'flex';
-    document.getElementById('api-address').value = '';
-  }
 
-  function hideTokenDialog() {
-    document.getElementById('token-dialog').style.display = 'none';
-  }
-
-  function generateToken() {
-    let apiAddress = document.getElementById('api-address').value.trim();
-
-    // Strip http:// or https:// prefix if present
-    apiAddress = apiAddress.replace(/^https?:\/\//, '');
-
-    fetch('/api/tokens', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        expiresIn: 3600000,
-        apiAddress: apiAddress || undefined
-      })
-    })
-    .then(r => r.json())
-    .then(data => {
-      hideTokenDialog();
-      document.getElementById('token-display').style.display = 'block';
-      document.getElementById('token-value').textContent = data.token;
-      document.getElementById('token-cmd').textContent = data.token;
-
-      if (apiAddress) {
-        document.getElementById('api-address-info').style.display = 'block';
-        document.getElementById('api-address-value').textContent = apiAddress;
-      } else {
-        document.getElementById('api-address-info').style.display = 'none';
-      }
-    })
-    .catch(err => alert('Failed to generate token: ' + err.message));
-  }
-  
-  function viewAgent(id) {
-    window.location.href = `/agents/${id}`;
-  }
-  
-  function configureAgent(id) {
-    window.location.href = `/agents/${id}/configure`;
-  }
-  
-  function removeAgent(id) {
-    if (confirm('Are you sure you want to remove this agent?')) {
-      fetch(`/api/agents/${id}`, {
-        method: 'DELETE'
-      })
-      .then(r => r.json())
-      .then(data => {
-        alert('Agent removed successfully');
-        window.location.reload();
-      })
-      .catch(err => alert('Failed to remove agent: ' + err.message));
-    }
-  }
-  </script>
+  <script src="/js/agents.js"></script>
 </body>
 </html>

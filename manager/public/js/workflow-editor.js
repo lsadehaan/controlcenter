@@ -4,8 +4,9 @@ let nodeIdCounter = 1;
 let currentWorkflowId = null;
 let hasUnsavedChanges = false;
 
-// Workflow data from server (will be set by the view)
-let workflowData = null;
+// Workflow data from server - read from data attribute
+const workflowDataStr = document.body.dataset.workflow || 'null';
+let workflowData = workflowDataStr === 'null' ? null : JSON.parse(workflowDataStr);
 
 window.onload = function() {
   const container = document.getElementById('drawflow');

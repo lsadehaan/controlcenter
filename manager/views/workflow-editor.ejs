@@ -5,7 +5,7 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/jerosoler/Drawflow@0.0.60/dist/drawflow.min.css">
   <link rel="stylesheet" href="/css/workflow-editor.css">
 </head>
-<body>
+<body data-workflow='<%- workflow ? JSON.stringify(workflow) : "null" %>'>
   <%- include('partials/nav') %>
 
   <main class="main-content">
@@ -80,10 +80,6 @@
   </main>
 
   <script src="https://cdn.jsdelivr.net/gh/jerosoler/Drawflow/dist/drawflow.min.js"></script>
-  <script>
-  // Set workflow data from server (needs to be inline due to EJS templating)
-  workflowData = <%- workflow ? JSON.stringify(workflow) : 'null' %>;
-  </script>
   <script src="/js/workflow-editor.js"></script>
 </body>
 </html>
