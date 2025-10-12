@@ -12,4 +12,6 @@ coverage/
 logs/
 *.log
 
-
+# Database and configuration repository
+data/control-center.db
+data/config-repo/
