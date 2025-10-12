@@ -15,7 +15,176 @@ let executionsPerPage = 10;
 let viewMode = 'compact';
 let autoRefreshInterval = null;
 
-function switchTab(tabName) {
+// Add event listeners when DOM is loaded
+document.addEventListener('DOMContentLoaded', function() {
+  // Tab buttons
+  const tabBtns = document.querySelectorAll('.tab-btn');
+  tabBtns.forEach(btn => {
+    btn.addEventListener('click', function() {
+      const tabName = this.getAttribute('data-tab');
+      switchTab(tabName, this);
+    });
+  });
+
+  // Command buttons
+  const commandBtns = document.querySelectorAll('.command-btn');
+  commandBtns.forEach(btn => {
+    btn.addEventListener('click', function() {
+      const command = this.getAttribute('data-command');
+      sendCommand(command);
+    });
+  });
+
+  // Log level button
+  const setLogLevelBtn = document.getElementById('set-log-level-btn');
+  if (setLogLevelBtn) {
+    setLogLevelBtn.addEventListener('click', setLogLevel);
+  }
+
+  // API address buttons
+  const updateApiBtn = document.getElementById('update-api-address-btn');
+  const clearApiBtn = document.getElementById('clear-api-address-btn');
+  if (updateApiBtn) {
+    updateApiBtn.addEventListener('click', updateApiAddress);
+  }
+  if (clearApiBtn) {
+    clearApiBtn.addEventListener('click', clearApiAddress);
+  }
+
+  // Logs buttons
+  const loadLogsBtn = document.getElementById('load-logs-btn');
+  const downloadLogsBtn = document.getElementById('download-logs-btn');
+  const prevBtn = document.getElementById('prev-btn');
+  const nextBtn = document.getElementById('next-btn');
+  if (loadLogsBtn) {
+    loadLogsBtn.addEventListener('click', () => loadLogs(1));
+  }
+  if (downloadLogsBtn) {
+    downloadLogsBtn.addEventListener('click', downloadLogs);
+  }
+  if (prevBtn) {
+    prevBtn.addEventListener('click', prevPage);
+  }
+  if (nextBtn) {
+    nextBtn.addEventListener('click', nextPage);
+  }
+
+  // Workflow execution buttons
+  const loadWorkflowExecutionsBtn = document.getElementById('load-workflow-executions-btn');
+  if (loadWorkflowExecutionsBtn) {
+    loadWorkflowExecutionsBtn.addEventListener('click', loadWorkflowExecutions);
+  }
+
+  const autoRefreshToggle = document.getElementById('auto-refresh-toggle');
+  if (autoRefreshToggle) {
+    autoRefreshToggle.addEventListener('change', toggleAutoRefresh);
+  }
+
+  const viewModeBtns = document.querySelectorAll('.view-mode-btn');
+  viewModeBtns.forEach(btn => {
+    btn.addEventListener('click', function() {
+      const mode = this.getAttribute('data-view-mode');
+      setViewMode(mode, this);
+    });
+  });
+
+  // Filters
+  const filterWorkflow = document.getElementById('filter-workflow');
+  const filterStatus = document.getElementById('filter-status');
+  const filterDate = document.getElementById('filter-date');
+  const filterSearch = document.getElementById('filter-search');
+  const sortBy = document.getElementById('sort-by');
+
+  if (filterWorkflow) filterWorkflow.addEventListener('change', applyFilters);
+  if (filterStatus) filterStatus.addEventListener('change', applyFilters);
+  if (filterDate) filterDate.addEventListener('change', applyFilters);
+  if (filterSearch) filterSearch.addEventListener('keyup', applyFilters);
+  if (sortBy) sortBy.addEventListener('change', applyFilters);
+
+  // Execution pagination
+  const execPrevBtn = document.getElementById('exec-prev-btn');
+  const execNextBtn = document.getElementById('exec-next-btn');
+  const execPageSize = document.getElementById('exec-page-size');
+
+  if (execPrevBtn) execPrevBtn.addEventListener('click', prevExecutionPage);
+  if (execNextBtn) execNextBtn.addEventListener('click', nextExecutionPage);
+  if (execPageSize) execPageSize.addEventListener('change', changePageSize);
+
+  // Metrics button
+  const loadMetricsBtn = document.getElementById('load-metrics-btn');
+  if (loadMetricsBtn) {
+    loadMetricsBtn.addEventListener('click', loadMetrics);
+  }
+
+  // File browser buttons
+  const pathSelector = document.getElementById('path-selector');
+  const refreshPathBtn = document.getElementById('refresh-current-path-btn');
+  const showUploadBtn = document.getElementById('show-upload-dialog-btn');
+  const showCreateFolderBtn = document.getElementById('show-create-folder-dialog-btn');
+  const hideUploadBtn = document.getElementById('hide-upload-dialog-btn');
+  const performUploadBtn = document.getElementById('perform-upload-btn');
+  const hideCreateFolderBtn = document.getElementById('hide-create-folder-dialog-btn');
+  const performCreateFolderBtn = document.getElementById('perform-create-folder-btn');
+
+  if (pathSelector) pathSelector.addEventListener('change', onPathSelected);
+  if (refreshPathBtn) refreshPathBtn.addEventListener('click', refreshCurrentPath);
+  if (showUploadBtn) showUploadBtn.addEventListener('click', showUploadDialog);
+  if (showCreateFolderBtn) showCreateFolderBtn.addEventListener('click', showCreateFolderDialog);
+  if (hideUploadBtn) hideUploadBtn.addEventListener('click', hideUploadDialog);
+  if (performUploadBtn) performUploadBtn.addEventListener('click', performUpload);
+  if (hideCreateFolderBtn) hideCreateFolderBtn.addEventListener('click', hideCreateFolderDialog);
+  if (performCreateFolderBtn) performCreateFolderBtn.addEventListener('click', performCreateFolder);
+
+  // Initialize path selector
+  initializePathSelector();
+
+  // Event delegation for dynamically generated file browser elements
+  const fileBrowserContent = document.getElementById('file-browser-content');
+  if (fileBrowserContent) {
+    fileBrowserContent.addEventListener('click', function(e) {
+      // Handle folder navigation
+      if (e.target.classList.contains('file-name') && e.target.dataset.path && e.target.dataset.isDir === 'true') {
+        loadFileBrowser(e.target.dataset.path);
+      }
+
+      // Handle download button
+      if (e.target.classList.contains('file-action-btn') && e.target.dataset.action === 'download') {
+        downloadFile(e.target.dataset.path, e.target.dataset.filename);
+      }
+
+      // Handle delete button
+      if (e.target.classList.contains('file-action-btn') && e.target.dataset.action === 'delete') {
+        deleteFileOrFolder(e.target.dataset.path, e.target.dataset.isDir === 'true');
+      }
+    });
+  }
+
+  // Event delegation for breadcrumb navigation
+  const breadcrumbPath = document.getElementById('breadcrumb-path');
+  if (breadcrumbPath) {
+    breadcrumbPath.addEventListener('click', function(e) {
+      if (e.target.classList.contains('breadcrumb-link')) {
+        const path = e.target.dataset.path;
+        loadFileBrowser(path);
+      }
+    });
+  }
+
+  // Event delegation for workflow execution cards
+  const workflowExecutions = document.getElementById('workflow-executions');
+  if (workflowExecutions) {
+    workflowExecutions.addEventListener('click', function(e) {
+      // Find the workflow-execution div if we clicked inside it
+      const executionCard = e.target.closest('.workflow-execution');
+      if (executionCard && executionCard.dataset.executionIndex) {
+        const index = parseInt(executionCard.dataset.executionIndex);
+        toggleExecutionDetails(index);
+      }
+    });
+  }
+});
+
+function switchTab(tabName, buttonElement) {
   // Hide all tabs
   document.querySelectorAll('.tab-content').forEach(tab => {
     tab.classList.remove('active');
@@ -26,7 +195,9 @@ function switchTab(tabName) {
 
   // Show selected tab
   document.getElementById(tabName + '-tab').classList.add('active');
-  event.target.classList.add('active');
+  if (buttonElement) {
+    buttonElement.classList.add('active');
+  }
 }
 
 async function loadLogs(page = 1) {
@@ -300,7 +471,7 @@ function renderExecutionCard(exec, index) {
   }
 
   return `
-    <div class="workflow-execution ${exec.status}" onclick="toggleExecutionDetails(${index})">
+    <div class="workflow-execution ${exec.status}" data-execution-index="${index}">
       <div class="workflow-header">
         <div class="workflow-title">
           <h4>${escapeHtml(workflowName)}</h4>
@@ -431,12 +602,14 @@ function changePageSize() {
   renderExecutions();
 }
 
-function setViewMode(mode) {
+function setViewMode(mode, buttonElement) {
   viewMode = mode;
   document.querySelectorAll('.view-toggle button').forEach(btn => {
     btn.classList.remove('active');
   });
-  event.target.classList.add('active');
+  if (buttonElement) {
+    buttonElement.classList.add('active');
+  }
   renderExecutions();
 }
 
@@ -754,14 +927,14 @@ function renderFileBrowser(data) {
     html += `
       <li class="file-item ${item.isDir ? 'directory' : 'file'}">
         <span class="file-icon">${icon}</span>
-        <span class="file-name" onclick="${item.isDir ? `loadFileBrowser('${escapeJsString(itemPath)}')` : ''}" style="${item.isDir ? 'cursor: pointer;' : ''}">
+        <span class="file-name ${item.isDir ? 'clickable' : ''}" data-path="${escapeHtml(itemPath)}" data-is-dir="${item.isDir}" style="${item.isDir ? 'cursor: pointer;' : ''}">
           ${escapeHtml(item.name)}
         </span>
         <span class="file-size">${sizeText}</span>
         <span class="file-date">${dateText}</span>
         <div class="file-actions">
-          ${!item.isDir ? `<button class="file-action-btn" onclick="downloadFile('${escapeJsString(itemPath)}', '${escapeJsString(item.name)}')">⬇️ Download</button>` : ''}
-          <button class="file-action-btn delete" onclick="deleteFileOrFolder('${escapeJsString(itemPath)}', ${item.isDir})">🗑️ Delete</button>
+          ${!item.isDir ? `<button class="file-action-btn" data-action="download" data-path="${escapeHtml(itemPath)}" data-filename="${escapeHtml(item.name)}">⬇️ Download</button>` : ''}
+          <button class="file-action-btn delete" data-action="delete" data-path="${escapeHtml(itemPath)}" data-is-dir="${item.isDir}">🗑️ Delete</button>
         </div>
       </li>
     `;
@@ -772,10 +945,10 @@ function renderFileBrowser(data) {
 }
 
 function renderBreadcrumb(path) {
-  if (!path) return '<a class="breadcrumb-link" onclick="loadFileBrowser(\'\')">Home</a>';
+  if (!path) return '<a class="breadcrumb-link" data-path="">Home</a>';
 
   const parts = path.split('/').filter(p => p);
-  let html = '<a class="breadcrumb-link" onclick="loadFileBrowser(\'\')">Home</a>';
+  let html = '<a class="breadcrumb-link" data-path="">Home</a>';
   let accumulated = '';
 
   parts.forEach((part, idx) => {
@@ -784,7 +957,7 @@ function renderBreadcrumb(path) {
     if (isLast) {
       html += ` / <span style="color: #212529;">${escapeHtml(part)}</span>`;
     } else {
-      html += ` / <a class="breadcrumb-link" onclick="loadFileBrowser('${escapeJsString(accumulated)}')">${escapeHtml(part)}</a>`;
+      html += ` / <a class="breadcrumb-link" data-path="${escapeHtml(accumulated)}">${escapeHtml(part)}</a>`;
     }
   });
 

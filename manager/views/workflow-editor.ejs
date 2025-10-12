@@ -14,15 +14,15 @@
         <h2>Workflow Editor</h2>
         <div class="editor-controls">
           <input type="text" id="workflow-name" placeholder="Workflow Name" class="form-input">
-          <button class="btn btn-primary" onclick="saveWorkflow()">Save Workflow</button>
-          <button class="btn" onclick="clearWorkflow()">Clear</button>
-          <button class="btn" onclick="exportWorkflow()">Export</button>
-          <button class="btn" onclick="importWorkflow()">Import</button>
+          <button id="save-workflow-btn" class="btn btn-primary">Save Workflow</button>
+          <button id="clear-workflow-btn" class="btn">Clear</button>
+          <button id="export-workflow-btn" class="btn">Export</button>
+          <button id="import-workflow-btn" class="btn">Import</button>
           <div style="border-left: 1px solid #dee2e6; margin: 0 10px; height: 24px; display: inline-block;"></div>
-          <button class="btn btn-sm" onclick="zoomIn()" title="Zoom In">➕</button>
-          <button class="btn btn-sm" onclick="zoomOut()" title="Zoom Out">➖</button>
-          <button class="btn btn-sm" onclick="zoomReset()" title="Reset Zoom">🔄</button>
-          <button class="btn btn-sm" onclick="zoomToFit()" title="Fit to Screen">⬜</button>
+          <button id="zoom-in-btn" class="btn btn-sm" title="Zoom In">➕</button>
+          <button id="zoom-out-btn" class="btn btn-sm" title="Zoom Out">➖</button>
+          <button id="zoom-reset-btn" class="btn btn-sm" title="Reset Zoom">🔄</button>
+          <button id="zoom-to-fit-btn" class="btn btn-sm" title="Fit to Screen">⬜</button>
         </div>
       </div>
 

@@ -191,11 +191,59 @@ window.onload = function() {
       return e.returnValue;
     }
   });
+
+  // Attach event listeners to control buttons
+  const saveBtn = document.getElementById('save-workflow-btn');
+  const clearBtn = document.getElementById('clear-workflow-btn');
+  const exportBtn = document.getElementById('export-workflow-btn');
+  const importBtn = document.getElementById('import-workflow-btn');
+  const zoomInBtn = document.getElementById('zoom-in-btn');
+  const zoomOutBtn = document.getElementById('zoom-out-btn');
+  const zoomResetBtn = document.getElementById('zoom-reset-btn');
+  const zoomToFitBtn = document.getElementById('zoom-to-fit-btn');
+
+  if (saveBtn) saveBtn.addEventListener('click', saveWorkflow);
+  if (clearBtn) clearBtn.addEventListener('click', clearWorkflow);
+  if (exportBtn) exportBtn.addEventListener('click', exportWorkflow);
+  if (importBtn) importBtn.addEventListener('click', importWorkflow);
+  if (zoomInBtn) zoomInBtn.addEventListener('click', zoomIn);
+  if (zoomOutBtn) zoomOutBtn.addEventListener('click', zoomOut);
+  if (zoomResetBtn) zoomResetBtn.addEventListener('click', zoomReset);
+  if (zoomToFitBtn) zoomToFitBtn.addEventListener('click', zoomToFit);
+
+  // Event delegation for dynamically created copy buttons
+  document.addEventListener('click', function(e) {
+    if (e.target.classList.contains('copy-to-clipboard-btn')) {
+      const textToCopy = e.target.getAttribute('data-copy-text');
+      copyToClipboard(textToCopy, e);
+    }
+  });
+
+  // Event delegation for copy button hover effects
+  document.addEventListener('mouseover', function(e) {
+    if (e.target.classList.contains('copy-to-clipboard-btn')) {
+      if (e.target.classList.contains('output-copy-btn')) {
+        e.target.style.background = '#218838';
+      } else {
+        e.target.style.background = '#0056b3';
+      }
+    }
+  });
+
+  document.addEventListener('mouseout', function(e) {
+    if (e.target.classList.contains('copy-to-clipboard-btn')) {
+      if (e.target.classList.contains('output-copy-btn')) {
+        e.target.style.background = '#28a745';
+      } else {
+        e.target.style.background = '#007bff';
+      }
+    }
+  });
 };
 
 // Update save button to show unsaved state
 function updateSaveButtonState() {
-  const saveBtn = document.querySelector('[onclick="saveWorkflow()"]');
+  const saveBtn = document.getElementById('save-workflow-btn');
   if (saveBtn) {
     if (hasUnsavedChanges) {
       saveBtn.textContent = 'Save Workflow *';
@@ -425,10 +473,10 @@ function showNodeProperties(id) {
   // Create tabs for properties and inputs
   let propertiesHtml = `
     <div class="property-tabs" style="display: flex; gap: 10px; margin-bottom: 15px; border-bottom: 2px solid #dee2e6;">
-      <button class="tab-button" onclick="showPropertiesTab('properties')"
+      <button class="tab-button" data-tab="properties"
               style="padding: 8px 16px; background: #007bff; color: white; border: none; border-radius: 4px 4px 0 0; cursor: pointer;"
               id="properties-tab-btn">Properties</button>
-      <button class="tab-button" onclick="showPropertiesTab('inputs')"
+      <button class="tab-button" data-tab="inputs"
               style="padding: 8px 16px; background: #e9ecef; color: #495057; border: none; border-radius: 4px 4px 0 0; cursor: pointer;"
               id="inputs-tab-btn">Available Inputs</button>
     </div>
@@ -448,7 +496,7 @@ function showNodeProperties(id) {
   });
 
   propertiesHtml += `
-    <button class="btn btn-sm btn-primary" onclick="updateNodeProperties()">Update</button>
+    <button id="update-node-properties-btn" class="btn btn-sm btn-primary">Update</button>
     </div>
     <div id="inputs-tab-content" style="display: none;">
       ${generateInputsTab(id)}
@@ -456,6 +504,21 @@ function showNodeProperties(id) {
   `;
 
   document.getElementById('properties-content').innerHTML = propertiesHtml;
+
+  // Attach event listeners to dynamically created elements
+  const propertiesTabBtn = document.getElementById('properties-tab-btn');
+  const inputsTabBtn = document.getElementById('inputs-tab-btn');
+  const updateBtn = document.getElementById('update-node-properties-btn');
+
+  if (propertiesTabBtn) {
+    propertiesTabBtn.addEventListener('click', () => showPropertiesTab('properties'));
+  }
+  if (inputsTabBtn) {
+    inputsTabBtn.addEventListener('click', () => showPropertiesTab('inputs'));
+  }
+  if (updateBtn) {
+    updateBtn.addEventListener('click', updateNodeProperties);
+  }
 }
 
 // Show/hide property tabs
@@ -508,10 +571,8 @@ function generateInputsTab(nodeId) {
           <td style="padding: 8px; font-family: monospace; font-weight: bold;">${varString}</td>
           <td style="padding: 8px; color: #6c757d;">${variable.description}</td>
           <td style="padding: 8px; text-align: center;">
-            <button onclick="copyToClipboard('${varString}', event)"
-                    style="padding: 4px 8px; background: #007bff; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 12px;"
-                    onmouseover="this.style.background='#0056b3'"
-                    onmouseout="this.style.background='#007bff'">
+            <button class="copy-to-clipboard-btn" data-copy-text="${varString}"
+                    style="padding: 4px 8px; background: #007bff; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 12px;">
               📋
             </button>
           </td>
@@ -540,10 +601,8 @@ function generateInputsTab(nodeId) {
           <td style="padding: 8px; font-family: monospace; font-weight: bold; color: #28a745;">${varString}</td>
           <td style="padding: 8px; color: #6c757d;">${variable.description}</td>
           <td style="padding: 8px; text-align: center;">
-            <button onclick="copyToClipboard('${varString}', event)"
-                    style="padding: 4px 8px; background: #28a745; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 12px;"
-                    onmouseover="this.style.background='#218838'"
-                    onmouseout="this.style.background='#28a745'">
+            <button class="copy-to-clipboard-btn output-copy-btn" data-copy-text="${varString}"
+                    style="padding: 4px 8px; background: #28a745; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 12px;">
               📋
             </button>
           </td>
@@ -1191,14 +1250,28 @@ function showDeploymentDialog(workflowId) {
       dialogHTML += `
         </div>
         <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
-          <button onclick="closeDeploymentDialog()" class="btn">Skip</button>
-          <button onclick="deployToSelectedAgents('${workflowId}')" class="btn btn-primary">Update Selected Agents</button>
+          <button id="close-deployment-dialog-btn" class="btn">Skip</button>
+          <button id="deploy-to-selected-agents-btn" class="btn btn-primary" data-workflow-id="${workflowId}">Update Selected Agents</button>
         </div>
       `;
 
       dialog.innerHTML = dialogHTML;
       modal.appendChild(dialog);
       document.body.appendChild(modal);
+
+      // Attach event listeners to dialog buttons
+      const closeBtn = document.getElementById('close-deployment-dialog-btn');
+      const deployBtn = document.getElementById('deploy-to-selected-agents-btn');
+
+      if (closeBtn) {
+        closeBtn.addEventListener('click', closeDeploymentDialog);
+      }
+      if (deployBtn) {
+        deployBtn.addEventListener('click', function() {
+          const wfId = this.getAttribute('data-workflow-id');
+          deployToSelectedAgents(wfId);
+        });
+      }
 
       window.deploymentModal = modal;
     })

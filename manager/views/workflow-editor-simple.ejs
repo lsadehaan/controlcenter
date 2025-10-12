@@ -12,14 +12,14 @@
         <h2>Workflow Editor (Simple Mode)</h2>
         <div class="editor-controls">
           <input type="text" id="workflow-name" placeholder="Workflow Name" class="form-input">
-          <button class="btn btn-primary" onclick="saveWorkflow()">Save Workflow</button>
-          <button class="btn" onclick="clearEditor()">Clear</button>
-          <button class="btn" onclick="addTriggerNode()">Add Trigger</button>
-          <button class="btn" onclick="addActionNode()">Add Action</button>
+          <button id="save-workflow-btn" class="btn btn-primary">Save Workflow</button>
+          <button id="clear-editor-btn" class="btn">Clear</button>
+          <button id="add-trigger-btn" class="btn">Add Trigger</button>
+          <button id="add-action-btn" class="btn">Add Action</button>
         </div>
       </div>
       
-      <div id="drawflow"></div>
+      <div id="drawflow" style="height: 600px; background: #f0f0f0; border: 1px solid #ddd;"></div>
       
       <div style="padding: 20px; background: white; margin-top: 20px;">
         <h3>Instructions:</h3>

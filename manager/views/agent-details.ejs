@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
   <%- include('partials/head') %>
+  <link rel="stylesheet" href="/css/agent-details.css">
 </head>
 <body data-agent-id="<%= agent.id %>" data-agent-config='<%- JSON.stringify(agent) %>'>
   <%- include('partials/nav') %>
@@ -16,11 +17,11 @@
       </div>
 
       <div class="tabs">
-        <button class="tab active" onclick="switchTab('overview')">Overview</button>
-        <button class="tab" onclick="switchTab('logs')">Logs</button>
-        <button class="tab" onclick="switchTab('workflows')">Workflows</button>
-        <button class="tab" onclick="switchTab('metrics')">Metrics</button>
-        <button class="tab" onclick="switchTab('files')">Files</button>
+        <button class="tab tab-btn active" data-tab="overview">Overview</button>
+        <button class="tab tab-btn" data-tab="logs">Logs</button>
+        <button class="tab tab-btn" data-tab="workflows">Workflows</button>
+        <button class="tab tab-btn" data-tab="metrics">Metrics</button>
+        <button class="tab tab-btn" data-tab="files">Files</button>
         <a href="/agents/<%= agent.id %>/filewatcher" class="tab" style="text-decoration: none;">File Watchers</a>
         <a href="/agents/<%= agent.id %>/configure" class="tab" style="text-decoration: none;">Configure</a>
       </div>
@@ -31,9 +32,9 @@
         <div class="metric-card" style="margin-bottom: 20px;">
           <h4>Agent Commands</h4>
           <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px;">
-            <button class="btn" onclick="sendCommand('reload-config')">Reload Config</button>
-            <button class="btn" onclick="sendCommand('git-pull')">Git Pull</button>
-            <button class="btn" onclick="sendCommand('reload-filewatcher')">Reload File Watcher</button>
+            <button class="btn command-btn" data-command="reload-config">Reload Config</button>
+            <button class="btn command-btn" data-command="git-pull">Git Pull</button>
+            <button class="btn command-btn" data-command="reload-filewatcher">Reload File Watcher</button>
           </div>
           <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #dee2e6;">
             <label style="display: block; margin-bottom: 8px; font-weight: 500;">Log Level:</label>
@@ -44,7 +45,7 @@
                 <option value="warn">Warning</option>
                 <option value="error">Error</option>
               </select>
-              <button class="btn" onclick="setLogLevel()">Set Log Level</button>
+              <button id="set-log-level-btn" class="btn">Set Log Level</button>
             </div>
           </div>
           <div id="command-result" style="margin-top: 10px; padding: 10px; display: none; border-radius: 4px;"></div>
@@ -92,8 +93,8 @@
             <label style="display: block; margin-bottom: 8px; font-weight: 500;">Update API Address:</label>
             <div style="display: flex; gap: 10px; align-items: center;">
               <input type="text" id="new-api-address" class="form-control" placeholder="e.g., 192.168.1.100:8088" style="flex: 1;">
-              <button class="btn" onclick="updateApiAddress()">Update</button>
-              <button class="btn" onclick="clearApiAddress()">Clear (Auto-detect)</button>
+              <button id="update-api-address-btn" class="btn">Update</button>
+              <button id="clear-api-address-btn" class="btn">Clear (Auto-detect)</button>
             </div>
             <small style="color: #666; display: block; margin-top: 5px;">
               Leave empty or click Clear to auto-detect from connection IP. Format: host:port (do not include http://)
@@ -120,8 +121,8 @@
             <option value="200">200 lines</option>
             <option value="500">500 lines</option>
           </select>
-          <button class="btn" onclick="loadLogs()">Refresh</button>
-          <button class="btn" onclick="downloadLogs()">Download</button>
+          <button id="load-logs-btn" class="btn">Refresh</button>
+          <button id="download-logs-btn" class="btn">Download</button>
         </div>
 
         <div class="log-viewer" id="log-viewer">
@@ -131,9 +132,9 @@
         </div>
 
         <div class="pagination" id="log-pagination" style="display: none;">
-          <button class="btn" onclick="prevPage()" id="prev-btn">Previous</button>
+          <button class="btn" id="prev-btn">Previous</button>
           <span id="page-info">Page 1 of 1</span>
-          <button class="btn" onclick="nextPage()" id="next-btn">Next</button>
+          <button class="btn" id="next-btn">Next</button>
         </div>
       </div>
 
@@ -144,9 +145,9 @@
         <!-- Control Bar -->
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
           <div style="display: flex; gap: 10px; align-items: center;">
-            <button class="btn" onclick="loadWorkflowExecutions()">🔄 Refresh</button>
+            <button id="load-workflow-executions-btn" class="btn">🔄 Refresh</button>
             <div class="auto-refresh-control">
-              <input type="checkbox" id="auto-refresh-toggle" onchange="toggleAutoRefresh()">
+              <input type="checkbox" id="auto-refresh-toggle">
               <label for="auto-refresh-toggle">Auto-refresh</label>
               <select id="auto-refresh-interval" style="padding: 4px 8px; font-size: 13px;" disabled>
                 <option value="5000">5s</option>
@@ -157,31 +158,31 @@
             </div>
           </div>
           <div class="view-toggle">
-            <button class="active" onclick="setViewMode('compact')">Compact</button>
-            <button onclick="setViewMode('detailed')">Detailed</button>
+            <button class="view-mode-btn active" data-view-mode="compact">Compact</button>
+            <button class="view-mode-btn" data-view-mode="detailed">Detailed</button>
           </div>
         </div>
 
         <!-- Filters -->
         <div class="execution-filters">
-          <select id="filter-workflow" onchange="applyFilters()">
+          <select id="filter-workflow">
             <option value="">All Workflows</option>
           </select>
-          <select id="filter-status" onchange="applyFilters()">
+          <select id="filter-status">
             <option value="">All Statuses</option>
             <option value="completed">Completed</option>
             <option value="failed">Failed</option>
             <option value="running">Running</option>
           </select>
-          <select id="filter-date" onchange="applyFilters()">
+          <select id="filter-date">
             <option value="all">All Time</option>
             <option value="1h">Last Hour</option>
             <option value="24h">Last 24 Hours</option>
             <option value="7d" selected>Last 7 Days</option>
             <option value="30d">Last 30 Days</option>
           </select>
-          <input type="text" id="filter-search" placeholder="Search errors, context..." onkeyup="applyFilters()" style="flex: 1; min-width: 200px;">
-          <select id="sort-by" onchange="applyFilters()">
+          <input type="text" id="filter-search" placeholder="Search errors, context..." style="flex: 1; min-width: 200px;">
+          <select id="sort-by">
             <option value="newest">Newest First</option>
             <option value="oldest">Oldest First</option>
             <option value="duration-desc">Longest Duration</option>
@@ -221,12 +222,12 @@
         <!-- Pagination -->
         <div class="execution-pagination" id="execution-pagination" style="display: none;">
           <div>
-            <button class="btn" onclick="prevExecutionPage()" id="exec-prev-btn">← Previous</button>
-            <button class="btn" onclick="nextExecutionPage()" id="exec-next-btn">Next →</button>
+            <button class="btn" id="exec-prev-btn">← Previous</button>
+            <button class="btn" id="exec-next-btn">Next →</button>
           </div>
           <div id="exec-page-info" style="font-size: 13px; color: #666;">Page 1 of 1</div>
           <div>
-            <select id="exec-page-size" onchange="changePageSize()" style="padding: 6px 10px; font-size: 13px;">
+            <select id="exec-page-size" style="padding: 6px 10px; font-size: 13px;">
               <option value="10" selected>10 per page</option>
               <option value="25">25 per page</option>
               <option value="50">50 per page</option>
@@ -238,7 +239,7 @@
 
       <!-- Metrics Tab -->
       <div id="metrics-tab" class="tab-content">
-        <button class="btn" onclick="loadMetrics()" style="margin-bottom: 15px;">Refresh Metrics</button>
+        <button id="load-metrics-btn" class="btn" style="margin-bottom: 15px;">Refresh Metrics</button>
         <div id="metrics-content">
           <p style="color: #666;">Click "Refresh Metrics" to load agent metrics</p>
         </div>
@@ -254,16 +255,16 @@
         <!-- Path selector -->
         <div style="margin-bottom: 15px;">
           <label style="display: block; margin-bottom: 5px; font-weight: 500;">Select Path:</label>
-          <select id="path-selector" class="form-control" onchange="onPathSelected()" style="max-width: 500px;">
+          <select id="path-selector" class="form-control" style="max-width: 500px;">
             <option value="">Select a path to browse...</option>
           </select>
         </div>
 
         <!-- File browser controls -->
         <div style="display: flex; gap: 10px; margin-bottom: 15px; align-items: center;">
-          <button class="btn" onclick="refreshCurrentPath()">🔄 Refresh</button>
-          <button class="btn" onclick="showUploadDialog()">📤 Upload File</button>
-          <button class="btn" onclick="showCreateFolderDialog()">📁 New Folder</button>
+          <button id="refresh-current-path-btn" class="btn">🔄 Refresh</button>
+          <button id="show-upload-dialog-btn" class="btn">📤 Upload File</button>
+          <button id="show-create-folder-dialog-btn" class="btn">📁 New Folder</button>
           <div style="flex: 1;"></div>
           <div id="file-browser-status" style="font-size: 13px; color: #666;"></div>
         </div>
@@ -292,8 +293,8 @@
               <input type="file" id="upload-file-input" class="form-control">
             </div>
             <div style="display: flex; gap: 10px; justify-content: flex-end;">
-              <button class="btn" onclick="hideUploadDialog()">Cancel</button>
-              <button class="btn" onclick="performUpload()" style="background: #007bff; color: white;">Upload</button>
+              <button id="hide-upload-dialog-btn" class="btn">Cancel</button>
+              <button id="perform-upload-btn" class="btn" style="background: #007bff; color: white;">Upload</button>
             </div>
             <div id="upload-progress" style="margin-top: 15px; display: none;">
               <div style="background: #e9ecef; border-radius: 4px; overflow: hidden;">
@@ -316,8 +317,8 @@
               <input type="text" id="create-folder-name" class="form-control" placeholder="New Folder">
             </div>
             <div style="display: flex; gap: 10px; justify-content: flex-end;">
-              <button class="btn" onclick="hideCreateFolderDialog()">Cancel</button>
-              <button class="btn" onclick="performCreateFolder()" style="background: #007bff; color: white;">Create</button>
+              <button id="hide-create-folder-dialog-btn" class="btn">Cancel</button>
+              <button id="perform-create-folder-btn" class="btn" style="background: #007bff; color: white;">Create</button>
             </div>
           </div>
         </div>

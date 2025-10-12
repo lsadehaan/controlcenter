@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
   <%- include('partials/head') %>
+  <link rel="stylesheet" href="/css/agent-filewatcher.css">
 </head>
 <body data-agent-config='<%- JSON.stringify(agent) %>' data-filewatcher-rules='<%- JSON.stringify(fileWatcherRules || []) %>'>
   <%- include('partials/nav') %>
@@ -31,7 +32,7 @@
             <small style="color: #666;">When enabled, watches matched directories and all their subdirectories</small>
           </div>
         </div>
-        <button class="btn btn-primary" onclick="saveGlobalSettings()" style="margin-top: 15px;">Save Global Settings</button>
+        <button class="btn btn-primary" id="save-global-settings-btn" style="margin-top: 15px;">Save Global Settings</button>
       </div>
 
       <!-- Import Section -->
@@ -39,7 +40,7 @@
         <h3>Import Configuration</h3>
         <p>Import file watcher rules from an existing INI configuration file</p>
         <input type="file" id="import-file" accept=".ini" style="display: none;">
-        <button class="btn btn-primary" onclick="document.getElementById('import-file').click()">
+        <button class="btn btn-primary" id="import-ini-btn">
           Import INI File
         </button>
       </div>
@@ -47,10 +48,10 @@
       <!-- Toolbar -->
       <div class="rules-toolbar">
         <div>
-          <button class="btn btn-primary" onclick="createRule()">
+          <button class="btn btn-primary" id="create-rule-btn">
             <span style="margin-right: 5px;">➕</span> New Rule
           </button>
-          <button class="btn" onclick="exportRules()">
+          <button class="btn" id="export-rules-btn">
             <span style="margin-right: 5px;">📥</span> Export Rules
           </button>
         </div>
@@ -71,16 +72,16 @@
     <div class="modal-content">
       <div class="modal-header">
         <h3 id="modal-title">New File Watcher Rule</h3>
-        <button class="btn btn-sm" onclick="closeModal()">&times;</button>
+        <button class="btn btn-sm" id="close-modal-header-btn">&times;</button>
       </div>
       
       <div class="modal-body">
         <!-- Tabs -->
         <div class="form-tabs">
-          <button class="form-tab active" onclick="switchTab('matching')">Matching</button>
-          <button class="form-tab" onclick="switchTab('operations')">Operations</button>
-          <button class="form-tab" onclick="switchTab('timing')">Timing</button>
-          <button class="form-tab" onclick="switchTab('advanced')">Advanced</button>
+          <button class="form-tab active" data-tab="matching">Matching</button>
+          <button class="form-tab" data-tab="operations">Operations</button>
+          <button class="form-tab" data-tab="timing">Timing</button>
+          <button class="form-tab" data-tab="advanced">Advanced</button>
         </div>
         
         <!-- Tab Contents -->
@@ -104,7 +105,7 @@
 
           <div class="form-group">
             <label>Watch Mode</label>
-            <select id="watch-mode" class="form-input" onchange="updateWatchModeUI()">
+            <select id="watch-mode" class="form-input">
               <option value="absolute">Absolute Path (Direct folder specification)</option>
               <option value="pattern">Pattern Mode (Use global ScanDir + regex)</option>
             </select>
@@ -194,7 +195,7 @@
           <div class="form-group">
             <label>
               Execute Before Processing
-              <input type="checkbox" id="exec-before-workflow" style="margin-left: 10px;" onchange="toggleWorkflowMode('exec-before')">
+              <input type="checkbox" id="exec-before-workflow" style="margin-left: 10px;" data-field-prefix="exec-before">
               <span style="font-size: 12px; margin-left: 5px;">Use Workflow</span>
             </label>
             <input type="text" id="exec-before" class="form-input" placeholder="e.g., echo 'processing' >> {file}" style="display: block;">
@@ -206,7 +207,7 @@
           <div class="form-group">
             <label>
               Execute After Processing
-              <input type="checkbox" id="exec-after-workflow" style="margin-left: 10px;" onchange="toggleWorkflowMode('exec-after')">
+              <input type="checkbox" id="exec-after-workflow" style="margin-left: 10px;" data-field-prefix="exec-after">
               <span style="font-size: 12px; margin-left: 5px;">Use Workflow</span>
             </label>
             <input type="text" id="exec-after" class="form-input" placeholder="e.g., /usr/bin/notify-send 'File processed'" style="display: block;">
@@ -218,7 +219,7 @@
           <div class="form-group">
             <label>
               Execute On Error
-              <input type="checkbox" id="exec-error-workflow" style="margin-left: 10px;" onchange="toggleWorkflowMode('exec-error')">
+              <input type="checkbox" id="exec-error-workflow" style="margin-left: 10px;" data-field-prefix="exec-error">
               <span style="font-size: 12px; margin-left: 5px;">Use Workflow</span>
             </label>
             <input type="text" id="exec-error" class="form-input" placeholder="e.g., mv {file} /error/folder/" style="display: block;">
@@ -301,8 +302,8 @@
       </div>
       
       <div class="modal-footer">
-        <button class="btn" onclick="closeModal()">Cancel</button>
-        <button class="btn btn-primary" onclick="saveRule()">Save Rule</button>
+        <button class="btn" id="close-modal-footer-btn">Cancel</button>
+        <button class="btn btn-primary" id="save-rule-btn">Save Rule</button>
       </div>
     </div>
   </div>

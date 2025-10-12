@@ -74,6 +74,97 @@ function toggleWorkflowMode(fieldPrefix) {
 // Initialize dropdowns on page load
 document.addEventListener('DOMContentLoaded', function() {
   populateWorkflowDropdowns();
+
+  // Attach event listeners for buttons
+  const saveGlobalBtn = document.getElementById('save-global-settings-btn');
+  if (saveGlobalBtn) {
+    saveGlobalBtn.addEventListener('click', saveGlobalSettings);
+  }
+
+  const importIniBtn = document.getElementById('import-ini-btn');
+  if (importIniBtn) {
+    importIniBtn.addEventListener('click', function() {
+      document.getElementById('import-file').click();
+    });
+  }
+
+  const createRuleBtn = document.getElementById('create-rule-btn');
+  if (createRuleBtn) {
+    createRuleBtn.addEventListener('click', createRule);
+  }
+
+  const exportRulesBtn = document.getElementById('export-rules-btn');
+  if (exportRulesBtn) {
+    exportRulesBtn.addEventListener('click', exportRules);
+  }
+
+  const closeModalHeaderBtn = document.getElementById('close-modal-header-btn');
+  if (closeModalHeaderBtn) {
+    closeModalHeaderBtn.addEventListener('click', closeModal);
+  }
+
+  const closeModalFooterBtn = document.getElementById('close-modal-footer-btn');
+  if (closeModalFooterBtn) {
+    closeModalFooterBtn.addEventListener('click', closeModal);
+  }
+
+  const saveRuleBtn = document.getElementById('save-rule-btn');
+  if (saveRuleBtn) {
+    saveRuleBtn.addEventListener('click', saveRule);
+  }
+
+  // Tab buttons
+  const formTabs = document.querySelectorAll('.form-tab');
+  formTabs.forEach(btn => {
+    btn.addEventListener('click', function() {
+      const tabName = this.getAttribute('data-tab');
+      switchTab(tabName, this);
+    });
+  });
+
+  // Watch mode dropdown
+  const watchModeSelect = document.getElementById('watch-mode');
+  if (watchModeSelect) {
+    watchModeSelect.addEventListener('change', updateWatchModeUI);
+  }
+
+  // Workflow checkboxes
+  const execBeforeCheckbox = document.getElementById('exec-before-workflow');
+  const execAfterCheckbox = document.getElementById('exec-after-workflow');
+  const execErrorCheckbox = document.getElementById('exec-error-workflow');
+
+  if (execBeforeCheckbox) {
+    execBeforeCheckbox.addEventListener('change', function() {
+      toggleWorkflowMode(this.getAttribute('data-field-prefix'));
+    });
+  }
+  if (execAfterCheckbox) {
+    execAfterCheckbox.addEventListener('change', function() {
+      toggleWorkflowMode(this.getAttribute('data-field-prefix'));
+    });
+  }
+  if (execErrorCheckbox) {
+    execErrorCheckbox.addEventListener('change', function() {
+      toggleWorkflowMode(this.getAttribute('data-field-prefix'));
+    });
+  }
+
+  // Event delegation for dynamically created rule buttons
+  const rulesList = document.getElementById('rules-list');
+  if (rulesList) {
+    rulesList.addEventListener('click', function(e) {
+      if (e.target.classList.contains('edit-rule-btn')) {
+        const index = parseInt(e.target.getAttribute('data-index'));
+        editRule(index);
+      } else if (e.target.classList.contains('toggle-rule-btn')) {
+        const index = parseInt(e.target.getAttribute('data-index'));
+        toggleRule(index);
+      } else if (e.target.classList.contains('delete-rule-btn')) {
+        const index = parseInt(e.target.getAttribute('data-index'));
+        deleteRule(index);
+      }
+    });
+  }
 });
 
 // Helper function to set external program field value
@@ -188,9 +279,9 @@ function loadRules() {
         </div>
       </div>
       <div class="rule-actions">
-        <button class="btn btn-sm" onclick="editRule(${index})">Edit</button>
-        <button class="btn btn-sm" onclick="toggleRule(${index})">${rule.enabled ? 'Disable' : 'Enable'}</button>
-        <button class="btn btn-sm btn-danger" onclick="deleteRule(${index})">Delete</button>
+        <button class="btn btn-sm edit-rule-btn" data-index="${index}">Edit</button>
+        <button class="btn btn-sm toggle-rule-btn" data-index="${index}">${rule.enabled ? 'Disable' : 'Enable'}</button>
+        <button class="btn btn-sm btn-danger delete-rule-btn" data-index="${index}">Delete</button>
       </div>
     </div>
   `).join('');
@@ -360,7 +451,7 @@ function clearForm() {
   // ... clear other fields
 }
 
-function switchTab(tabName) {
+function switchTab(tabName, buttonElement) {
   // Hide all tabs
   document.querySelectorAll('.tab-content').forEach(tab => {
     tab.classList.remove('active');
@@ -371,7 +462,9 @@ function switchTab(tabName) {
 
   // Show selected tab
   document.getElementById(tabName + '-tab').classList.add('active');
-  event.target.classList.add('active');
+  if (buttonElement) {
+    buttonElement.classList.add('active');
+  }
 }
 
 function escapeHtml(text) {

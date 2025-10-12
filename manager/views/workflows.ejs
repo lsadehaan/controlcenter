@@ -40,9 +40,9 @@
                   <td><%= new Date(workflow.created_at).toLocaleDateString() %></td>
                   <td><%= new Date(workflow.updated_at).toLocaleDateString() %></td>
                   <td>
-                    <button class="btn btn-sm" onclick="editWorkflow('<%= workflow.id %>')">Edit</button>
-                    <button class="btn btn-sm btn-success" onclick="deployWorkflow('<%= workflow.id %>')">Deploy</button>
-                    <button class="btn btn-sm btn-danger" onclick="deleteWorkflow('<%= workflow.id %>')">Delete</button>
+                    <button class="btn btn-sm edit-workflow-btn" data-workflow-id="<%= workflow.id %>">Edit</button>
+                    <button class="btn btn-sm btn-success deploy-workflow-btn" data-workflow-id="<%= workflow.id %>">Deploy</button>
+                    <button class="btn btn-sm btn-danger delete-workflow-btn" data-workflow-id="<%= workflow.id %>">Delete</button>
                   </td>
                 </tr>
               <% }) %>
@@ -61,8 +61,8 @@
       <p>Select agents to deploy this workflow to:</p>
       <div id="agent-list"></div>
       <div class="modal-actions">
-        <button class="btn btn-primary" onclick="confirmDeploy()">Deploy</button>
-        <button class="btn" onclick="closeDeploy()">Cancel</button>
+        <button id="confirm-deploy-btn" class="btn btn-primary">Deploy</button>
+        <button id="close-deploy-btn" class="btn">Cancel</button>
       </div>
     </div>
   </div>

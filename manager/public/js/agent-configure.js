@@ -18,8 +18,61 @@ try {
   allowedPaths = [];
 }
 
-// Make removeWorkflow available globally
-window.removeWorkflow = function(workflowId) {
+// Add event listeners when DOM is loaded
+document.addEventListener('DOMContentLoaded', function() {
+  // Form submit
+  const configForm = document.getElementById('config-form');
+  if (configForm) {
+    configForm.addEventListener('submit', saveConfig);
+  }
+
+  // Add SSH key button
+  const addSshKeyBtn = document.getElementById('add-ssh-key-btn');
+  if (addSshKeyBtn) {
+    addSshKeyBtn.addEventListener('click', addSSHKey);
+  }
+
+  // Remove SSH key buttons (event delegation)
+  const sshKeysList = document.getElementById('ssh-keys');
+  if (sshKeysList) {
+    sshKeysList.addEventListener('click', function(e) {
+      if (e.target.classList.contains('remove-ssh-key-btn')) {
+        const index = parseInt(e.target.getAttribute('data-index'));
+        removeSSHKey(index);
+      }
+    });
+  }
+
+  // Remove workflow buttons (event delegation)
+  const workflowList = document.querySelector('.workflow-list');
+  if (workflowList) {
+    workflowList.addEventListener('click', function(e) {
+      if (e.target.classList.contains('remove-workflow-btn')) {
+        const workflowId = e.target.getAttribute('data-workflow-id');
+        removeWorkflow(workflowId);
+      }
+    });
+  }
+
+  // Add path button
+  const addPathBtn = document.getElementById('add-path-btn');
+  if (addPathBtn) {
+    addPathBtn.addEventListener('click', addAllowedPath);
+  }
+
+  // Remove path buttons (event delegation)
+  const allowedPathsList = document.getElementById('allowed-paths');
+  if (allowedPathsList) {
+    allowedPathsList.addEventListener('click', function(e) {
+      if (e.target.classList.contains('remove-path-btn')) {
+        const index = parseInt(e.target.getAttribute('data-path-index'));
+        removeAllowedPath(index);
+      }
+    });
+  }
+});
+
+function removeWorkflow(workflowId) {
   console.log('Removing workflow:', workflowId);
   console.log('Current workflows:', workflows);
 
@@ -53,7 +106,7 @@ function addSSHKey() {
   div.className = 'ssh-key-item';
   div.innerHTML = `
     <input type="text" class="form-input" placeholder="ssh-rsa AAAA..." data-index="${newIndex}">
-    <button type="button" class="btn btn-sm btn-danger" onclick="removeSSHKey(${newIndex})">Remove</button>
+    <button type="button" class="btn btn-sm btn-danger remove-ssh-key-btn" data-index="${newIndex}">Remove</button>
   `;
   keyList.appendChild(div);
   sshKeys.push('');
@@ -82,9 +135,9 @@ function refreshSSHKeys() {
 
       const button = document.createElement('button');
       button.type = 'button';
-      button.className = 'btn btn-sm btn-danger';
+      button.className = 'btn btn-sm btn-danger remove-ssh-key-btn';
       button.textContent = 'Remove';
-      button.onclick = () => removeSSHKey(index);
+      button.setAttribute('data-index', index);
 
       div.appendChild(input);
       div.appendChild(button);
@@ -100,7 +153,7 @@ function addAllowedPath() {
   div.className = 'ssh-key-item';
   div.innerHTML = `
     <input type="text" class="form-input" placeholder="C:\\path\\to\\folder or /path/to/folder" data-path-index="${newIndex}">
-    <button type="button" class="btn btn-sm btn-danger" onclick="removeAllowedPath(${newIndex})">Remove</button>
+    <button type="button" class="btn btn-sm btn-danger remove-path-btn" data-path-index="${newIndex}">Remove</button>
   `;
 
   // Remove "no paths" message if it exists
@@ -136,9 +189,9 @@ function refreshAllowedPaths() {
 
       const button = document.createElement('button');
       button.type = 'button';
-      button.className = 'btn btn-sm btn-danger';
+      button.className = 'btn btn-sm btn-danger remove-path-btn';
       button.textContent = 'Remove';
-      button.onclick = () => removeAllowedPath(index);
+      button.setAttribute('data-path-index', index);
 
       div.appendChild(input);
       div.appendChild(button);

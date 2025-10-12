@@ -10,7 +10,7 @@
     <div class="container">
       <div class="page-header">
         <h2>Agents</h2>
-        <button class="btn btn-primary" onclick="showTokenDialog()">Generate Registration Token</button>
+        <button id="show-token-dialog-btn" class="btn btn-primary">Generate Registration Token</button>
       </div>
 
       <div id="token-dialog" class="modal" style="display: none;">
@@ -23,8 +23,8 @@
             <small>If empty, will auto-detect from WebSocket connection</small>
           </div>
           <div class="modal-actions">
-            <button class="btn btn-primary" onclick="generateToken()">Generate Token</button>
-            <button class="btn" onclick="hideTokenDialog()">Cancel</button>
+            <button id="generate-token-btn" class="btn btn-primary">Generate Token</button>
+            <button id="hide-token-dialog-btn" class="btn">Cancel</button>
           </div>
         </div>
       </div>
@@ -69,8 +69,8 @@
                 </div>
               </div>
               <div class="agent-actions">
-                <button class="btn btn-sm" onclick="viewAgent('<%= agent.id %>')">View</button>
-                <button class="btn btn-sm btn-danger" onclick="removeAgent('<%= agent.id %>')">Remove</button>
+                <button class="btn btn-sm view-agent-btn" data-agent-id="<%= agent.id %>">View</button>
+                <button class="btn btn-sm btn-danger remove-agent-btn" data-agent-id="<%= agent.id %>">Remove</button>
               </div>
             </div>
           <% }) %>

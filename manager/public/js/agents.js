@@ -1,3 +1,41 @@
+// Add event listeners when DOM is loaded
+document.addEventListener('DOMContentLoaded', function() {
+  // Token dialog buttons
+  const showTokenBtn = document.getElementById('show-token-dialog-btn');
+  const generateTokenBtn = document.getElementById('generate-token-btn');
+  const hideTokenBtn = document.getElementById('hide-token-dialog-btn');
+
+  if (showTokenBtn) {
+    showTokenBtn.addEventListener('click', showTokenDialog);
+  }
+
+  if (generateTokenBtn) {
+    generateTokenBtn.addEventListener('click', generateToken);
+  }
+
+  if (hideTokenBtn) {
+    hideTokenBtn.addEventListener('click', hideTokenDialog);
+  }
+
+  // View agent buttons
+  const viewAgentBtns = document.querySelectorAll('.view-agent-btn');
+  viewAgentBtns.forEach(btn => {
+    btn.addEventListener('click', function() {
+      const agentId = this.getAttribute('data-agent-id');
+      viewAgent(agentId);
+    });
+  });
+
+  // Remove agent buttons
+  const removeAgentBtns = document.querySelectorAll('.remove-agent-btn');
+  removeAgentBtns.forEach(btn => {
+    btn.addEventListener('click', function() {
+      const agentId = this.getAttribute('data-agent-id');
+      removeAgent(agentId);
+    });
+  });
+});
+
 function showTokenDialog() {
   console.log('showTokenDialog called');
   try {

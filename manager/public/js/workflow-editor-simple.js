@@ -3,10 +3,35 @@ let nodeId = 1;
 let pos_x = 100;
 let pos_y = 100;
 
-// Initialize Drawflow
-const id = document.getElementById("drawflow");
-editor = new Drawflow(id);
-editor.start();
+// Add event listeners when DOM is loaded
+document.addEventListener('DOMContentLoaded', function() {
+  // Initialize Drawflow
+  const id = document.getElementById("drawflow");
+  editor = new Drawflow(id);
+  editor.start();
+
+  // Attach button event listeners
+  const saveBtn = document.getElementById('save-workflow-btn');
+  const clearBtn = document.getElementById('clear-editor-btn');
+  const addTriggerBtn = document.getElementById('add-trigger-btn');
+  const addActionBtn = document.getElementById('add-action-btn');
+
+  if (saveBtn) {
+    saveBtn.addEventListener('click', saveWorkflow);
+  }
+
+  if (clearBtn) {
+    clearBtn.addEventListener('click', clearEditor);
+  }
+
+  if (addTriggerBtn) {
+    addTriggerBtn.addEventListener('click', addTriggerNode);
+  }
+
+  if (addActionBtn) {
+    addActionBtn.addEventListener('click', addActionNode);
+  }
+});
 
 function addTriggerNode() {
   const html = `

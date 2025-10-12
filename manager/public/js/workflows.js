@@ -3,6 +3,58 @@
 let currentWorkflowId = null;
 let selectedAgents = [];
 
+// Add event listeners when DOM is loaded
+document.addEventListener('DOMContentLoaded', function() {
+  // Edit workflow buttons
+  const editBtns = document.querySelectorAll('.edit-workflow-btn');
+  editBtns.forEach(btn => {
+    btn.addEventListener('click', function() {
+      const workflowId = this.getAttribute('data-workflow-id');
+      editWorkflow(workflowId);
+    });
+  });
+
+  // Deploy workflow buttons
+  const deployBtns = document.querySelectorAll('.deploy-workflow-btn');
+  deployBtns.forEach(btn => {
+    btn.addEventListener('click', function() {
+      const workflowId = this.getAttribute('data-workflow-id');
+      deployWorkflow(workflowId);
+    });
+  });
+
+  // Delete workflow buttons
+  const deleteBtns = document.querySelectorAll('.delete-workflow-btn');
+  deleteBtns.forEach(btn => {
+    btn.addEventListener('click', function() {
+      const workflowId = this.getAttribute('data-workflow-id');
+      deleteWorkflow(workflowId);
+    });
+  });
+
+  // Modal buttons
+  const confirmDeployBtn = document.getElementById('confirm-deploy-btn');
+  const closeDeployBtn = document.getElementById('close-deploy-btn');
+
+  if (confirmDeployBtn) {
+    confirmDeployBtn.addEventListener('click', confirmDeploy);
+  }
+
+  if (closeDeployBtn) {
+    closeDeployBtn.addEventListener('click', closeDeploy);
+  }
+
+  // Event delegation for dynamically added agent checkboxes
+  const agentList = document.getElementById('agent-list');
+  if (agentList) {
+    agentList.addEventListener('change', function(e) {
+      if (e.target.type === 'checkbox') {
+        toggleAgent(e.target.value);
+      }
+    });
+  }
+});
+
 function editWorkflow(id) {
   window.location.href = `/workflow-editor?id=${id}`;
 }
@@ -19,7 +71,7 @@ function deployWorkflow(id) {
       } else {
         agentList.innerHTML = agents.map(agent => `
           <label class="checkbox-label">
-            <input type="checkbox" value="${agent.id}" onchange="toggleAgent('${agent.id}')">
+            <input type="checkbox" value="${agent.id}">
             ${agent.hostname || agent.id} (${agent.status})
           </label>
         `).join('');

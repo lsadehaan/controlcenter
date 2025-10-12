@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
   <%- include('partials/head') %>
+  <link rel="stylesheet" href="/css/agent-configure.css">
 </head>
 <body data-agent-config='<%- JSON.stringify(agent) %>'>
   <%- include('partials/nav') %>
@@ -13,7 +14,7 @@
         <a href="/agents/<%= agent.id %>" class="btn">Back to Agent</a>
       </div>
       
-      <form class="config-form" onsubmit="saveConfig(event)">
+      <form class="config-form" id="config-form">
         <div class="form-section">
           <h3>Basic Settings</h3>
           <div class="form-group">
@@ -43,12 +44,12 @@
                 <% authorizedKeys.forEach((key, index) => { %>
                   <div class="ssh-key-item">
                     <input type="text" class="form-input" value="<%= key %>" data-index="<%= index %>">
-                    <button type="button" class="btn btn-sm btn-danger" onclick="removeSSHKey(<%= index %>)">Remove</button>
+                    <button type="button" class="btn btn-sm btn-danger remove-ssh-key-btn" data-index="<%= index %>">Remove</button>
                   </div>
                 <% }) %>
               <% } %>
             </div>
-            <button type="button" class="btn btn-sm add-key-btn" onclick="addSSHKey()">Add SSH Key</button>
+            <button type="button" class="btn btn-sm add-key-btn" id="add-ssh-key-btn">Add SSH Key</button>
           </div>
         </div>
         
@@ -65,8 +66,8 @@
                     <strong><%= workflow.name %></strong>
                     <span style="color: #666; margin-left: 10px;">ID: <%= workflow.id %></span>
                   </div>
-                  <button type="button" class="btn btn-sm btn-danger" 
-                          onclick="removeWorkflow('<%= workflow.id %>')">Remove</button>
+                  <button type="button" class="btn btn-sm btn-danger remove-workflow-btn"
+                          data-workflow-id="<%= workflow.id %>">Remove</button>
                 </li>
               <% }) %>
             </ul>
@@ -99,12 +100,12 @@
                 <% allowedPaths.forEach((path, index) => { %>
                   <div class="ssh-key-item">
                     <input type="text" class="form-input" value="<%= path %>" data-path-index="<%= index %>">
-                    <button type="button" class="btn btn-sm btn-danger" onclick="removeAllowedPath(<%= index %>)">Remove</button>
+                    <button type="button" class="btn btn-sm btn-danger remove-path-btn" data-path-index="<%= index %>">Remove</button>
                   </div>
                 <% }) %>
               <% } %>
             </div>
-            <button type="button" class="btn btn-sm add-key-btn" onclick="addAllowedPath()">Add Path</button>
+            <button type="button" class="btn btn-sm add-key-btn" id="add-path-btn">Add Path</button>
           </div>
           <div class="form-group">
             <label>Max Upload Size (bytes)</label>
