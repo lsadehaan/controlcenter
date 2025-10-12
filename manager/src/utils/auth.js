@@ -2,36 +2,34 @@
 
 const jwt = require('jsonwebtoken');
 const { v4: uuidv4 } = require('uuid');
+const config = require('../config');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'change-this-secret';
 const COOKIE_NAME = 'cc_auth';
 
 // Security warning for production
-if (JWT_SECRET === 'change-this-secret') {
+if (config.JWT_SECRET === 'change-this-secret') {
   console.warn('');
   console.warn('⚠️  WARNING: Using default JWT_SECRET. This is INSECURE!');
   console.warn('⚠️  Set JWT_SECRET environment variable in production.');
   console.warn('');
 }
 
-// Cookie security options - secure flag enabled in production or when explicitly set
-const isProduction = process.env.NODE_ENV === 'production';
-const cookieSecureOverride = process.env.COOKIE_SECURE === 'true';
+// Cookie security options
 const COOKIE_OPTIONS = {
   httpOnly: true,
   sameSite: 'lax',
-  secure: isProduction || cookieSecureOverride,
+  secure: config.COOKIE_SECURE,
   path: '/',
-  maxAge: 7 * 24 * 60 * 60 * 1000
+  maxAge: config.COOKIE_MAX_AGE
 };
 
-function signToken(payload, expiresIn = '7d') {
-  return jwt.sign(payload, JWT_SECRET, { expiresIn });
+function signToken(payload, expiresIn = config.JWT_EXPIRY) {
+  return jwt.sign(payload, config.JWT_SECRET, { expiresIn });
 }
 
 function verifyToken(token) {
   try {
-    return jwt.verify(token, JWT_SECRET);
+    return jwt.verify(token, config.JWT_SECRET);
   } catch (e) {
     return null;
   }
@@ -78,6 +76,7 @@ function authMiddleware(db, options = {}) {
     }
 
     req.user = decoded;
+    res.locals.user = decoded;  // Make user available to all views
     next();
   };
 }
@@ -86,11 +85,15 @@ function authMiddleware(db, options = {}) {
 function requireRole(role) {
   return (req, res, next) => {
     if (!req.user) {
-      return res.status(401).json({ error: 'Unauthorized' });
+      const err = new Error('Unauthorized');
+      err.status = 401;
+      return next(err);
     }
 
     if (req.user.role !== role) {
-      return res.status(403).json({ error: 'Forbidden: Insufficient permissions' });
+      const err = new Error('Forbidden: Insufficient permissions');
+      err.status = 403;
+      return next(err);
     }
 
     next();
@@ -100,11 +103,15 @@ function requireRole(role) {
 // Admin-only middleware (for write operations)
 function requireAdmin(req, res, next) {
   if (!req.user) {
-    return res.status(401).json({ error: 'Unauthorized' });
+    const err = new Error('Unauthorized');
+    err.status = 401;
+    return next(err);
   }
 
   if (req.user.role !== 'admin') {
-    return res.status(403).json({ error: 'Forbidden: Admin access required' });
+    const err = new Error('Forbidden: Admin access required');
+    err.status = 403;
+    return next(err);
   }
 
   next();

@@ -35,6 +35,7 @@ const cookieParser = require('cookie-parser');
 const csurf = require('csurf');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
+const config = require('./config');
 const Database = require('./db/database');
 const WebSocketServer = require('./websocket/server');
 const GitServer = require('./git/server');
@@ -45,7 +46,6 @@ const authRoutes = require('./routes/auth');
 const { authMiddleware } = require('./utils/auth');
 
 const app = express();
-const PORT = process.env.PORT || 3000;
 
 // Initialize database
 const db = new Database();
@@ -53,8 +53,7 @@ const db = new Database();
 // Initialize Git server
 const gitServer = new GitServer();
 const gitHttpServer = new GitHttpServer(gitServer, console);
-const gitSSHPort = process.env.GIT_SSH_PORT || 2223;
-const gitSSHServer = new GitSSHServer(gitServer, db, console, gitSSHPort);
+const gitSSHServer = new GitSSHServer(gitServer, db, console, config.GIT_SSH_PORT);
 
 // Middleware
 app.use(helmet()); // Security headers
@@ -63,10 +62,22 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, '..', 'public')));
 
+// Request logging (optional, disabled by default)
+if (config.LOG_REQUESTS) {
+  app.use((req, res, next) => {
+    const start = Date.now();
+    res.on('finish', () => {
+      const duration = Date.now() - start;
+      console.log(`${req.method} ${req.path} ${res.statusCode} ${duration}ms`);
+    });
+    next();
+  });
+}
+
 // Rate limiter for auth routes
 const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 5, // Max 5 requests per window per IP
+  windowMs: config.AUTH_RATE_LIMIT_WINDOW,
+  max: config.AUTH_RATE_LIMIT_MAX,
   message: 'Too many login attempts. Please try again later.',
   standardHeaders: true,
   legacyHeaders: false
@@ -74,8 +85,8 @@ const authLimiter = rateLimit({
 
 // Rate limiter for API routes
 const apiLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // Max 100 requests per window per IP
+  windowMs: config.API_RATE_LIMIT_WINDOW,
+  max: config.API_RATE_LIMIT_MAX,
   standardHeaders: true,
   legacyHeaders: false
 });
@@ -131,14 +142,16 @@ app.use(authMiddleware(db, { ui: true }));
 
 // Web UI routes
 app.get('/', (req, res) => {
-  res.render('index', { title: 'Control Center Manager', user: req.user });
+  res.render('index', { title: 'Control Center Manager', user: req.user, activePage: 'dashboard' });
 });
 
 app.get('/agents', async (req, res) => {
   try {
     const agents = await db.getAllAgents();
-    res.render('agents', { 
+    res.render('agents', {
       title: 'Agents',
+      user: req.user,
+      activePage: 'agents',
       agents: agents.map(a => ({
         ...a,
         config: JSON.parse(a.config || '{}'),
@@ -147,8 +160,10 @@ app.get('/agents', async (req, res) => {
     });
   } catch (err) {
     console.error('Error loading agents:', err);
-    res.render('agents', { 
+    res.render('agents', {
       title: 'Agents',
+      user: req.user,
+      activePage: 'agents',
       agents: []
     });
   }
@@ -163,6 +178,8 @@ app.get('/agents/:id', async (req, res) => {
 
     res.render('agent-details', {
       title: `Agent: ${agent.hostname || agent.id}`,
+      user: req.user,
+      activePage: 'agents',
       agent: {
         ...agent,
         config: JSON.parse(agent.config || '{}'),
@@ -181,11 +198,13 @@ app.get('/agents/:id/filewatcher', async (req, res) => {
     if (!agent) {
       return res.status(404).send('Agent not found');
     }
-    
+
     const agentConfig = JSON.parse(agent.config || '{}');
-    
+
     res.render('agent-filewatcher', {
       title: `File Watchers: ${agent.metadata?.hostname || agent.id}`,
+      user: req.user,
+      activePage: 'agents',
       agent: {
         ...agent,
         config: agentConfig,
@@ -206,15 +225,17 @@ app.get('/agents/:id/configure', async (req, res) => {
     if (!agent) {
       return res.status(404).send('Agent not found');
     }
-    
+
     const agentData = {
       ...agent,
       config: JSON.parse(agent.config || '{}'),
       metadata: JSON.parse(agent.metadata || '{}')
     };
-    
-    res.render('agent-configure', { 
+
+    res.render('agent-configure', {
       title: `Configure: ${agentData.metadata.hostname || agentData.id}`,
+      user: req.user,
+      activePage: 'agents',
       agent: agentData
     });
   } catch (err) {
@@ -226,8 +247,10 @@ app.get('/agents/:id/configure', async (req, res) => {
 app.get('/workflows', async (req, res) => {
   try {
     const workflows = await db.all('SELECT * FROM workflows ORDER BY updated_at DESC');
-    res.render('workflows', { 
+    res.render('workflows', {
       title: 'Workflows',
+      user: req.user,
+      activePage: 'workflows',
       workflows: workflows.map(w => ({
         ...w,
         config: JSON.parse(w.config || '{}')
@@ -235,8 +258,10 @@ app.get('/workflows', async (req, res) => {
     });
   } catch (err) {
     console.error('Error loading workflows:', err);
-    res.render('workflows', { 
+    res.render('workflows', {
       title: 'Workflows',
+      user: req.user,
+      activePage: 'workflows',
       workflows: []
     });
   }
@@ -245,7 +270,7 @@ app.get('/workflows', async (req, res) => {
 app.get('/workflow-editor', async (req, res) => {
   const workflowId = req.query.id;
   let workflow = null;
-  
+
   if (workflowId) {
     try {
       workflow = await db.get('SELECT * FROM workflows WHERE id = ?', [workflowId]);
@@ -256,22 +281,30 @@ app.get('/workflow-editor', async (req, res) => {
       console.error('Error loading workflow:', err);
     }
   }
-  
-  res.render('workflow-editor', { 
+
+  res.render('workflow-editor', {
     title: 'Workflow Editor',
+    user: req.user,
+    activePage: 'editor',
     workflow: workflow
   });
 });
 
 app.get('/workflow-editor-simple', (req, res) => {
-  res.render('workflow-editor-simple', { title: 'Workflow Editor (Simple)' });
+  res.render('workflow-editor-simple', {
+    title: 'Workflow Editor (Simple)',
+    user: req.user,
+    activePage: 'editor'
+  });
 });
 
 app.get('/alerts', async (req, res) => {
   try {
     const alerts = await db.getAlerts(100, 0);
-    res.render('alerts', { 
+    res.render('alerts', {
       title: 'Alerts',
+      user: req.user,
+      activePage: 'alerts',
       alerts: alerts.map(a => ({
         ...a,
         details: JSON.parse(a.details || '{}')
@@ -279,8 +312,10 @@ app.get('/alerts', async (req, res) => {
     });
   } catch (err) {
     console.error('Error loading alerts:', err);
-    res.render('alerts', { 
+    res.render('alerts', {
       title: 'Alerts',
+      user: req.user,
+      activePage: 'alerts',
       alerts: []
     });
   }
@@ -289,8 +324,10 @@ app.get('/alerts', async (req, res) => {
 app.get('/logs', async (req, res) => {
   try {
     const logs = await db.getLogs(null, 100, 0);
-    res.render('logs', { 
+    res.render('logs', {
       title: 'Logs',
+      user: req.user,
+      activePage: 'logs',
       logs: logs.map(l => ({
         ...l,
         metadata: JSON.parse(l.metadata || '{}')
@@ -298,21 +335,51 @@ app.get('/logs', async (req, res) => {
     });
   } catch (err) {
     console.error('Error loading logs:', err);
-    res.render('logs', { 
+    res.render('logs', {
       title: 'Logs',
+      user: req.user,
+      activePage: 'logs',
       logs: []
     });
   }
 });
 
 app.get('/settings', (req, res) => {
-  res.render('settings', { title: 'Settings' });
+  res.render('settings', {
+    title: 'Settings',
+    user: req.user,
+    activePage: 'settings'
+  });
 });
 
-// Error handling
+// Centralized error handler
 app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).send('Something went wrong!');
+  // Log the error
+  console.error('Error:', err);
+  console.error('Stack:', err.stack);
+
+  const status = err.status || err.statusCode || 500;
+  const message = err.message || 'Internal server error';
+
+  // Check if this is an API request
+  if (req.path.startsWith('/api') || req.path.startsWith('/auth')) {
+    return res.status(status).json({
+      error: message,
+      ...(config.NODE_ENV === 'development' && { stack: err.stack })
+    });
+  }
+
+  // For UI requests, render an error page
+  res.status(status).render('error', {
+    title: 'Error',
+    error: {
+      status,
+      message,
+      ...(config.NODE_ENV === 'development' && { stack: err.stack })
+    },
+    user: req.user || null,
+    activePage: null
+  });
 });
 
 // Start server
@@ -320,10 +387,10 @@ server.on('error', (err) => {
   console.error('HTTP server error:', err);
   process.exit(1);
 });
-server.listen(PORT, () => {
-  console.log(`Manager listening on http://localhost:${PORT}`);
-  console.log(`WebSocket endpoint: ws://localhost:${PORT}/ws`);
-  console.log(`API endpoint: http://localhost:${PORT}/api`);
+server.listen(config.PORT, () => {
+  console.log(`Manager listening on http://localhost:${config.PORT}`);
+  console.log(`WebSocket endpoint: ws://localhost:${config.PORT}/ws`);
+  console.log(`API endpoint: http://localhost:${config.PORT}/api`);
 
   // Start Git SSH server
   gitSSHServer.start().catch(err => {

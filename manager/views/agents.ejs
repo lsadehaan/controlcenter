@@ -1,28 +1,10 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title><%= title %> - Control Center</title>
-  <link rel="stylesheet" href="/css/style.css">
+  <%- include('partials/head') %>
 </head>
 <body>
-  <nav class="navbar">
-    <div class="nav-container">
-      <div class="nav-brand">
-        <h1>Control Center</h1>
-      </div>
-      <ul class="nav-menu">
-        <li><a href="/">Dashboard</a></li>
-        <li><a href="/agents" class="active">Agents</a></li>
-        <li><a href="/workflows">Workflows</a></li>
-        <li><a href="/workflow-editor">Editor</a></li>
-        <li><a href="/alerts">Alerts</a></li>
-        <li><a href="/logs">Logs</a></li>
-        <li><a href="/settings">Settings</a></li>
-      </ul>
-    </div>
-  </nav>
+  <%- include('partials/nav') %>
   
   <main class="main-content">
     <div class="container">
@@ -97,9 +79,7 @@
     </div>
   </main>
   
-  <footer class="footer">
-    <p>&copy; 2025 Control Center - Distributed Automation Platform</p>
-  </footer>
+  <%- include('partials/footer') %>
   
   <script>
   function showTokenDialog() {

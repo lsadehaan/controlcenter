@@ -32,6 +32,17 @@ Each release should have a section with the version number as a heading level 2 
 - **Error preservation**: Username preserved in login form after failed attempts
 - **Session management**: Database schema includes sessions table for future token blacklisting/revocation
 
+### Code Quality & Architecture Improvements
+
+- **Centralized configuration**: All environment variables managed in single `src/config.js` module
+- **Agent proxy timeouts**: 10-second timeout on all agent HTTP requests prevents hanging (configurable via AGENT_PROXY_TIMEOUT)
+- **Centralized error handling**: Unified Express error handler with JSON for API, rendered page for UI
+- **Request logging middleware**: Optional HTTP request logging (enable with LOG_REQUESTS=true)
+- **Lint scripts**: Added `npm run lint` and `npm run lint:fix` for code quality
+- **CSS/JS extraction**: Separated inline styles/scripts into dedicated files for better maintainability
+- **Improved 403 handling**: Authorization middleware now uses centralized error handler for consistent responses
+- **Repository cleanup**: Removed 20 obsolete test files, SWAP data, and outdated documentation
+
 ### Configuration
 
 **Required environment variables for production:**
@@ -39,6 +50,17 @@ Each release should have a section with the version number as a heading level 2 
 export JWT_SECRET="$(openssl rand -base64 32)"  # Required
 export NODE_ENV="production"                     # Enables secure cookies (HTTPS)
 export COOKIE_SECURE="true"                      # Force secure cookies
+```
+
+**Optional configuration:**
+```bash
+export PORT=3000                                 # Server port
+export GIT_SSH_PORT=2223                        # Git SSH server port
+export AGENT_DEFAULT_PORT=8088                  # Agent default port
+export AGENT_PROXY_TIMEOUT=10000               # Agent request timeout (ms)
+export LOG_REQUESTS=true                        # Enable request logging
+export AUTH_RATE_LIMIT_MAX=5                   # Max login attempts
+export API_RATE_LIMIT_MAX=100                  # Max API requests per window
 ```
 
 ### API Changes
