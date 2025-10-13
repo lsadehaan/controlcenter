@@ -8,6 +8,72 @@ Each release should have a section with the version number as a heading level 2 
 
 ---
 
+## v0.14.1
+
+### Critical Fixes
+
+- **Fixed Git SSH authentication failure in Go exec.Command**: Git operations now work reliably when executed from Go
+  - Root cause: Go's `exec.Command` doesn't read git config's `core.sshCommand` setting properly
+  - Solution: Created `setupGitCommand()` helper that sets `GIT_SSH_COMMAND` as environment variable on each git command
+  - Fixes "Permission denied ()" errors during git fetch/pull/push operations
+
+### Changes
+
+- **Agent**: Added `setupGitCommand()` helper method in `gitsync.go` that automatically configures SSH for all network git operations
+- **Agent**: Updated `Pull()` to use `setupGitCommand()` for fetch operations
+- **Agent**: Updated `Push()` to use `setupGitCommand()` for push operations
+- **Agent**: Updated `Initialize()` to use `setupGitCommand()` for clone operations
+- **Agent**: Updated `HasCommitsAhead()` to use `setupGitCommand()` for fetch operations
+- **Agent**: Updated `HasDiverged()` to use `setupGitCommand()` for fetch operations
+- **Agent**: Removed unused `context` import from gitsync.go
+
+### Technical Details
+
+**Before**: Git commands relied on `git config core.sshCommand` which Go's exec.Command couldn't read properly in certain execution contexts.
+
+**After**: Every network git operation explicitly sets `GIT_SSH_COMMAND` environment variable:
+```go
+cmd := exec.Command("git", args...)
+if g.sshKeyPath != "" {
+    sshCmd := fmt.Sprintf("ssh -i \"%s\" -o StrictHostKeyChecking=no -o BatchMode=yes", g.sshKeyPath)
+    cmd.Env = append(os.Environ(), fmt.Sprintf("GIT_SSH_COMMAND=%s", sshCmd))
+}
+```
+
+### Cross-Platform Compatibility
+
+- ✅ **Windows**: Tested and working with Git Bash SSH
+- ✅ **Linux**: Compatible with system OpenSSH
+- ✅ **Auto-configuration**: No manual setup required on first run
+
+### Impact
+
+- Agents can now reliably sync configuration with manager on all platforms
+- Git pull operations succeed consistently after reboot or manager restart
+- Git push operations (from `-push-config` flag) work without authentication errors
+- Eliminates "Agent not connected" errors caused by failed git sync during startup
+
+### Deployment
+
+1. **Update Agent** to v0.14.1 (critical for agents experiencing git authentication issues)
+2. **No manager changes** required
+3. **No configuration changes** needed - existing agents will automatically use the new method
+
+### Upgrading from v0.14.0
+
+If agents are showing "Permission denied" errors during git operations:
+1. Update agent binary to v0.14.1
+2. Restart agent
+3. Git operations will work immediately
+
+### Related Issues Fixed
+
+- Git fetch failing with "Permission denied ()" on agent startup
+- Configuration updates not syncing from manager to agent
+- Agent showing as offline due to git sync failures during initialization
+
+---
+
 ## v0.14.0
 
 ### Improvements
