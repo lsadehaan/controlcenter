@@ -1,7 +1,6 @@
 package gitsync
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -48,15 +47,10 @@ func (g *GitSync) Initialize() error {
 		return fmt.Errorf("failed to create repo directory: %w", err)
 	}
 
-	// Set GIT_SSH_COMMAND environment variable for clone operation
-	var cmd *exec.Cmd
+	// Clone using helper method that sets up SSH environment
+	cmd := g.setupGitCommand("clone", g.remoteURL, g.repoPath)
 	if g.sshKeyPath != "" {
-		cmd = exec.Command("git", "clone", g.remoteURL, g.repoPath)
-		sshCmd := fmt.Sprintf("ssh -i \"%s\" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o BatchMode=yes", g.sshKeyPath)
-		cmd.Env = append(os.Environ(), fmt.Sprintf("GIT_SSH_COMMAND=%s", sshCmd))
 		g.logger.Info().Str("ssh_key", g.sshKeyPath).Msg("Using SSH key for clone")
-	} else {
-		cmd = exec.Command("git", "clone", g.remoteURL, g.repoPath)
 	}
 
 	// Clone the repository
@@ -80,6 +74,16 @@ func (g *GitSync) Initialize() error {
 	}
 
 	return nil
+}
+
+// setupGitCommand creates a git command with SSH environment configured
+func (g *GitSync) setupGitCommand(args ...string) *exec.Cmd {
+	cmd := exec.Command("git", args...)
+	if g.sshKeyPath != "" {
+		sshCmd := fmt.Sprintf("ssh -i \"%s\" -o StrictHostKeyChecking=no -o BatchMode=yes", g.sshKeyPath)
+		cmd.Env = append(os.Environ(), fmt.Sprintf("GIT_SSH_COMMAND=%s", sshCmd))
+	}
+	return cmd
 }
 
 // Pull fetches and merges latest changes from remote
@@ -106,7 +110,7 @@ func (g *GitSync) Pull() error {
 
 	// Fetch latest changes
 	g.logger.Info().Msg("Fetching latest changes")
-	cmd := exec.Command("git", "-C", g.repoPath, "fetch", "origin")
+	cmd := g.setupGitCommand("-C", g.repoPath, "fetch", "origin")
 	if output, err := cmd.CombinedOutput(); err != nil {
 		return fmt.Errorf("git fetch failed: %w - output: %s", err, string(output))
 	}
@@ -202,8 +206,10 @@ func (g *GitSync) SetupGitConfig() error {
 
 	// Configure SSH if key path is provided
 	if g.sshKeyPath != "" {
-		// Set GIT_SSH_COMMAND to use our SSH key and disable strict host key checking
-		sshCmd := fmt.Sprintf("ssh -i \"%s\" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o BatchMode=yes", g.sshKeyPath)
+		// Set GIT_SSH_COMMAND to use our SSH key
+		// StrictHostKeyChecking=no disables host key verification entirely for development
+		// In production, consider using accept-new or a proper known_hosts file
+		sshCmd := fmt.Sprintf("ssh -i \"%s\" -o StrictHostKeyChecking=no -o BatchMode=yes", g.sshKeyPath)
 		configs["core.sshCommand"] = sshCmd
 		g.logger.Info().Str("ssh_key", g.sshKeyPath).Msg("Configured Git to use SSH key")
 	}
@@ -267,11 +273,8 @@ func (g *GitSync) HasLocalChanges() (bool, error) {
 
 // HasCommitsAhead checks if local branch has commits ahead of remote
 func (g *GitSync) HasCommitsAhead() (bool, error) {
-	// First fetch to ensure we have latest remote info (with timeout)
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
-	cmd := exec.CommandContext(ctx, "git", "-C", g.repoPath, "fetch", "origin")
+	// First fetch to ensure we have latest remote info
+	cmd := g.setupGitCommand("-C", g.repoPath, "fetch", "origin")
 	if err := cmd.Run(); err != nil {
 		g.logger.Warn().Err(err).Msg("Failed to fetch from remote, checking local state only")
 		// Continue anyway - we can still check local state
@@ -296,7 +299,7 @@ func (g *GitSync) HasCommitsAhead() (bool, error) {
 // HasDiverged checks if local and remote have diverged
 func (g *GitSync) HasDiverged() (bool, error) {
 	// Fetch latest from remote without merging
-	cmd := exec.Command("git", "-C", g.repoPath, "fetch", "origin")
+	cmd := g.setupGitCommand("-C", g.repoPath, "fetch", "origin")
 	if err := cmd.Run(); err != nil {
 		return false, fmt.Errorf("failed to fetch: %w", err)
 	}
@@ -351,7 +354,7 @@ func (g *GitSync) CommitLocalChanges(message string) error {
 
 // Push pushes local commits to remote repository
 func (g *GitSync) Push() error {
-	cmd := exec.Command("git", "-C", g.repoPath, "push", "origin", "HEAD")
+	cmd := g.setupGitCommand("-C", g.repoPath, "push", "origin", "HEAD")
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("git push failed: %w - output: %s", err, string(output))

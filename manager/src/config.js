@@ -26,7 +26,7 @@ module.exports = {
   AUTH_RATE_LIMIT_WINDOW: parseInt(process.env.AUTH_RATE_LIMIT_WINDOW || '900000', 10), // 15 minutes
   AUTH_RATE_LIMIT_MAX: parseInt(process.env.AUTH_RATE_LIMIT_MAX || '5', 10),
   API_RATE_LIMIT_WINDOW: parseInt(process.env.API_RATE_LIMIT_WINDOW || '900000', 10), // 15 minutes
-  API_RATE_LIMIT_MAX: parseInt(process.env.API_RATE_LIMIT_MAX || '100', 10),
+  API_RATE_LIMIT_MAX: parseInt(process.env.API_RATE_LIMIT_MAX || '10000', 10), // Much more lenient for development/internal use
 
   // Database
   DB_PATH: process.env.DB_PATH || './data/control-center.db',

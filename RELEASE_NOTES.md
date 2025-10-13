@@ -8,6 +8,68 @@ Each release should have a section with the version number as a heading level 2 
 
 ---
 
+## v0.14.2
+
+### Critical Fixes
+
+- **Fixed CSS/styling not loading in Docker deployments**: Browsers were auto-upgrading HTTP resources to HTTPS due to Content Security Policy, causing `ERR_SSL_PROTOCOL_ERROR`
+  - Root cause: Helmet's `upgrade-insecure-requests` CSP directive was forcing HTTPS upgrades
+  - Solution: Disabled `upgrade-insecure-requests` to allow HTTP for internal deployments
+  - Fixes bootstrap page and all other pages showing broken formatting when accessed via HTTP
+
+### Changes
+
+- **Manager**: Modified CSP configuration in `src/server.js` to set `upgrade-insecure-requests: null`
+- **Documentation**: Added HTTP vs HTTPS deployment section to CLAUDE.md
+
+### Impact
+
+- HTTP deployments now work correctly without SSL/reverse proxy
+- Bootstrap page displays with proper CSS styling
+- All web UI pages load correctly when accessed via `http://server-ip:3000`
+- HTTPS deployments still fully supported via nginx reverse proxy
+
+### Deployment Options
+
+**HTTP (Internal/Testing)**:
+- Works out of the box with v0.14.2
+- Suitable for internal networks behind firewall
+- No additional configuration needed
+
+**HTTPS (Production)**:
+- Use nginx or similar reverse proxy with SSL certificates
+- See CLAUDE.md for complete nginx configuration example
+- Manager listens on HTTP internally, nginx handles SSL termination
+
+### Upgrading from v0.14.1 or earlier
+
+If you're experiencing CSS loading errors (`ERR_SSL_PROTOCOL_ERROR`) when accessing via HTTP:
+1. Update Manager to v0.14.2
+2. Restart container/service
+3. CSS and styling will load correctly
+
+**Docker**:
+```bash
+docker pull ghcr.io/lsadehaan/controlcenter-manager:latest
+docker compose down && docker compose up -d
+```
+
+**Native**:
+```bash
+cd manager
+git pull
+npm install --production
+sudo systemctl restart controlcenter-manager
+```
+
+### Related Issues Fixed
+
+- Bootstrap page showing no styling when accessed via IP address
+- Browser console errors: `GET https://IP:3000/css/style.css net::ERR_SSL_PROTOCOL_ERROR`
+- CSS files not loading on any web UI page in HTTP-only deployments
+
+---
+
 ## v0.14.1
 
 ### Critical Fixes

@@ -17,10 +17,57 @@ cd manager
 npm install         # Install dependencies
 npm start          # Start server on http://localhost:3000
 
+# Killing running instances
+npm run kill:dev        # Kill ports 3000, 8088, 2223 (recommended)
+npm run kill:port       # Interactive port killer (npx kill-port)
+npm run kill:node:win   # Kill all node.exe processes (Windows)
+npm run kill:node:nix   # Kill all node processes (Linux/Mac)
+
 # Production environment variables
 export JWT_SECRET="your-secure-random-secret-here"  # REQUIRED for production
 export NODE_ENV="production"                         # Enables secure cookies (HTTPS)
 export COOKIE_SECURE="true"                          # Force secure cookies
+```
+
+### HTTP vs HTTPS Deployment
+
+The manager can run with **HTTP** (default) or **HTTPS** (production with reverse proxy):
+
+**HTTP Deployment (Internal/Testing):**
+- Default configuration works out of the box
+- CSP configured to allow HTTP for internal use
+- Suitable for internal networks behind firewall
+- Access via: `http://server-ip:3000`
+
+**HTTPS Deployment (Production):**
+- Use nginx or similar reverse proxy with SSL certificates
+- Set `NODE_ENV=production` for secure cookies
+- Manager listens on HTTP internally, nginx handles SSL
+- Access via: `https://controlcenter.yourdomain.com`
+
+**Example nginx config with SSL:**
+```nginx
+server {
+    listen 443 ssl;
+    server_name controlcenter.yourdomain.com;
+
+    ssl_certificate /path/to/cert.pem;
+    ssl_certificate_key /path/to/key.pem;
+
+    location / {
+        proxy_pass http://localhost:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+```
+
+See `deploy/deploy-manager.sh` for automated nginx setup with Let's Encrypt SSL.
 ```
 
 ### Nodes (Go Agent)

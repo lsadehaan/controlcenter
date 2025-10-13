@@ -403,12 +403,23 @@ func main() {
 			// Pull latest config (this may overwrite local changes)
 			if err := agent.gitSync.Pull(); err != nil {
 				logger.Error().Err(err).Msg("Failed to pull from git repository")
-			} else {
-				// Check again for local changes after pull
-				if hasChanges, _ := agent.gitSync.HasLocalChanges(); hasChanges {
-					logger.Warn().Msg("⚠️  WARNING: Local changes detected after pull - configuration may be out of sync")
-					logger.Info().Msg("Your changes were backed up. Use -recover-backup latest to restore them")
+			}
+
+			// Load configuration from git repository (regardless of pull success/failure)
+			gitConfig, err := agent.gitSync.LoadAgentConfig()
+			if err == nil && gitConfig != nil {
+				// Update fileBrowserSettings from git config
+				if fbs, ok := gitConfig["fileBrowserSettings"].(map[string]interface{}); ok {
+					if fbsData, err := json.Marshal(fbs); err == nil {
+						var fileBrowserSettings config.FileBrowserSettings
+						if err := json.Unmarshal(fbsData, &fileBrowserSettings); err == nil {
+							agent.config.FileBrowserSettings = fileBrowserSettings
+							logger.Info().Int("allowedPaths", len(fileBrowserSettings.AllowedPaths)).Bool("enabled", fileBrowserSettings.Enabled).Msg("Loaded fileBrowserSettings from git")
+						}
+					}
 				}
+
+				// Load other git-managed settings here if needed...
 			}
 		}
 	} else {
@@ -935,92 +946,92 @@ func (a *Agent) reloadConfig() error {
 		if err := a.gitSync.Pull(); err != nil {
 			a.logger.Error().Err(err).Msg("Failed to pull from git")
 			// Continue with local config
-		} else {
-			// Load config from git repository
-			gitConfig, err := a.gitSync.LoadAgentConfig()
-			if err != nil {
-				a.logger.Error().Err(err).Msg("Failed to load config from git")
-			} else if gitConfig != nil {
-				updated := false
+		}
 
-				// Update workflows from git config
-				if workflows, ok := gitConfig["workflows"].([]interface{}); ok {
-					a.config.Workflows = []config.Workflow{}
-					for _, w := range workflows {
-						if workflowData, err := json.Marshal(w); err == nil {
-							var workflow config.Workflow
-							if err := json.Unmarshal(workflowData, &workflow); err == nil {
-								a.config.Workflows = append(a.config.Workflows, workflow)
-							}
-						}
-					}
-					updated = true
-					a.logger.Info().Int("count", len(a.config.Workflows)).Msg("Loaded workflows from git")
-				}
+		// Load config from git repository (regardless of pull success/failure)
+		gitConfig, err := a.gitSync.LoadAgentConfig()
+		if err != nil {
+			a.logger.Error().Err(err).Msg("Failed to load config from git")
+		} else if gitConfig != nil {
+			updated := false
 
-				// Update fileBrowserSettings from git config
-				if fbs, ok := gitConfig["fileBrowserSettings"].(map[string]interface{}); ok {
-					if fbsData, err := json.Marshal(fbs); err == nil {
-						var fileBrowserSettings config.FileBrowserSettings
-						if err := json.Unmarshal(fbsData, &fileBrowserSettings); err == nil {
-							a.config.FileBrowserSettings = fileBrowserSettings
-							updated = true
-							a.logger.Info().Int("allowedPaths", len(fileBrowserSettings.AllowedPaths)).Msg("Loaded fileBrowserSettings from git")
+			// Update workflows from git config
+			if workflows, ok := gitConfig["workflows"].([]interface{}); ok {
+				a.config.Workflows = []config.Workflow{}
+				for _, w := range workflows {
+					if workflowData, err := json.Marshal(w); err == nil {
+						var workflow config.Workflow
+						if err := json.Unmarshal(workflowData, &workflow); err == nil {
+							a.config.Workflows = append(a.config.Workflows, workflow)
 						}
 					}
 				}
+				updated = true
+				a.logger.Info().Int("count", len(a.config.Workflows)).Msg("Loaded workflows from git")
+			}
 
-				// Update logSettings from git config
-				if ls, ok := gitConfig["logSettings"].(map[string]interface{}); ok {
-					if lsData, err := json.Marshal(ls); err == nil {
-						var logSettings config.LogSettings
-						if err := json.Unmarshal(lsData, &logSettings); err == nil {
-							a.config.LogSettings = logSettings
-							updated = true
-							a.logger.Info().Msg("Loaded logSettings from git")
-						}
+			// Update fileBrowserSettings from git config
+			if fbs, ok := gitConfig["fileBrowserSettings"].(map[string]interface{}); ok {
+				if fbsData, err := json.Marshal(fbs); err == nil {
+					var fileBrowserSettings config.FileBrowserSettings
+					if err := json.Unmarshal(fbsData, &fileBrowserSettings); err == nil {
+						a.config.FileBrowserSettings = fileBrowserSettings
+						updated = true
+						a.logger.Info().Int("allowedPaths", len(fileBrowserSettings.AllowedPaths)).Msg("Loaded fileBrowserSettings from git")
 					}
 				}
+			}
 
-				// Update fileWatcherSettings from git config
-				if fws, ok := gitConfig["fileWatcherSettings"].(map[string]interface{}); ok {
-					if fwsData, err := json.Marshal(fws); err == nil {
-						var fileWatcherSettings config.FileWatcherSettings
-						if err := json.Unmarshal(fwsData, &fileWatcherSettings); err == nil {
-							a.config.FileWatcherSettings = fileWatcherSettings
-							updated = true
-							a.logger.Info().Msg("Loaded fileWatcherSettings from git")
-						}
+			// Update logSettings from git config
+			if ls, ok := gitConfig["logSettings"].(map[string]interface{}); ok {
+				if lsData, err := json.Marshal(ls); err == nil {
+					var logSettings config.LogSettings
+					if err := json.Unmarshal(lsData, &logSettings); err == nil {
+						a.config.LogSettings = logSettings
+						updated = true
+						a.logger.Info().Msg("Loaded logSettings from git")
 					}
 				}
+			}
 
-				// Update sshServerPort from git config
-				if port, ok := gitConfig["sshServerPort"].(float64); ok {
-					a.config.SSHServerPort = int(port)
-					updated = true
-					a.logger.Info().Int("port", int(port)).Msg("Loaded sshServerPort from git")
-				}
-
-				// Update authorizedSSHKeys from git config
-				if keys, ok := gitConfig["authorizedSSHKeys"].([]interface{}); ok {
-					a.config.AuthorizedSSHKeys = []string{}
-					for _, k := range keys {
-						if key, ok := k.(string); ok {
-							a.config.AuthorizedSSHKeys = append(a.config.AuthorizedSSHKeys, key)
-						}
+			// Update fileWatcherSettings from git config
+			if fws, ok := gitConfig["fileWatcherSettings"].(map[string]interface{}); ok {
+				if fwsData, err := json.Marshal(fws); err == nil {
+					var fileWatcherSettings config.FileWatcherSettings
+					if err := json.Unmarshal(fwsData, &fileWatcherSettings); err == nil {
+						a.config.FileWatcherSettings = fileWatcherSettings
+						updated = true
+						a.logger.Info().Msg("Loaded fileWatcherSettings from git")
 					}
-					updated = true
-					a.logger.Info().Int("count", len(a.config.AuthorizedSSHKeys)).Msg("Loaded authorizedSSHKeys from git")
 				}
+			}
 
-				if updated {
-					// Note: Managed settings are not saved to local config
-					return nil
+			// Update sshServerPort from git config
+			if port, ok := gitConfig["sshServerPort"].(float64); ok {
+				a.config.SSHServerPort = int(port)
+				updated = true
+				a.logger.Info().Int("port", int(port)).Msg("Loaded sshServerPort from git")
+			}
+
+			// Update authorizedSSHKeys from git config
+			if keys, ok := gitConfig["authorizedSSHKeys"].([]interface{}); ok {
+				a.config.AuthorizedSSHKeys = []string{}
+				for _, k := range keys {
+					if key, ok := k.(string); ok {
+						a.config.AuthorizedSSHKeys = append(a.config.AuthorizedSSHKeys, key)
+					}
 				}
+				updated = true
+				a.logger.Info().Int("count", len(a.config.AuthorizedSSHKeys)).Msg("Loaded authorizedSSHKeys from git")
+			}
+
+			if updated {
+				// Note: Managed settings are not saved to local config
+				return nil
 			}
 		}
 	}
-	
+
 	// Fallback to local config
 	configPath := a.configPath
 	if configPath == "" {
