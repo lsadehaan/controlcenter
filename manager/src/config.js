@@ -20,7 +20,8 @@ module.exports = {
   JWT_SECRET: process.env.JWT_SECRET || 'change-this-secret',
   JWT_EXPIRY: process.env.JWT_EXPIRY || '7d',
   COOKIE_MAX_AGE: parseInt(process.env.COOKIE_MAX_AGE || String(7 * 24 * 60 * 60 * 1000), 10), // 7 days in ms
-  COOKIE_SECURE: process.env.COOKIE_SECURE === 'true' || process.env.NODE_ENV === 'production',
+  // Allow explicit COOKIE_SECURE=false to override production default
+  COOKIE_SECURE: process.env.COOKIE_SECURE === 'false' ? false : (process.env.NODE_ENV === 'production'),
 
   // Rate limiting
   AUTH_RATE_LIMIT_WINDOW: parseInt(process.env.AUTH_RATE_LIMIT_WINDOW || '900000', 10), // 15 minutes

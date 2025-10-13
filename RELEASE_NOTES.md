@@ -8,6 +8,77 @@ Each release should have a section with the version number as a heading level 2 
 
 ---
 
+## v0.14.3
+
+### Critical Fixes
+
+- **Fixed COOKIE_SECURE environment variable being ignored in production mode**: Login now works correctly with HTTP when `COOKIE_SECURE=false` is explicitly set
+  - Root cause: Boolean logic bug using `||` operator caused `NODE_ENV=production` to always override `COOKIE_SECURE=false`
+  - Symptom: Users could create accounts and server showed `login_success`, but browser rejected cookies, causing redirect loop back to login
+  - Solution: Changed to ternary operator that allows explicit `COOKIE_SECURE=false` to override production default
+  - Fixes authentication loop in HTTP-only deployments even when COOKIE_SECURE is explicitly disabled
+
+### Changes
+
+- **Manager**: Fixed config.js line 24 to properly handle `COOKIE_SECURE=false` environment variable
+  - **Before**: `COOKIE_SECURE: process.env.COOKIE_SECURE === 'true' || process.env.NODE_ENV === 'production'`
+  - **After**: `COOKIE_SECURE: process.env.COOKIE_SECURE === 'false' ? false : (process.env.NODE_ENV === 'production')`
+
+### Technical Details
+
+**The Bug:**
+The original logic used an `||` (OR) operator which evaluated as:
+1. Check if `COOKIE_SECURE === 'true'` (false when set to "false")
+2. OR check if `NODE_ENV === 'production'` (true)
+3. Result: Always returned `true` in production, ignoring the explicit `COOKIE_SECURE=false` setting
+
+**The Fix:**
+New logic checks for explicit false first:
+1. If `COOKIE_SECURE === 'false'`, return `false` (explicit override)
+2. Otherwise, default to `true` when `NODE_ENV === 'production'`
+3. Allows HTTP deployments with `COOKIE_SECURE=false` to work correctly
+
+### Impact
+
+- HTTP-only deployments with `COOKIE_SECURE=false` now work correctly
+- Cookies are properly set without `Secure` flag when explicitly disabled
+- Login authentication persists across requests
+- Maintains secure defaults: still requires HTTPS in production unless explicitly overridden
+
+### Deployment
+
+**Docker (Recommended)**:
+```bash
+cd /opt/controlcenter/manager  # Or your DATA_DIR
+docker compose down
+docker compose pull
+docker compose up -d
+```
+
+**Verification**:
+1. Access manager via HTTP: `http://your-server-ip:3000`
+2. Create/login with user credentials
+3. Should successfully authenticate and stay logged in (no redirect loop)
+4. Check browser console - should see successful requests, no 429 rate limit errors
+
+### Related Issues Fixed
+
+- Login succeeding on server but browser rejecting cookies
+- Infinite redirect loop from main page → /auth/login → main page → /auth/login
+- Rate limiter triggering (429 Too Many Requests) after multiple failed login attempts
+- Authentication working in logs (`login_success`) but not persisting in browser
+
+### Upgrading from v0.14.2
+
+If you're experiencing login failures even with `COOKIE_SECURE=false` set:
+1. Update Manager to v0.14.3
+2. Restart container/service
+3. Try logging in again - authentication should persist correctly
+
+**Important**: Both v0.14.2 and v0.14.3 require `COOKIE_SECURE=false` environment variable for HTTP deployments. The deploy script (v0.14.2+) automatically sets this.
+
+---
+
 ## v0.14.2
 
 ### Critical Fixes
