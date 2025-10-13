@@ -88,6 +88,19 @@ deploy_docker() {
     docker stop controlcenter-manager 2>/dev/null || true
     docker rm controlcenter-manager 2>/dev/null || true
 
+    # Generate JWT_SECRET if .env doesn't exist
+    if [ ! -f "$DATA_DIR/.env" ]; then
+        echo -e "${YELLOW}Generating JWT_SECRET...${NC}"
+        JWT_SECRET=$(openssl rand -base64 32)
+        echo "JWT_SECRET=$JWT_SECRET" > /tmp/.env
+        sudo mv /tmp/.env $DATA_DIR/.env
+        sudo chown 1001:1001 $DATA_DIR/.env
+        sudo chmod 600 $DATA_DIR/.env
+        echo -e "${GREEN}✓ JWT_SECRET generated and saved to .env${NC}"
+    else
+        echo -e "${GREEN}✓ Using existing .env file${NC}"
+    fi
+
     # Create docker-compose.yml (without deprecated version field)
     cat > /tmp/docker-compose.yml << EOF
 
@@ -104,6 +117,8 @@ services:
     environment:
       - NODE_ENV=production
       - PORT=3000
+      - COOKIE_SECURE=false
+      - JWT_SECRET=\${JWT_SECRET}
     healthcheck:
       test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
       interval: 30s
@@ -161,6 +176,17 @@ deploy_native() {
     cd $DATA_DIR
     sudo npm install --production
 
+    # Generate JWT_SECRET if not exists
+    if [ ! -f "$DATA_DIR/.env" ]; then
+        echo -e "${YELLOW}Generating JWT_SECRET...${NC}"
+        JWT_SECRET=$(openssl rand -base64 32)
+        echo "JWT_SECRET=$JWT_SECRET" | sudo tee $DATA_DIR/.env > /dev/null
+        echo "COOKIE_SECURE=false" | sudo tee -a $DATA_DIR/.env > /dev/null
+        sudo chown www-data:www-data $DATA_DIR/.env
+        sudo chmod 600 $DATA_DIR/.env
+        echo -e "${GREEN}✓ JWT_SECRET generated and saved to .env${NC}"
+    fi
+
     # Create systemd service
     sudo tee /etc/systemd/system/controlcenter-manager.service > /dev/null << EOF
 [Unit]
@@ -177,6 +203,7 @@ Restart=on-failure
 RestartSec=10
 Environment=NODE_ENV=production
 Environment=PORT=${MANAGER_PORT}
+EnvironmentFile=$DATA_DIR/.env
 StandardOutput=append:/var/log/controlcenter/manager.log
 StandardError=append:/var/log/controlcenter/manager.err
 
@@ -311,6 +338,55 @@ upgrade() {
         docker stop controlcenter-manager 2>/dev/null || true
         docker rm controlcenter-manager 2>/dev/null || true
 
+        # Generate JWT_SECRET if .env doesn't exist
+        if [ ! -f "$DATA_DIR/.env" ]; then
+            echo -e "${YELLOW}Generating JWT_SECRET...${NC}"
+            JWT_SECRET=$(openssl rand -base64 32)
+            echo "JWT_SECRET=$JWT_SECRET" > /tmp/.env
+            sudo mv /tmp/.env $DATA_DIR/.env
+            sudo chown 1001:1001 $DATA_DIR/.env
+            sudo chmod 600 $DATA_DIR/.env
+            echo -e "${GREEN}✓ JWT_SECRET generated and saved to .env${NC}"
+        else
+            echo -e "${GREEN}✓ Using existing .env file${NC}"
+        fi
+
+        # Update docker-compose.yml with latest configuration
+        MANAGER_PORT=$(grep -oP '(?<=- ")[0-9]+(?=:3000")' "$DATA_DIR/docker-compose.yml" 2>/dev/null || echo "3000")
+        GIT_SSH_PORT=$(grep -oP '(?<=- ")[0-9]+(?=:2223")' "$DATA_DIR/docker-compose.yml" 2>/dev/null || echo "2223")
+
+        cat > /tmp/docker-compose.yml << EOF
+
+services:
+  manager:
+    image: ghcr.io/lsadehaan/controlcenter-manager:latest
+    container_name: controlcenter-manager
+    restart: unless-stopped
+    ports:
+      - "${MANAGER_PORT}:3000"
+      - "${GIT_SSH_PORT}:2223"
+    volumes:
+      - ${DATA_DIR}/data:/app/data
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - COOKIE_SECURE=false
+      - JWT_SECRET=\${JWT_SECRET}
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+    networks:
+      - controlcenter
+
+networks:
+  controlcenter:
+    external: true
+EOF
+
+        sudo mv /tmp/docker-compose.yml $DATA_DIR/docker-compose.yml
+
         echo -e "${YELLOW}Pulling latest image...${NC}"
         docker pull ghcr.io/lsadehaan/controlcenter-manager:latest
 
@@ -341,6 +417,17 @@ upgrade() {
         sudo cp -r manager/* "$DATA_DIR/"
         cd "$DATA_DIR"
         sudo npm install --production
+
+        # Generate JWT_SECRET if .env doesn't exist
+        if [ ! -f "$DATA_DIR/.env" ]; then
+            echo -e "${YELLOW}Generating JWT_SECRET...${NC}"
+            JWT_SECRET=$(openssl rand -base64 32)
+            echo "JWT_SECRET=$JWT_SECRET" | sudo tee $DATA_DIR/.env > /dev/null
+            echo "COOKIE_SECURE=false" | sudo tee -a $DATA_DIR/.env > /dev/null
+            sudo chown www-data:www-data $DATA_DIR/.env
+            sudo chmod 600 $DATA_DIR/.env
+            echo -e "${GREEN}✓ JWT_SECRET generated and saved to .env${NC}"
+        fi
 
         echo -e "${YELLOW}Starting service...${NC}"
         sudo systemctl start controlcenter-manager
