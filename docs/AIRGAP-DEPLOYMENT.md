@@ -352,30 +352,400 @@ curl http://localhost:3000/api/health
 
 ## Security Considerations
 
-### Certificates (HTTPS)
+### HTTPS in Air-Gapped Environments
 
-For production, use reverse proxy with internal CA certificates:
+Air-gapped deployments can't use Let's Encrypt (requires internet), but have several options for HTTPS:
+
+#### Option 1: Internal Certificate Authority (Recommended)
+
+**Best for enterprises with existing PKI infrastructure.**
+
+**Step 1: Request certificate from internal CA**
+
+Contact your IT/Security team to issue a certificate:
+- **Common Name (CN)**: `controlcenter.internal.company.com`
+- **Subject Alternative Names**: Any additional hostnames or IP addresses
+- **Certificate Type**: Server Authentication (TLS Web Server Authentication)
+
+You'll receive:
+- `controlcenter.crt` - Server certificate
+- `controlcenter.key` - Private key
+- `ca-chain.crt` - CA certificate chain (intermediate + root)
+
+**Step 2: Install nginx and certificates**
 
 ```bash
-# Example with nginx
+# Install nginx
+sudo apt-get update
+sudo apt-get install nginx
+
+# Create SSL directory
+sudo mkdir -p /etc/nginx/ssl
+sudo chmod 700 /etc/nginx/ssl
+
+# Copy certificates
+sudo cp controlcenter.crt /etc/nginx/ssl/
+sudo cp controlcenter.key /etc/nginx/ssl/
+sudo cp ca-chain.crt /etc/nginx/ssl/
+
+# Secure private key
+sudo chmod 600 /etc/nginx/ssl/controlcenter.key
+sudo chmod 644 /etc/nginx/ssl/controlcenter.crt
+sudo chmod 644 /etc/nginx/ssl/ca-chain.crt
+```
+
+**Step 3: Configure nginx**
+
+Create `/etc/nginx/sites-available/controlcenter`:
+
+```nginx
 upstream controlcenter {
     server localhost:3000;
 }
 
 server {
-    listen 443 ssl;
-    server_name controlcenter.internal;
+    listen 80;
+    server_name controlcenter.internal.company.com;
 
-    ssl_certificate /path/to/internal-ca-cert.pem;
-    ssl_certificate_key /path/to/internal-ca-key.pem;
+    # Redirect HTTP to HTTPS
+    return 301 https://$host$request_uri;
+}
 
+server {
+    listen 443 ssl http2;
+    server_name controlcenter.internal.company.com;
+
+    # SSL certificates
+    ssl_certificate /etc/nginx/ssl/controlcenter.crt;
+    ssl_certificate_key /etc/nginx/ssl/controlcenter.key;
+    ssl_trusted_certificate /etc/nginx/ssl/ca-chain.crt;
+
+    # Strong SSL configuration (Mozilla Intermediate)
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers 'ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384';
+    ssl_prefer_server_ciphers off;
+    ssl_session_cache shared:SSL:10m;
+    ssl_session_timeout 1d;
+    ssl_session_tickets off;
+
+    # OCSP stapling (if your internal CA supports it)
+    # ssl_stapling on;
+    # ssl_stapling_verify on;
+
+    # Security headers
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-XSS-Protection "1; mode=block" always;
+
+    # Proxy configuration
     location / {
         proxy_pass http://controlcenter;
         proxy_http_version 1.1;
+
+        # WebSocket support (required for agent connections)
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection "upgrade";
+
+        # Standard proxy headers
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        # Timeouts
+        proxy_connect_timeout 60s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 60s;
     }
 }
+```
+
+**Step 4: Enable and test**
+
+```bash
+# Enable site
+sudo ln -s /etc/nginx/sites-available/controlcenter /etc/nginx/sites-enabled/
+
+# Remove default site (optional)
+sudo rm /etc/nginx/sites-enabled/default
+
+# Test configuration
+sudo nginx -t
+
+# Restart nginx
+sudo systemctl restart nginx
+
+# Enable on boot
+sudo systemctl enable nginx
+```
+
+**Step 5: Trust internal CA on client machines**
+
+For browsers to trust your certificates, install the internal root CA certificate:
+
+**Windows**:
+```powershell
+# Import to Trusted Root Certification Authorities store
+certutil -addstore -f "ROOT" company-root-ca.crt
+
+# Verify
+certutil -store ROOT | findstr "YourCompanyCA"
+```
+
+**Linux (Ubuntu/Debian)**:
+```bash
+# Copy CA certificate
+sudo cp company-root-ca.crt /usr/local/share/ca-certificates/
+
+# Update certificate store
+sudo update-ca-certificates
+
+# Verify
+ls /etc/ssl/certs/ | grep company
+```
+
+**macOS**:
+```bash
+# Import to system keychain and mark as trusted
+sudo security add-trusted-cert -d -r trustRoot \
+  -k /Library/Keychains/System.keychain company-root-ca.crt
+
+# Verify in Keychain Access.app
+```
+
+#### Option 2: Self-Signed Certificates
+
+**For testing or small deployments without PKI.**
+
+**Step 1: Generate self-signed certificate**
+
+```bash
+# Create directory
+sudo mkdir -p /etc/nginx/ssl
+cd /etc/nginx/ssl
+
+# Generate private key and certificate in one command
+sudo openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+  -keyout controlcenter-selfsigned.key \
+  -out controlcenter-selfsigned.crt \
+  -subj "/C=US/ST=State/L=City/O=Company/OU=IT/CN=controlcenter.local" \
+  -addext "subjectAltName=DNS:controlcenter.local,DNS:controlcenter,IP:192.168.1.100"
+
+# Secure the private key
+sudo chmod 600 controlcenter-selfsigned.key
+sudo chmod 644 controlcenter-selfsigned.crt
+```
+
+**Important**: Replace the values and SANs:
+- `CN=controlcenter.local` - your hostname
+- `DNS:controlcenter.local` - all DNS names you'll use
+- `IP:192.168.1.100` - server IP address
+
+**Step 2: Configure nginx**
+
+Use the same nginx config as Option 1, but update certificate paths:
+
+```nginx
+ssl_certificate /etc/nginx/ssl/controlcenter-selfsigned.crt;
+ssl_certificate_key /etc/nginx/ssl/controlcenter-selfsigned.key;
+# Remove or comment out ssl_trusted_certificate
+```
+
+**Step 3: Handle browser warnings**
+
+Self-signed certificates trigger browser security warnings. Options:
+
+1. **Accept warning on first visit** (easiest, least secure):
+   - Click "Advanced" → "Proceed to site (unsafe)"
+   - Browser will remember exception for this domain
+
+2. **Import certificate to trust store** (recommended):
+   - Export the `.crt` file and import it using the same steps as internal CA above
+
+3. **Use for API only** (bypass browser entirely):
+   ```bash
+   # curl with self-signed cert
+   curl --insecure https://controlcenter.local:443/api/health
+
+   # Or trust the specific cert
+   curl --cacert /path/to/controlcenter-selfsigned.crt https://controlcenter.local/api/health
+   ```
+
+#### Option 3: Docker with nginx Sidecar Container
+
+**For containerized deployments with built-in reverse proxy.**
+
+**Step 1: Prepare certificates** (use internal CA or self-signed from above)
+
+```bash
+# Create directory for certificates and nginx config
+mkdir -p ~/deploy/controlcenter/ssl
+mkdir -p ~/deploy/controlcenter/nginx
+
+# Copy certificates
+cp controlcenter.crt ~/deploy/controlcenter/ssl/
+cp controlcenter.key ~/deploy/controlcenter/ssl/
+```
+
+**Step 2: Create nginx config**
+
+`~/deploy/controlcenter/nginx/default.conf`:
+
+```nginx
+upstream manager {
+    server manager:3000;
+}
+
+server {
+    listen 80;
+    server_name _;
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl http2;
+    server_name _;
+
+    ssl_certificate /etc/nginx/ssl/controlcenter.crt;
+    ssl_certificate_key /etc/nginx/ssl/controlcenter.key;
+
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers HIGH:!aNULL:!MD5;
+    ssl_prefer_server_ciphers on;
+
+    add_header Strict-Transport-Security "max-age=31536000" always;
+
+    location / {
+        proxy_pass http://manager;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+```
+
+**Step 3: Create docker-compose.yml**
+
+`~/deploy/controlcenter/docker-compose.yml`:
+
+```yaml
+version: '3.8'
+
+services:
+  manager:
+    image: ghcr.io/lsadehaan/controlcenter-manager:v0.14.2
+    container_name: controlcenter-manager
+    volumes:
+      - ./data:/app/data
+    environment:
+      - NODE_ENV=production
+      - JWT_SECRET=${JWT_SECRET}
+    networks:
+      - controlcenter
+    restart: unless-stopped
+
+  nginx:
+    image: nginx:alpine
+    container_name: controlcenter-nginx
+    ports:
+      - "443:443"
+      - "80:80"
+    volumes:
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - manager
+    networks:
+      - controlcenter
+    restart: unless-stopped
+
+networks:
+  controlcenter:
+    driver: bridge
+```
+
+**Step 4: Deploy**
+
+```bash
+cd ~/deploy/controlcenter
+
+# Set JWT secret
+export JWT_SECRET="$(openssl rand -base64 32)"
+echo "JWT_SECRET=${JWT_SECRET}" > .env
+
+# Start services
+docker compose up -d
+
+# Verify
+docker compose ps
+curl -k https://localhost/api/health
+```
+
+**Directory structure**:
+```
+~/deploy/controlcenter/
+├── docker-compose.yml
+├── .env
+├── data/                    # Manager data volume
+├── ssl/
+│   ├── controlcenter.crt
+│   └── controlcenter.key
+└── nginx/
+    └── default.conf
+```
+
+#### Verification
+
+**Test HTTPS is working**:
+
+```bash
+# From manager host
+curl -k https://localhost/api/health
+
+# From another machine
+curl -k https://controlcenter.company.com/api/health
+
+# Check certificate details
+openssl s_client -connect controlcenter.company.com:443 -showcerts
+```
+
+**Test WebSocket works over HTTPS**:
+- Register an agent - it will connect via WebSocket
+- Check agent shows as "online" in UI
+- WebSocket connections should work through HTTPS proxy
+
+#### Troubleshooting HTTPS
+
+**nginx won't start**:
+```bash
+# Check nginx error logs
+sudo tail -f /var/log/nginx/error.log
+
+# Common issues:
+# - Port 443 already in use
+# - Certificate file permissions wrong
+# - Certificate/key mismatch
+```
+
+**Browser shows "Not Secure" warning**:
+- Self-signed cert: Expected, import cert to trust store
+- Internal CA: Install root CA on client machine
+- Wrong CN/SAN: Certificate doesn't match hostname you're using
+
+**Agent can't connect via HTTPS**:
+```bash
+# Agents connect to manager, not nginx
+# Make sure agent connects to correct URL:
+
+# If nginx is on manager host, agents can still use HTTP:
+./agent -token TOKEN -manager-url http://manager-internal-ip:3000
+
+# Or configure nginx to listen on :3000 and :2223 as well
 ```
 
 ### SSH Keys
