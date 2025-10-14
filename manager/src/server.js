@@ -44,6 +44,7 @@ const GitSSHServer = require('./git/ssh-server');
 const apiRoutes = require('./routes/api');
 const authRoutes = require('./routes/auth');
 const { authMiddleware } = require('./utils/auth');
+const packageJson = require('../package.json');
 
 const app = express();
 
@@ -388,7 +389,8 @@ app.get('/settings', (req, res) => {
   res.render('settings', {
     title: 'Settings',
     user: req.user,
-    activePage: 'settings'
+    activePage: 'settings',
+    version: packageJson.version
   });
 });
 

@@ -27,6 +27,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"syscall"
 	"time"
@@ -44,6 +45,9 @@ import (
 	"github.com/your-org/controlcenter/nodes/internal/websocket"
 	"github.com/your-org/controlcenter/nodes/internal/workflow"
 )
+
+// Version information
+const AgentVersion = "0.14.6"
 
 type Agent struct {
 	config       *config.Config
@@ -536,11 +540,21 @@ func (a *Agent) startHealthEndpoint() {
 
 	http.HandleFunc("/info", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
+
+		// Get hostname
+		hostname, err := os.Hostname()
+		if err != nil {
+			hostname = "unknown"
+		}
+
 		json.NewEncoder(w).Encode(map[string]interface{}{
 			"agentId":   a.config.AgentID,
 			"publicKey": a.identity.PublicKey,
 			"workflows": len(a.config.Workflows),
 			"sshPort":   a.config.SSHServerPort,
+			"version":   AgentVersion,
+			"platform":  runtime.GOOS + "/" + runtime.GOARCH,
+			"hostname":  hostname,
 		})
 	})
 

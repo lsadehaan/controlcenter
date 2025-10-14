@@ -8,6 +8,72 @@ Each release should have a section with the version number as a heading level 2 
 
 ---
 
+## v0.14.6
+
+### New Features
+
+- **Version Display in UI**: Added version information to both Manager and Agent interfaces
+  - Manager About section in Settings page shows Manager version, license, and GitHub link
+  - Agent About tab in agent details page displays agent version, platform, hostname, and system info
+  - New API endpoint: GET `/agents/:id/info` returns agent version and platform information
+  - Version information accessible from web UI for easy reference and support
+
+### Changes
+
+**Manager (UI)**:
+- Updated `views/settings.ejs` - Added About section with Manager version display
+- Updated `views/agent-details.ejs` - Added About tab for agent information
+- Updated `public/js/agent-details.js` - Added loadAgentInfo() function and tab integration
+- Updated `package.json` - Version bumped to 0.14.6
+
+**Manager (Backend)**:
+- Updated `src/server.js` - Pass packageJson.version to settings view
+- Updated `src/routes/api.js` - Added `/agents/:id/info` proxy endpoint
+
+**Agent**:
+- Updated `nodes/main.go` - Added AgentVersion constant and updated /info endpoint
+- Version set to 0.14.6
+
+### Impact
+
+- Users can now easily see version numbers for both Manager and Agent in the UI
+- Simplifies support and troubleshooting by making version information readily available
+- Platform and system information helps identify agent capabilities and compatibility
+- No database schema changes
+
+### Deployment
+
+**Manager and Agent** (Both require updates to see version info):
+
+**Docker**:
+```bash
+docker compose down
+docker compose pull
+docker compose up -d
+```
+
+**Native**:
+```bash
+# Manager
+cd manager
+git pull
+npm install --production
+systemctl restart controlcenter-manager
+
+# Agent (replace with actual binary path)
+# Download new agent binary from release assets
+# Stop old agent, replace binary, restart
+```
+
+### Upgrading from v0.14.5
+
+No breaking changes. Simply update manager and agents to v0.14.6:
+- Manager will display version in Settings → About section
+- Agents will display version in agent details → About tab
+- All agents should be upgraded to display correct version information
+
+---
+
 ## v0.14.5
 
 ### Critical Fixes

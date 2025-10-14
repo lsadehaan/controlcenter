@@ -103,6 +103,24 @@
           <button class="btn" id="export-db-btn">Export Database</button>
           <button class="btn btn-danger" id="reset-system-btn">Reset System</button>
         </section>
+
+        <section class="settings-section">
+          <h3>About</h3>
+          <div class="config-info">
+            <div class="config-row">
+              <span class="config-label">Manager Version:</span>
+              <span class="config-value"><%= version || 'Unknown' %></span>
+            </div>
+            <div class="config-row">
+              <span class="config-label">License:</span>
+              <span class="config-value">AGPL-3.0</span>
+            </div>
+            <div class="config-row">
+              <span class="config-label">Project:</span>
+              <span class="config-value"><a href="https://github.com/lsadehaan/controlcenter" target="_blank" style="color: #4a90e2;">Control Center on GitHub</a></span>
+            </div>
+          </div>
+        </section>
       </div>
     </div>
   </main>

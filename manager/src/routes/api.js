@@ -687,6 +687,29 @@ module.exports = (db, wsServer, gitServer) => {
     }
   });
 
+  // Proxy agent info (version, platform, hostname)
+  router.get('/agents/:id/info', async (req, res) => {
+    try {
+      const agent = await db.getAgent(req.params.id);
+      if (!agent) {
+        return res.status(404).json({ error: 'Agent not found' });
+      }
+      if (agent.status !== 'online') {
+        return res.status(503).json({ error: 'Agent is offline' });
+      }
+
+      const agentUrl = getAgentUrl(agent);
+      const url = `${agentUrl}/info`;
+
+      const response = await fetchWithTimeout(url);
+      const data = await response.json();
+
+      res.json(data);
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   // Proxy agent workflows state (deployed workflows)
   router.get('/agents/:id/workflows/state', async (req, res) => {
     try {

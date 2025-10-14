@@ -219,6 +219,8 @@ function switchTab(tabName, buttonElement) {
   // Auto-load content for specific tabs
   if (tabName === 'workflows') {
     loadDeployedWorkflows();
+  } else if (tabName === 'about') {
+    loadAgentInfo();
   }
 }
 
@@ -811,6 +813,53 @@ async function loadMetrics() {
 
   } catch (error) {
     document.getElementById('metrics-content').innerHTML =
+      `<div style="color: #f44336;">Error: ${error.message}</div>`;
+  }
+}
+
+async function loadAgentInfo() {
+  try {
+    // Use Manager proxy to fetch agent info
+    const response = await fetch(`/api/agents/${agentId}/info`);
+    const info = await response.json();
+
+    if (info.error) {
+      document.getElementById('agent-about-content').innerHTML =
+        `<div style="color: #f44336;">Error: ${info.error}</div>`;
+      return;
+    }
+
+    const html = `
+      <div class="metric-row">
+        <span>Agent Version:</span>
+        <strong>${escapeHtml(info.version || 'Unknown')}</strong>
+      </div>
+      <div class="metric-row">
+        <span>Platform:</span>
+        <strong>${escapeHtml(info.platform || 'Unknown')}</strong>
+      </div>
+      <div class="metric-row">
+        <span>Hostname:</span>
+        <strong>${escapeHtml(info.hostname || 'Unknown')}</strong>
+      </div>
+      <div class="metric-row">
+        <span>Agent ID:</span>
+        <strong style="font-family: monospace; font-size: 12px;">${escapeHtml(info.agentId || 'Unknown')}</strong>
+      </div>
+      <div class="metric-row">
+        <span>SSH Port:</span>
+        <strong>${info.sshPort || 'N/A'}</strong>
+      </div>
+      <div class="metric-row">
+        <span>Workflows:</span>
+        <strong>${info.workflows || 0}</strong>
+      </div>
+    `;
+
+    document.getElementById('agent-about-content').innerHTML = html;
+
+  } catch (error) {
+    document.getElementById('agent-about-content').innerHTML =
       `<div style="color: #f44336;">Error: ${error.message}</div>`;
   }
 }
