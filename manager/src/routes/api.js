@@ -3,6 +3,7 @@
 const express = require('express');
 const { v4: uuidv4 } = require('uuid');
 const { importFromINI, exportToINI} = require('../utils/ini-converter');
+const { validatePassword } = require('./auth');
 const fetch = require('node-fetch');
 const config = require('../config');
 const router = express.Router();
@@ -237,44 +238,48 @@ module.exports = (db, wsServer, gitServer) => {
     try {
       const { agentIds } = req.body;
       const workflow = await db.get('SELECT * FROM workflows WHERE id = ?', [req.params.id]);
-      
+
       if (!workflow) {
         return res.status(404).json({ error: 'Workflow not found' });
       }
-      
+
       let deployed = 0;
       const workflowConfig = JSON.parse(workflow.config);
-      
+
+      // IMPORTANT: Ensure the workflow config's ID matches the database ID
+      // This prevents duplicate deployments when the config has a different ID
+      workflowConfig.id = workflow.id;
+
       // First, save the workflow to git repository
       if (gitServer) {
         await gitServer.saveWorkflow(workflow.id, workflowConfig);
       }
-      
+
       for (const agentId of agentIds) {
         const agent = await db.getAgent(agentId);
         if (agent) {
           const config = JSON.parse(agent.config || '{}');
           config.workflows = config.workflows || [];
-          
-          // Add or update workflow
+
+          // Add or update workflow - now that IDs match, this will properly update
           const existingIndex = config.workflows.findIndex(w => w.id === workflow.id);
-          
+
           if (existingIndex >= 0) {
             config.workflows[existingIndex] = workflowConfig;
           } else {
             config.workflows.push(workflowConfig);
           }
-          
+
           // Update agent config in database
           await db.run('UPDATE agents SET config = ? WHERE id = ?', [JSON.stringify(config), agentId]);
-          
+
           // Save to Git repository - this is the source of truth
           if (gitServer) {
             await gitServer.saveAgentConfig(agentId, config);
           }
-          
+
           // Send git-pull command to agent instead of the workflow
-          if (wsServer.sendToAgent(agentId, 'command', { 
+          if (wsServer.sendToAgent(agentId, 'command', {
             command: 'git-pull',
             args: {}
           })) {
@@ -282,7 +287,7 @@ module.exports = (db, wsServer, gitServer) => {
           }
         }
       }
-      
+
       res.json({ success: true, deployed });
     } catch (err) {
       res.status(500).json({ error: err.message });
@@ -318,6 +323,50 @@ module.exports = (db, wsServer, gitServer) => {
         res.json({ success: true, message: 'Configuration saved to git, agent notified to pull' });
       } else {
         res.json({ success: true, message: 'Configuration saved to git, agent offline' });
+      }
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // Remove workflow from specific agent
+  router.delete('/agents/:agentId/workflows/:workflowId', async (req, res) => {
+    try {
+      const agent = await db.getAgent(req.params.agentId);
+
+      if (!agent) {
+        return res.status(404).json({ error: 'Agent not found' });
+      }
+
+      const config = JSON.parse(agent.config || '{}');
+
+      if (!config.workflows) {
+        return res.status(404).json({ error: 'No workflows found on agent' });
+      }
+
+      const originalLength = config.workflows.length;
+      config.workflows = config.workflows.filter(w => w.id !== req.params.workflowId);
+
+      if (config.workflows.length === originalLength) {
+        return res.status(404).json({ error: 'Workflow not found on this agent' });
+      }
+
+      // Update agent config in database
+      await db.run('UPDATE agents SET config = ? WHERE id = ?', [JSON.stringify(config), req.params.agentId]);
+
+      // Update Git repository
+      if (gitServer) {
+        await gitServer.saveAgentConfig(req.params.agentId, config);
+      }
+
+      // Send git-pull command to agent to update from repository
+      if (wsServer.sendToAgent(req.params.agentId, 'command', {
+        command: 'git-pull',
+        args: {}
+      })) {
+        res.json({ success: true, message: 'Workflow removed and agent notified' });
+      } else {
+        res.json({ success: true, message: 'Workflow removed, agent offline' });
       }
     } catch (err) {
       res.status(500).json({ error: err.message });
@@ -638,6 +687,29 @@ module.exports = (db, wsServer, gitServer) => {
     }
   });
 
+  // Proxy agent workflows state (deployed workflows)
+  router.get('/agents/:id/workflows/state', async (req, res) => {
+    try {
+      const agent = await db.getAgent(req.params.id);
+      if (!agent) {
+        return res.status(404).json({ error: 'Agent not found' });
+      }
+      if (agent.status !== 'online') {
+        return res.status(503).json({ error: 'Agent is offline' });
+      }
+
+      const agentUrl = getAgentUrl(agent);
+      const url = `${agentUrl}/api/workflows/state`;
+
+      const response = await fetchWithTimeout(url);
+      const data = await response.json();
+
+      res.json(data);
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   // File Browser Proxy Endpoints
 
   // Browse files/directories
@@ -804,6 +876,117 @@ module.exports = (db, wsServer, gitServer) => {
 
       const data = await response.json();
       res.status(response.status).json(data);
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // User Management Endpoints
+
+  // Get all users
+  router.get('/users', async (req, res) => {
+    try {
+      const users = await db.getAllUsers();
+      res.json(users);
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // Create new user
+  router.post('/users', async (req, res) => {
+    try {
+      const { username, password, role } = req.body;
+
+      // Validation
+      if (!username || !password) {
+        return res.status(400).json({ error: 'Username and password are required' });
+      }
+
+      // Check if username already exists
+      const existingUser = await db.findUserByUsername(username);
+      if (existingUser) {
+        return res.status(409).json({ error: 'Username already exists' });
+      }
+
+      // Password validation (reuses existing validation from auth.js)
+      const passwordError = validatePassword(password);
+      if (passwordError) {
+        return res.status(400).json({ error: passwordError });
+      }
+
+      // Hash password
+      const bcrypt = require('bcryptjs');
+      const passwordHash = await bcrypt.hash(password, 10);
+
+      // Create user
+      const userId = uuidv4();
+      await db.createUser(userId, username, passwordHash, role || 'admin');
+
+      res.json({
+        success: true,
+        id: userId,
+        username: username
+      });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // Reset user password
+  router.put('/users/:id/password', async (req, res) => {
+    try {
+      const { password } = req.body;
+
+      // Validation
+      if (!password) {
+        return res.status(400).json({ error: 'Password is required' });
+      }
+
+      // Check if user exists
+      const user = await db.getUserById(req.params.id);
+      if (!user) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+
+      // Password validation (reuses existing validation from auth.js)
+      const passwordError = validatePassword(password);
+      if (passwordError) {
+        return res.status(400).json({ error: passwordError });
+      }
+
+      // Hash new password
+      const bcrypt = require('bcryptjs');
+      const passwordHash = await bcrypt.hash(password, 10);
+
+      // Update password
+      await db.updateUserPassword(req.params.id, passwordHash);
+
+      res.json({ success: true });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // Delete user
+  router.delete('/users/:id', async (req, res) => {
+    try {
+      // Check if user exists
+      const user = await db.getUserById(req.params.id);
+      if (!user) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+
+      // Prevent deleting last user
+      const userCount = await db.countUsers();
+      if (userCount <= 1) {
+        return res.status(400).json({ error: 'Cannot delete the last user' });
+      }
+
+      // Delete user
+      await db.deleteUser(req.params.id);
+
+      res.json({ success: true });
     } catch (err) {
       res.status(500).json({ error: err.message });
     }

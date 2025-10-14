@@ -22,10 +22,12 @@ module.exports = {
   COOKIE_MAX_AGE: parseInt(process.env.COOKIE_MAX_AGE || String(7 * 24 * 60 * 60 * 1000), 10), // 7 days in ms
   // Allow explicit COOKIE_SECURE=false to override production default
   COOKIE_SECURE: process.env.COOKIE_SECURE === 'false' ? false : (process.env.NODE_ENV === 'production'),
+  // Development mode: passwordless authentication (only allowed in development)
+  DEV_PASSWORDLESS: process.env.DEV_PASSWORDLESS === 'true' && process.env.NODE_ENV !== 'production',
 
   // Rate limiting
-  AUTH_RATE_LIMIT_WINDOW: parseInt(process.env.AUTH_RATE_LIMIT_WINDOW || '900000', 10), // 15 minutes
-  AUTH_RATE_LIMIT_MAX: parseInt(process.env.AUTH_RATE_LIMIT_MAX || '5', 10),
+  AUTH_RATE_LIMIT_WINDOW: parseInt(process.env.AUTH_RATE_LIMIT_WINDOW || '300000', 10), // 5 minutes
+  AUTH_RATE_LIMIT_MAX: parseInt(process.env.AUTH_RATE_LIMIT_MAX || '9', 10),
   API_RATE_LIMIT_WINDOW: parseInt(process.env.API_RATE_LIMIT_WINDOW || '900000', 10), // 15 minutes
   API_RATE_LIMIT_MAX: parseInt(process.env.API_RATE_LIMIT_MAX || '10000', 10), // Much more lenient for development/internal use
 

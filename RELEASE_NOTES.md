@@ -8,6 +8,143 @@ Each release should have a section with the version number as a heading level 2 
 
 ---
 
+## v0.14.4
+
+### New Features
+
+- **Modern Modal Dialog System**: Replaced all JavaScript alert(), confirm(), and prompt() calls with a beautiful, consistent modal system
+  - New Modal.js utility with methods: info(), success(), error(), warning(), confirm(), custom()
+  - Promise-based API for async/await compatibility
+  - Keyboard support (Escape to cancel, Enter to confirm)
+  - Click outside modal to close
+  - XSS protection with automatic HTML escaping
+  - Smooth animations and modern styling
+
+- **User Management System**: Complete user administration interface in Settings page
+  - Add new users with username, password, and role
+  - Reset user passwords with validation
+  - Delete users (with protection against deleting last user)
+  - User list table showing username, role, creation date, and last login
+  - Full API endpoints: GET/POST/PUT/DELETE `/api/users`
+  - Database methods for user CRUD operations
+
+- **Workflows Tab Redesign**: Agent details page now shows deployed workflows instead of just execution history
+  - Table view with workflow name, ID, trigger type, and status
+  - Trigger type icons: 📁 file, 📅 schedule, 🔗 webhook, 👤 manual
+  - Enabled/Disabled status badges
+  - Delete workflow button per workflow
+  - Auto-loads when switching to workflows tab
+  - New API endpoint: GET `/agents/:id/workflows/state` fetches workflows from agent
+
+- **Auto-Reload Configuration**: Agent configure page now prompts to reload agent configuration after saving
+  - Modal confirmation dialog after successful save
+  - One-click reload configuration command
+  - Automatically redirects to agent details after reload
+
+### UX Improvements
+
+- **Agent Configure Page**: Replaced all alert() with Modal dialogs, better async error handling
+- **Alerts Page**: Modal dialogs, improved event listeners, better filtering
+- **Logs Page**: Event listeners for filters and refresh, improved event delegation
+- **Settings Page**:
+  - Modal dialogs for all operations
+  - Event listeners instead of inline onclick handlers
+  - Copy to clipboard with success feedback
+  - Double confirmation for destructive operations (reset system)
+  - User management section with table
+
+- **Global Modal Integration**: Modal.css and modal.js loaded on all pages via head.ejs for consistent experience
+
+### Fixes
+
+- **Fixed multiple tabs staying highlighted simultaneously**: Agent details page now correctly shows only the selected tab as active
+  - Root cause: Duplicate `switchTab()` function in `agent-filewatcher.js` was overriding the corrected version from `agent-details.js`
+  - The file loading order meant agent-filewatcher.js (loaded last) was replacing the fixed function with one using wrong CSS selector (`.form-tab` instead of `.tab-btn`)
+  - Fixed line 599 in agent-filewatcher.js to use correct `.tab-btn` selector
+  - Added cache-busting timestamps to script tags to force browser reload of updated JavaScript files
+
+### Changes
+
+**Manager (JavaScript)**:
+- Added `public/js/modal.js` - New modal dialog utility
+- Added `public/css/modal.css` - Modal styling
+- Updated `public/js/agent-configure.js` - Modal integration, auto-reload functionality
+- Updated `public/js/agent-details.js` - Workflows tab redesign, modal integration
+- Updated `public/js/agent-filewatcher.js` - Fixed switchTab selector bug
+- Updated `public/js/alerts.js` - Modal integration, event listeners
+- Updated `public/js/logs.js` - Event listeners
+- Updated `public/js/settings.js` - User management UI, modal integration, event listeners
+
+**Manager (Backend)**:
+- Updated `src/routes/api.js` - User management endpoints (GET/POST/PUT/DELETE /api/users), workflows/state endpoint
+- Updated `src/db/database.js` - User management methods (getAllUsers, getUserById, deleteUser, updateUserPassword, countUsers)
+
+**Manager (Views)**:
+- Updated `views/partials/head.ejs` - Added modal.css and modal.js globally
+- Updated `views/agent-details.ejs` - Workflows tab UI redesign, cache-busting
+- Updated `views/settings.ejs` - User management UI section
+- Updated `views/alerts.ejs` - Event listeners
+- Updated `views/logs.ejs` - Event listeners
+
+### Impact
+
+- **Better UX**: Modern, consistent modal dialogs across entire application
+- **User Administration**: Easy user management without database access
+- **Workflow Management**: Clear visibility of deployed workflows per agent with delete capability
+- **Configuration Management**: Streamlined config save + reload workflow
+- **Bug Fixes**: Tab navigation works correctly
+- **Code Quality**: Event listeners instead of inline handlers, better error handling
+
+### Technical Details
+
+**Modal System Architecture:**
+- Promise-based API allows async/await usage throughout codebase
+- XSS protection via HTML escaping on all user input
+- Keyboard navigation and accessibility support
+- Click-outside-to-close UX pattern
+- Customizable buttons and HTML content
+
+**User Management Security:**
+- Password validation (8+ chars, uppercase, lowercase, number)
+- Bcrypt password hashing (10 salt rounds)
+- Protection against deleting last user
+- Duplicate username prevention
+
+**Tab Switching Bug:**
+JavaScript files loaded in order: agent-details.js, then agent-filewatcher.js, then agent-configure.js. When two scripts define a function with the same name, the later-loaded script's function replaces the earlier one. The agent-filewatcher.js version used `.form-tab` selector which doesn't match the actual tab buttons (which use `.tab-btn` class).
+
+### Deployment
+
+**Manager Only** (No agent changes required):
+
+**Docker**:
+```bash
+docker compose down
+docker compose pull
+docker compose up -d
+```
+
+**Native**:
+```bash
+cd manager
+git pull
+npm install --production
+systemctl restart controlcenter-manager
+```
+
+### Upgrading from v0.14.3
+
+No breaking changes. Simply update the manager and restart. Key improvements:
+- Users will see modern modal dialogs instead of browser alerts
+- Settings page gains user management capabilities
+- Agent details Workflows tab shows deployed workflows instead of execution history
+- Configuration workflow is streamlined with auto-reload prompt
+- Tab switching bug is resolved
+
+**Note**: Users may need to hard refresh browsers (Ctrl+F5) to clear cached JavaScript files.
+
+---
+
 ## v0.14.3
 
 ### Critical Fixes

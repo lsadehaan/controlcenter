@@ -122,8 +122,9 @@ function addActionNode() {
   nodeId++;
 }
 
-function clearEditor() {
-  if (confirm('Clear all nodes?')) {
+async function clearEditor() {
+  const confirmed = await Modal.confirm('Clear all nodes?', 'Clear Editor');
+  if (confirmed) {
     editor.clear();
     pos_x = 100;
     pos_y = 100;
@@ -131,10 +132,10 @@ function clearEditor() {
   }
 }
 
-function saveWorkflow() {
+async function saveWorkflow() {
   const name = document.getElementById('workflow-name').value;
   if (!name) {
-    alert('Please enter a workflow name');
+    await Modal.warning('Please enter a workflow name');
     return;
   }
 
@@ -171,7 +172,7 @@ function saveWorkflow() {
   }
 
   if (!trigger) {
-    alert('Please add a trigger node first');
+    await Modal.warning('Please add a trigger node first');
     return;
   }
 
@@ -194,11 +195,11 @@ function saveWorkflow() {
     })
   })
   .then(r => r.json())
-  .then(data => {
-    alert('Workflow saved! ID: ' + data.id);
+  .then(async data => {
+    await Modal.success('Workflow saved! ID: ' + data.id);
     window.location.href = '/workflows';
   })
   .catch(err => {
-    alert('Error saving workflow: ' + err.message);
+    Modal.error('Error saving workflow: ' + err.message);
   });
 }

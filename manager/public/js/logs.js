@@ -1,5 +1,33 @@
 // Logs page JavaScript
 
+// Initialize event listeners when page loads
+document.addEventListener('DOMContentLoaded', function() {
+  // Search filter
+  const searchFilter = document.getElementById('search-filter');
+  if (searchFilter) {
+    searchFilter.addEventListener('keyup', filterLogs);
+  }
+
+  // Level filter
+  const levelFilter = document.getElementById('level-filter');
+  if (levelFilter) {
+    levelFilter.addEventListener('change', filterLogs);
+  }
+
+  // Refresh button
+  const refreshBtn = document.getElementById('refresh-logs-btn');
+  if (refreshBtn) {
+    refreshBtn.addEventListener('click', refreshLogs);
+  }
+
+  // Expand metadata buttons (event delegation)
+  document.addEventListener('click', function(e) {
+    if (e.target.classList.contains('btn-expand')) {
+      toggleMetadata(e.target);
+    }
+  });
+});
+
 function filterLogs() {
   const searchTerm = document.getElementById('search-filter').value.toLowerCase();
   const levelFilter = document.getElementById('level-filter').value;

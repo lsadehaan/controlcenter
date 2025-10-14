@@ -11,15 +11,15 @@
       <div class="page-header">
         <h2>Logs</h2>
         <div class="filter-controls">
-          <input type="text" id="search-filter" placeholder="Search logs..." onkeyup="filterLogs()">
-          <select id="level-filter" onchange="filterLogs()">
+          <input type="text" id="search-filter" placeholder="Search logs...">
+          <select id="level-filter">
             <option value="">All Levels</option>
             <option value="debug">Debug</option>
             <option value="info">Info</option>
             <option value="warn">Warning</option>
             <option value="error">Error</option>
           </select>
-          <button class="btn" onclick="refreshLogs()">Refresh</button>
+          <button class="btn" id="refresh-logs-btn">Refresh</button>
         </div>
       </div>
       
@@ -38,7 +38,7 @@
                 <span class="log-agent"><%= log.agent_id %></span>
                 <span class="log-message"><%= log.message %></span>
                 <% if (log.metadata && Object.keys(log.metadata).length > 0) { %>
-                  <button class="btn-expand" onclick="toggleMetadata(this)">+</button>
+                  <button class="btn-expand">+</button>
                   <div class="log-metadata" style="display: none;">
                     <pre><%= JSON.stringify(log.metadata, null, 2) %></pre>
                   </div>

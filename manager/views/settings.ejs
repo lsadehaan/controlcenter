@@ -14,17 +14,43 @@
         <section class="settings-section">
           <h3>Registration Tokens</h3>
           <p>Generate tokens for new agent registration</p>
-          <button class="btn btn-primary" onclick="generateToken()">Generate New Token</button>
+          <button class="btn btn-primary" id="generate-token-btn">Generate New Token</button>
           <div id="token-display" style="display: none; margin-top: 20px;">
             <p><strong>New Registration Token:</strong></p>
             <code id="token-value" style="background: #f5f5f5; padding: 10px; display: block; word-break: break-all;"></code>
             <p style="margin-top: 10px;">Valid for: <span id="token-expiry">1 hour</span></p>
             <p style="margin-top: 15px;"><strong>To register an agent, run:</strong></p>
             <code id="agent-command" style="background: #2d2d2d; color: #f8f8f2; padding: 10px; display: block; border-radius: 4px; font-size: 12px;"></code>
-            <button class="btn btn-sm" style="margin-top: 10px;" onclick="copyCommand()">Copy Command</button>
+            <button class="btn btn-sm" style="margin-top: 10px;" id="copy-command-btn">Copy Command</button>
           </div>
         </section>
-        
+
+        <section class="settings-section">
+          <h3>User Management</h3>
+          <p>Manage user accounts and access</p>
+
+          <div style="margin-bottom: 20px;">
+            <button class="btn btn-primary" id="add-user-btn">Add New User</button>
+          </div>
+
+          <table class="data-table" id="users-table">
+            <thead>
+              <tr>
+                <th>Username</th>
+                <th>Role</th>
+                <th>Created</th>
+                <th>Last Login</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="users-list">
+              <tr>
+                <td colspan="5" style="text-align: center; padding: 20px;">Loading users...</td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+
         <section class="settings-section">
           <h3>Notification Settings</h3>
           <form id="notification-settings">
@@ -73,9 +99,9 @@
         
         <section class="settings-section">
           <h3>Maintenance</h3>
-          <button class="btn" onclick="clearOldLogs()">Clear Old Logs</button>
-          <button class="btn" onclick="exportDatabase()">Export Database</button>
-          <button class="btn btn-danger" onclick="resetSystem()">Reset System</button>
+          <button class="btn" id="clear-logs-btn">Clear Old Logs</button>
+          <button class="btn" id="export-db-btn">Export Database</button>
+          <button class="btn btn-danger" id="reset-system-btn">Reset System</button>
         </section>
       </div>
     </div>

@@ -45,7 +45,7 @@ function showTokenDialog() {
     document.getElementById('api-address').value = '';
   } catch (err) {
     console.error('Error showing dialog:', err);
-    alert('Error showing dialog: ' + err.message);
+    Modal.error('Error showing dialog: ' + err.message);
   }
 }
 
@@ -81,7 +81,7 @@ function generateToken() {
       document.getElementById('api-address-info').style.display = 'none';
     }
   })
-  .catch(err => alert('Failed to generate token: ' + err.message));
+  .catch(err => Modal.error('Failed to generate token: ' + err.message));
 }
 
 function viewAgent(id) {
@@ -92,16 +92,17 @@ function configureAgent(id) {
   window.location.href = `/agents/${id}/configure`;
 }
 
-function removeAgent(id) {
-  if (confirm('Are you sure you want to remove this agent?')) {
+async function removeAgent(id) {
+  const confirmed = await Modal.confirm('Are you sure you want to remove this agent?', 'Remove Agent');
+  if (confirmed) {
     fetch(`/api/agents/${id}`, {
       method: 'DELETE'
     })
-    .then(r => r.json())
-    .then(data => {
-      alert('Agent removed successfully');
+    .then(async r => {
+      const data = await r.json();
+      await Modal.success('Agent removed successfully');
       window.location.reload();
     })
-    .catch(err => alert('Failed to remove agent: ' + err.message));
+    .catch(err => Modal.error('Failed to remove agent: ' + err.message));
   }
 }

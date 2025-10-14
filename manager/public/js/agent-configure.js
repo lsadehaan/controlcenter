@@ -96,7 +96,7 @@ function removeWorkflow(workflowId) {
     contentDiv.innerHTML = '<p style="color: #999;">No workflows deployed to this agent</p>';
   }
 
-  alert('Workflow marked for removal. Click "Save Configuration" to apply changes.');
+  Modal.info('Workflow marked for removal. Click "Save Configuration" to apply changes.');
 }
 
 function addSSHKey() {
@@ -201,7 +201,7 @@ function refreshAllowedPaths() {
 }
 
 
-function saveConfig(event) {
+async function saveConfig(event) {
   event.preventDefault();
 
   // Collect SSH keys from inputs
@@ -224,7 +224,7 @@ function saveConfig(event) {
       customConfig = JSON.parse(customConfigText);
     }
   } catch (err) {
-    alert('Invalid JSON in custom configuration');
+    await Modal.error('Invalid JSON in custom configuration');
     return;
   }
 
@@ -242,19 +242,54 @@ function saveConfig(event) {
     custom: customConfig
   };
 
-  fetch(`/api/agents/${agent.id}/config`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(config)
-  })
-  .then(r => r.json())
-  .then(data => {
-    if (data.message) {
-      alert(data.message);
-    } else {
-      alert('Configuration saved successfully');
+  try {
+    const response = await fetch(`/api/agents/${agent.id}/config`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(config)
+    });
+
+    if (!response.ok) {
+      const err = await response.json();
+      throw new Error(err.error || 'Failed to save configuration');
     }
+
+    const data = await response.json();
+
+    // Ask user if they want to reload agent configuration
+    const shouldReload = await Modal.confirm(
+      'Configuration saved successfully. Reload agent configuration now?',
+      'Reload Configuration'
+    );
+
+    if (shouldReload) {
+      await reloadAgentConfiguration();
+    } else {
+      window.location.href = `/agents/${agent.id}`;
+    }
+  } catch (err) {
+    await Modal.error('Failed to save configuration: ' + err.message);
+  }
+}
+
+async function reloadAgentConfiguration() {
+  try {
+    // Send reload-config command
+    const reloadResponse = await fetch(`/api/agents/${agent.id}/command`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ command: 'reload-config' })
+    });
+
+    if (!reloadResponse.ok) {
+      throw new Error('Reload configuration command failed');
+    }
+
+    await Modal.success('Agent configuration reloaded successfully!');
     window.location.href = `/agents/${agent.id}`;
-  })
-  .catch(err => alert('Failed to save configuration: ' + err.message));
+
+  } catch (error) {
+    await Modal.error('Failed to reload configuration: ' + error.message);
+    window.location.href = `/agents/${agent.id}`;
+  }
 }

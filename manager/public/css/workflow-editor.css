@@ -243,6 +243,38 @@
   top: 50% !important;
   transform: translateY(-50%);
 }
+
+/* Success output (output_1) - Green indicator on right edge (middle) */
+.drawflow-node .output.output_1 {
+  border-color: #28a745 !important;
+  right: -8px !important;
+  top: 50% !important;
+  transform: translateY(-50%);
+}
+.drawflow-node .output.output_1:hover {
+  background: #28a745 !important;
+  border-color: #218838 !important;
+  width: 18px !important;
+  height: 18px !important;
+}
+
+/* Error output (output_2) - Red indicator on bottom edge (centered) */
+.drawflow-node .output.output_2 {
+  border-color: #dc3545 !important;
+  right: auto !important;
+  left: 50% !important;
+  top: auto !important;
+  bottom: -8px !important;
+  transform: translateX(-50%) !important;
+}
+.drawflow-node .output.output_2:hover {
+  background: #dc3545 !important;
+  border-color: #c82333 !important;
+  width: 18px !important;
+  height: 18px !important;
+}
+
+/* Default hover for single output nodes */
 .drawflow-node .input:hover, .drawflow-node .output:hover {
   background: #007bff !important;
   border-color: #0056b3 !important;
@@ -285,6 +317,18 @@
 .drawflow svg path:hover {
   stroke: #007bff;
   stroke-width: 4px;
+}
+
+/* Error connections (output_2) - Red dashed styling for easy identification */
+.drawflow svg.connection.output_2 path {
+  stroke: #dc3545 !important;
+  stroke-width: 3px;
+  stroke-dasharray: 8, 4;
+}
+.drawflow svg.connection.output_2:hover path {
+  stroke: #c82333 !important;
+  stroke-width: 4px;
+  stroke-dasharray: 8, 4;
 }
 
 /* Editor Controls */

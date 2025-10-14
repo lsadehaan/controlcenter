@@ -89,9 +89,9 @@ function toggleAgent(id) {
   }
 }
 
-function confirmDeploy() {
+async function confirmDeploy() {
   if (selectedAgents.length === 0) {
-    alert('Please select at least one agent');
+    await Modal.warning('Please select at least one agent');
     return;
   }
 
@@ -101,11 +101,11 @@ function confirmDeploy() {
     body: JSON.stringify({ agentIds: selectedAgents })
   })
   .then(r => r.json())
-  .then(data => {
-    alert(`Workflow deployed to ${data.deployed} agents`);
+  .then(async data => {
+    await Modal.success(`Workflow deployed to ${data.deployed} agents`);
     closeDeploy();
   })
-  .catch(err => alert('Failed to deploy workflow: ' + err.message));
+  .catch(err => Modal.error('Failed to deploy workflow: ' + err.message));
 }
 
 function closeDeploy() {
@@ -114,13 +114,14 @@ function closeDeploy() {
   selectedAgents = [];
 }
 
-function deleteWorkflow(id) {
-  if (confirm('Are you sure you want to delete this workflow?')) {
+async function deleteWorkflow(id) {
+  const confirmed = await Modal.confirm('Are you sure you want to delete this workflow?', 'Delete Workflow');
+  if (confirmed) {
     fetch(`/api/workflows/${id}`, { method: 'DELETE' })
       .then(r => r.json())
       .then(() => {
         window.location.reload();
       })
-      .catch(err => alert('Failed to delete workflow: ' + err.message));
+      .catch(err => Modal.error('Failed to delete workflow: ' + err.message));
   }
 }

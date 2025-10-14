@@ -38,7 +38,10 @@ window.onload = function() {
 
   container.addEventListener('mousedown', (e) => {
     // Only pan with middle mouse button or left button + space/shift
-    if (e.button === 1 || (e.button === 0 && (e.shiftKey || e.spaceKey))) {
+    // Also check we're not clicking on a node (which would be for dragging)
+    const clickedOnNode = e.target.closest('.drawflow-node');
+
+    if (!clickedOnNode && (e.button === 1 || (e.button === 0 && e.shiftKey))) {
       isPanning = true;
       startX = e.clientX;
       startY = e.clientY;
@@ -178,7 +181,7 @@ window.onload = function() {
         nodeIdCounter = maxId + 1;
       } catch (err) {
         console.error('Error loading workflow:', err);
-        alert('Error loading workflow data. Starting with empty canvas.');
+        Modal.error('Error loading workflow data. Starting with empty canvas.');
       }
     }
   }
@@ -291,49 +294,49 @@ function addNode(type, pos_x, pos_y) {
       name: 'Move File',
       class: 'node-action',
       inputs: 1,
-      outputs: 1,
+      outputs: 2,
       data: { source: '', destination: '' }
     },
     'copy-file': {
       name: 'Copy File',
       class: 'node-action',
       inputs: 1,
-      outputs: 1,
+      outputs: 2,
       data: { source: '', destination: '' }
     },
     'delete-file': {
       name: 'Delete File',
       class: 'node-action',
       inputs: 1,
-      outputs: 1,
+      outputs: 2,
       data: { path: '' }
     },
     'run-command': {
       name: 'Run Command',
       class: 'node-action',
       inputs: 1,
-      outputs: 1,
+      outputs: 2,
       data: { command: '', args: [] }
     },
     'ssh-command': {
       name: 'SSH Command',
       class: 'node-action',
       inputs: 1,
-      outputs: 1,
+      outputs: 2,
       data: { host: '', command: '' }
     },
     'send-file': {
       name: 'Send File (SFTP)',
       class: 'node-action',
       inputs: 1,
-      outputs: 1,
+      outputs: 2,
       data: { source: '', destination: '', host: '' }
     },
     'http-request': {
       name: 'HTTP Request',
       class: 'node-action',
       inputs: 1,
-      outputs: 1,
+      outputs: 2,
       data: { url: '', method: 'GET', headers: {}, body: '' }
     },
     'condition': {
@@ -361,56 +364,56 @@ function addNode(type, pos_x, pos_y) {
       name: 'JavaScript',
       class: 'node-action',
       inputs: 1,
-      outputs: 1,
+      outputs: 2,
       data: { code: '// Your code here\\nreturn data;' }
     },
     'rename-file': {
       name: 'Rename File',
       class: 'node-action',
       inputs: 1,
-      outputs: 1,
+      outputs: 2,
       data: { source: '', newName: '' }
     },
     'archive-file': {
       name: 'Archive File',
       class: 'node-action',
       inputs: 1,
-      outputs: 1,
+      outputs: 2,
       data: { source: '', destination: '', format: 'zip' }
     },
     'extract-archive': {
       name: 'Extract Archive',
       class: 'node-action',
       inputs: 1,
-      outputs: 1,
+      outputs: 2,
       data: { source: '', destination: '' }
     },
     'run-script': {
       name: 'Run Script',
       class: 'node-action',
       inputs: 1,
-      outputs: 1,
+      outputs: 2,
       data: { script: '', interpreter: 'bash' }
     },
     'database-query': {
       name: 'Database Query',
       class: 'node-action',
       inputs: 1,
-      outputs: 1,
+      outputs: 2,
       data: { connection: '', query: '', params: [] }
     },
     'send-email': {
       name: 'Send Email',
       class: 'node-action',
       inputs: 1,
-      outputs: 1,
+      outputs: 2,
       data: { to: '', subject: '', body: '', attachments: [] }
     },
     'slack-message': {
       name: 'Slack Message',
       class: 'node-action',
       inputs: 1,
-      outputs: 1,
+      outputs: 2,
       data: { webhook: '', channel: '', message: '' }
     }
   };
@@ -420,7 +423,7 @@ function addNode(type, pos_x, pos_y) {
 
   const nodeId = (nodeIdCounter++);
 
-  // Special handling for condition nodes with multiple outputs
+  // Special handling for nodes with multiple outputs
   let nodeContent = `<small style="color: #666;">${type}</small>`;
   if (type === 'condition') {
     nodeContent = `
@@ -436,6 +439,15 @@ function addNode(type, pos_x, pos_y) {
       <div style="margin-top: 5px; font-size: 10px;">
         <div>→ Each Item</div>
         <div>↓ Continue</div>
+      </div>
+    `;
+  } else if (config.outputs === 2 && config.class === 'node-action') {
+    // Action nodes with error handling
+    nodeContent = `
+      <small style="color: #666;">${type}</small>
+      <div style="margin-top: 5px; font-size: 10px; color: #666;">
+        <div style="color: #28a745;">✓ Success</div>
+        <div style="color: #dc3545;">✗ Error</div>
       </div>
     `;
   }
@@ -634,7 +646,7 @@ function copyToClipboard(text, event) {
     }
   }).catch(err => {
     console.error('Failed to copy:', err);
-    alert('Failed to copy to clipboard');
+    Modal.error('Failed to copy to clipboard');
   });
 }
 
@@ -1165,15 +1177,18 @@ function updateNodeProperties() {
   updateSaveButtonState();
 }
 
-function saveWorkflow() {
+async function saveWorkflow() {
   const name = document.getElementById('workflow-name').value;
   if (!name) {
-    alert('Please enter a workflow name');
+    await Modal.warning('Please enter a workflow name');
     return;
   }
 
   const drawflowData = editor.export();
   const workflowStructure = convertDrawflowToSteps(drawflowData);
+
+  // For new workflows, generate a temporary ID. The server will replace it with a UUID.
+  // For existing workflows, use the database ID to maintain consistency.
   const config = {
     id: currentWorkflowId || 'wf-' + Date.now(),
     name: name,
@@ -1200,25 +1215,34 @@ function saveWorkflow() {
     hasUnsavedChanges = false;
     updateSaveButtonState();
 
+    // If this is a new workflow, store the returned database ID
+    if (!currentWorkflowId && data.id) {
+      currentWorkflowId = data.id;
+      // Update the config ID to match the database ID
+      config.id = data.id;
+    }
+
     // If this is an update to an existing workflow, ask about deploying to agents
     if (currentWorkflowId) {
       showDeploymentDialog(currentWorkflowId);
     } else {
       // New workflow - just show success and redirect
-      alert('Workflow created successfully!');
-      window.location.href = '/workflows';
+      Modal.success('Workflow created successfully!').then(() => {
+        window.location.href = '/workflows';
+      });
     }
   })
-  .catch(err => alert('Failed to save workflow: ' + err.message));
+  .catch(err => Modal.error('Failed to save workflow: ' + err.message));
 }
 
 function showDeploymentDialog(workflowId) {
   // Fetch agents that have this workflow
   fetch(`/api/workflows/${workflowId}/agents`)
     .then(r => r.json())
-    .then(agents => {
+    .then(async agents => {
       if (agents.length === 0) {
-        if (confirm('Workflow updated successfully! This workflow is not deployed to any agents yet. Go to workflows page?')) {
+        const goToWorkflows = await Modal.confirm('Workflow updated successfully! This workflow is not deployed to any agents yet. Go to workflows page?', 'Workflow Updated');
+        if (goToWorkflows) {
           window.location.href = '/workflows';
         }
         return;
@@ -1275,9 +1299,10 @@ function showDeploymentDialog(workflowId) {
 
       window.deploymentModal = modal;
     })
-    .catch(err => {
+    .catch(async err => {
       console.error('Error fetching agents:', err);
-      if (confirm('Workflow updated successfully! Go to workflows page?')) {
+      const goToWorkflows = await Modal.confirm('Workflow updated successfully! Go to workflows page?', 'Workflow Updated');
+      if (goToWorkflows) {
         window.location.href = '/workflows';
       }
     });
@@ -1291,12 +1316,12 @@ function closeDeploymentDialog() {
   window.location.href = '/workflows';
 }
 
-function deployToSelectedAgents(workflowId) {
+async function deployToSelectedAgents(workflowId) {
   const checkboxes = document.querySelectorAll('[name^="agent-"]:checked');
   const agentIds = Array.from(checkboxes).map(cb => cb.value);
 
   if (agentIds.length === 0) {
-    alert('Please select at least one agent, or click Skip.');
+    await Modal.warning('Please select at least one agent, or click Skip.');
     return;
   }
 
@@ -1307,12 +1332,12 @@ function deployToSelectedAgents(workflowId) {
     body: JSON.stringify({ agentIds })
   })
   .then(r => r.json())
-  .then(data => {
-    alert(`Successfully deployed to ${data.deployed} agent(s)!`);
+  .then(async data => {
+    await Modal.success(`Successfully deployed to ${data.deployed} agent(s)!`);
     closeDeploymentDialog();
   })
-  .catch(err => {
-    alert('Error deploying workflow: ' + err.message);
+  .catch(async err => {
+    await Modal.error('Error deploying workflow: ' + err.message);
   });
 }
 
@@ -1340,7 +1365,8 @@ function convertDrawflowToSteps(drawflowData) {
         type: node.name,
         name: node.name,
         config: node.data,
-        next: node.outputs?.output_1?.connections?.map(c => 'step-' + c.node) || []
+        next: node.outputs?.output_1?.connections?.map(c => 'step-' + c.node) || [],
+        onError: node.outputs?.output_2?.connections?.map(c => 'step-' + c.node) || []
       });
     }
   }
@@ -1351,8 +1377,9 @@ function convertDrawflowToSteps(drawflowData) {
   };
 }
 
-function clearWorkflow() {
-  if (confirm('Clear the current workflow?')) {
+async function clearWorkflow() {
+  const confirmed = await Modal.confirm('Clear the current workflow?', 'Clear Workflow');
+  if (confirmed) {
     editor.clear();
   }
 }
@@ -1375,12 +1402,12 @@ function importWorkflow() {
   input.onchange = (e) => {
     const file = e.target.files[0];
     const reader = new FileReader();
-    reader.onload = (event) => {
+    reader.onload = async (event) => {
       try {
         const data = JSON.parse(event.target.result);
         editor.import(data);
       } catch (err) {
-        alert('Invalid workflow file');
+        await Modal.error('Invalid workflow file');
       }
     };
     reader.readAsText(file);

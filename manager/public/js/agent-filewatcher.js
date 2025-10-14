@@ -206,23 +206,41 @@ function loadGlobalSettings() {
   document.getElementById('global-scan-subdir').checked = globalSettings.scanSubDir || false;
 }
 
-function saveGlobalSettings() {
+async function saveGlobalSettings() {
   globalSettings = {
     scanDir: document.getElementById('global-scan-dir').value,
     scanSubDir: document.getElementById('global-scan-subdir').checked
   };
 
-  // Save to server
-  fetch(`/api/agents/${agent.id}/config`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ fileWatcherSettings: globalSettings })
-  })
-  .then(r => r.json())
-  .then(data => {
-    alert('Global settings saved successfully');
-  })
-  .catch(err => alert('Failed to save global settings: ' + err.message));
+  try {
+    // Save to server
+    const response = await fetch(`/api/agents/${agent.id}/config`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ fileWatcherSettings: globalSettings })
+    });
+
+    if (!response.ok) {
+      const err = await response.json();
+      throw new Error(err.error || 'Failed to save global settings');
+    }
+
+    await response.json();
+    await Modal.success('Global settings saved successfully');
+
+    // Ask user if they want to reload file watcher on agent
+    const shouldReload = await Modal.confirm(
+      'Global settings saved. Reload file watcher on agent now?',
+      'Reload File Watcher'
+    );
+
+    if (shouldReload) {
+      await reloadAgentFileWatcher();
+    }
+
+  } catch (err) {
+    await Modal.error('Failed to save global settings: ' + err.message);
+  }
 }
 
 function updateWatchModeUI() {
@@ -350,7 +368,7 @@ function editRule(index) {
   document.getElementById('rule-modal').style.display = 'block';
 }
 
-function saveRule() {
+async function saveRule() {
   const rule = {
     id: currentRuleIndex >= 0 ? rules[currentRuleIndex].id : 'rule_' + Date.now(),
     name: document.getElementById('rule-name').value,
@@ -392,7 +410,7 @@ function saveRule() {
   };
 
   if (!rule.name) {
-    alert('Please enter a rule name');
+    Modal.warning('Please enter a rule name');
     return;
   }
 
@@ -402,37 +420,112 @@ function saveRule() {
     rules.push(rule);
   }
 
-  saveToServer();
-  closeModal();
-  loadRules();
+  try {
+    await saveToServer();
+    closeModal();
+    loadRules();
+
+    // Ask user if they want to reload file watcher on agent
+    const shouldReload = await Modal.confirm(
+      'Configuration saved successfully. Reload file watcher on agent now?',
+      'Reload File Watcher'
+    );
+
+    if (shouldReload) {
+      await reloadAgentFileWatcher();
+    }
+  } catch (error) {
+    // Error already shown in saveToServer, but we still need to close the modal
+    closeModal();
+  }
 }
 
-function deleteRule(index) {
-  if (confirm('Are you sure you want to delete this rule?')) {
-    rules.splice(index, 1);
-    saveToServer();
+async function reloadAgentFileWatcher() {
+  try {
+    // Step 1: Send git-pull command
+    await Modal.info('Syncing configuration from git...');
+    const pullResponse = await fetch(`/api/agents/${agent.id}/command`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ command: 'git-pull' })
+    });
+
+    if (!pullResponse.ok) {
+      throw new Error('Git pull command failed');
+    }
+
+    // Wait a moment for git pull to complete
+    await new Promise(resolve => setTimeout(resolve, 3000));
+
+    // Step 2: Send reload-filewatcher command
+    const reloadResponse = await fetch(`/api/agents/${agent.id}/command`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ command: 'reload-filewatcher' })
+    });
+
+    if (!reloadResponse.ok) {
+      throw new Error('Reload file watcher command failed');
+    }
+
+    await Modal.success('File watcher reloaded successfully on agent!');
+
+  } catch (error) {
+    await Modal.error('Failed to reload file watcher: ' + error.message);
+  }
+}
+
+async function deleteRule(index) {
+  const confirmed = await Modal.confirm('Are you sure you want to delete this rule?', 'Delete Rule');
+  if (confirmed) {
+    const deletedRule = rules.splice(index, 1)[0];
+    try {
+      await saveToServer();
+      loadRules();
+    } catch (error) {
+      // Error already shown in saveToServer, restore the rule
+      rules.splice(index, 0, deletedRule);
+      loadRules();
+    }
+  }
+}
+
+async function toggleRule(index) {
+  const previousState = rules[index].enabled;
+  rules[index].enabled = !previousState;
+  try {
+    await saveToServer();
+    loadRules();
+  } catch (error) {
+    // Error already shown in saveToServer, restore previous state
+    rules[index].enabled = previousState;
     loadRules();
   }
 }
 
-function toggleRule(index) {
-  rules[index].enabled = !rules[index].enabled;
-  saveToServer();
-  loadRules();
-}
-
-function saveToServer() {
+async function saveToServer() {
   // Save file watcher rules to agent config
-  fetch(`/api/agents/${agent.id}/filewatcher`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ rules })
-  })
-  .then(r => r.json())
-  .then(data => {
-    console.log('File watcher rules saved');
-  })
-  .catch(err => alert('Failed to save rules: ' + err.message));
+  try {
+    const response = await fetch(`/api/agents/${agent.id}/filewatcher`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ rules })
+    });
+
+    if (!response.ok) {
+      const err = await response.json();
+      throw new Error(err.error || 'Failed to save rules');
+    }
+
+    const data = await response.json();
+    console.log('File watcher rules saved successfully');
+    return data;
+
+  } catch (err) {
+    console.error('Save error:', err);
+    await Modal.error('Failed to save rules: ' + err.message);
+    throw err; // Re-throw so caller knows it failed
+  }
 }
 
 function closeModal() {
@@ -440,6 +533,7 @@ function closeModal() {
 }
 
 function clearForm() {
+  // Matching tab
   document.getElementById('rule-name').value = '';
   document.getElementById('rule-description').value = '';
   document.getElementById('rule-enabled').checked = true;
@@ -448,7 +542,53 @@ function clearForm() {
   document.getElementById('dir-regex').value = '';
   document.getElementById('file-regex').value = '';
   document.getElementById('content-regex').value = '';
-  // ... clear other fields
+
+  // Operations tab
+  document.getElementById('copy-to-dir').value = '';
+  document.getElementById('copy-option').value = '21';
+  document.getElementById('rename-to').value = '';
+  document.getElementById('insert-timestamp').checked = false;
+  document.getElementById('backup-dir').value = '';
+  document.getElementById('temp-ext').value = '';
+  document.getElementById('remove-after').checked = true;
+  document.getElementById('overwrite').checked = true;
+
+  // External programs - reset to default state
+  document.getElementById('exec-before').value = '';
+  document.getElementById('exec-before-workflow').checked = false;
+  document.getElementById('exec-before').style.display = 'block';
+  document.getElementById('exec-before-select').style.display = 'none';
+  document.getElementById('exec-before-select').value = '';
+
+  document.getElementById('exec-after').value = '';
+  document.getElementById('exec-after-workflow').checked = false;
+  document.getElementById('exec-after').style.display = 'block';
+  document.getElementById('exec-after-select').style.display = 'none';
+  document.getElementById('exec-after-select').value = '';
+
+  document.getElementById('exec-error').value = '';
+  document.getElementById('exec-error-workflow').checked = false;
+  document.getElementById('exec-error').style.display = 'block';
+  document.getElementById('exec-error-select').style.display = 'none';
+  document.getElementById('exec-error-select').value = '';
+
+  // Timing tab
+  document.getElementById('start-hour').value = 0;
+  document.getElementById('start-minute').value = 0;
+  document.getElementById('end-hour').value = 23;
+  document.getElementById('end-minute').value = 59;
+  document.getElementById('process-after').value = 0;
+  document.getElementById('delay-next').value = 0;
+
+  // Weekdays - check all
+  document.querySelectorAll('.weekday').forEach(cb => {
+    cb.checked = true;
+  });
+
+  // Advanced tab
+  document.getElementById('check-in-use').checked = true;
+  document.getElementById('max-retries').value = 5;
+  document.getElementById('retry-delay').value = 1000;
 }
 
 function switchTab(tabName, buttonElement) {
@@ -456,7 +596,7 @@ function switchTab(tabName, buttonElement) {
   document.querySelectorAll('.tab-content').forEach(tab => {
     tab.classList.remove('active');
   });
-  document.querySelectorAll('.form-tab').forEach(tab => {
+  document.querySelectorAll('.tab-btn').forEach(tab => {
     tab.classList.remove('active');
   });
 
@@ -490,12 +630,12 @@ document.getElementById('import-file').addEventListener('change', function(e) {
       body: JSON.stringify({ content: content })
     })
     .then(r => r.json())
-    .then(data => {
+    .then(async data => {
       if (data.rules) {
         rules = data.rules;
         loadRules();
         // Save the imported rules
-        saveRules();
+        await saveToServer();
 
         // Show success message
         const message = `✅ Successfully imported ${data.rules.length} rules from INI file`;

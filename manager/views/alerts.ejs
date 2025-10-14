@@ -11,14 +11,14 @@
       <div class="page-header">
         <h2>Alerts</h2>
         <div class="filter-controls">
-          <select id="level-filter" onchange="filterAlerts()">
+          <select id="level-filter">
             <option value="">All Levels</option>
             <option value="info">Info</option>
             <option value="warning">Warning</option>
             <option value="error">Error</option>
             <option value="critical">Critical</option>
           </select>
-          <select id="status-filter" onchange="filterAlerts()">
+          <select id="status-filter">
             <option value="">All Status</option>
             <option value="unacknowledged">Unacknowledged</option>
             <option value="acknowledged">Acknowledged</option>
@@ -39,7 +39,7 @@
                 <span class="alert-level-badge <%= alert.level %>"><%= alert.level.toUpperCase() %></span>
                 <span class="alert-time"><%= new Date(alert.created_at).toLocaleString() %></span>
                 <% if (!alert.acknowledged) { %>
-                  <button class="btn btn-sm" onclick="acknowledgeAlert('<%= alert.id %>')">Acknowledge</button>
+                  <button class="btn btn-sm acknowledge-btn" data-alert-id="<%= alert.id %>">Acknowledge</button>
                 <% } else { %>
                   <span class="acknowledged-badge">Acknowledged</span>
                 <% } %>

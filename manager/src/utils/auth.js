@@ -14,6 +14,15 @@ if (config.JWT_SECRET === 'change-this-secret') {
   console.warn('');
 }
 
+// Development passwordless mode warning
+if (config.DEV_PASSWORDLESS) {
+  console.warn('');
+  console.warn('🔓 DEVELOPMENT MODE: Passwordless authentication enabled!');
+  console.warn('🔓 All requests will bypass authentication.');
+  console.warn('🔓 This mode is ONLY available in development (NODE_ENV != production).');
+  console.warn('');
+}
+
 // Cookie security options
 const COOKIE_OPTIONS = {
   httpOnly: true,
@@ -45,6 +54,17 @@ function clearAuthCookie(res) {
 
 function authMiddleware(db, options = {}) {
   return async (req, res, next) => {
+    // Development passwordless mode: bypass authentication
+    if (config.DEV_PASSWORDLESS) {
+      req.user = {
+        id: 'dev-user',
+        username: 'DevUser',
+        role: 'admin'
+      };
+      res.locals.user = req.user;
+      return next();
+    }
+
     // Redirect to bootstrap if no users exist
     try {
       const row = await db.get('SELECT COUNT(1) as c FROM users');
@@ -84,6 +104,11 @@ function authMiddleware(db, options = {}) {
 // Role-based access middleware
 function requireRole(role) {
   return (req, res, next) => {
+    // Bypass role checks in development passwordless mode
+    if (config.DEV_PASSWORDLESS) {
+      return next();
+    }
+
     if (!req.user) {
       const err = new Error('Unauthorized');
       err.status = 401;
@@ -102,6 +127,11 @@ function requireRole(role) {
 
 // Admin-only middleware (for write operations)
 function requireAdmin(req, res, next) {
+  // Bypass admin checks in development passwordless mode
+  if (config.DEV_PASSWORDLESS) {
+    return next();
+  }
+
   if (!req.user) {
     const err = new Error('Unauthorized');
     err.status = 401;

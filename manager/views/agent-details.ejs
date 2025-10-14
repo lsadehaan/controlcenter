@@ -3,8 +3,10 @@
 <head>
   <%- include('partials/head') %>
   <link rel="stylesheet" href="/css/agent-details.css">
+  <link rel="stylesheet" href="/css/agent-filewatcher.css">
+  <link rel="stylesheet" href="/css/agent-configure.css">
 </head>
-<body data-agent-id="<%= agent.id %>" data-agent-config='<%- JSON.stringify(agent) %>'>
+<body data-agent-id="<%= agent.id %>" data-agent-config='<%- JSON.stringify(agent) %>' data-filewatcher-rules='<%- JSON.stringify(fileWatcherRules || []) %>'>
   <%- include('partials/nav') %>
 
   <main class="main-content">
@@ -22,8 +24,8 @@
         <button class="tab tab-btn" data-tab="workflows">Workflows</button>
         <button class="tab tab-btn" data-tab="metrics">Metrics</button>
         <button class="tab tab-btn" data-tab="files">Files</button>
-        <a href="/agents/<%= agent.id %>/filewatcher" class="tab" style="text-decoration: none;">File Watchers</a>
-        <a href="/agents/<%= agent.id %>/configure" class="tab" style="text-decoration: none;">Configure</a>
+        <button class="tab tab-btn" data-tab="filewatcher">File Watchers</button>
+        <button class="tab tab-btn" data-tab="configure">Configure</button>
       </div>
 
       <!-- Overview Tab -->
@@ -140,6 +142,18 @@
 
       <!-- Workflows Tab -->
       <div id="workflows-tab" class="tab-content">
+        <!-- Deployed Workflows Section -->
+        <div class="metric-card" style="margin-bottom: 30px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+            <h3 style="margin: 0;">Deployed Workflows</h3>
+            <button id="load-deployed-workflows-btn" class="btn">🔄 Refresh</button>
+          </div>
+          <div id="deployed-workflows-content">
+            <p style="color: #666;">Click "Refresh" to view workflows deployed to this agent</p>
+          </div>
+        </div>
+
+        <!-- Workflow Executions Section -->
         <h3>Workflow Executions</h3>
 
         <!-- Control Bar -->
@@ -324,11 +338,446 @@
         </div>
       </div>
 
+      <!-- File Watcher Tab -->
+      <div id="filewatcher-tab" class="tab-content">
+        <div class="filewatcher-container">
+          <!-- Global Settings Section -->
+          <div class="import-section" style="margin-bottom: 20px;">
+            <h3>Global File Watcher Settings</h3>
+            <p>These settings apply to all pattern-based file watcher rules</p>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 15px;">
+              <div>
+                <label style="display: block; margin-bottom: 5px; font-weight: 500;">Root Scan Directory</label>
+                <input type="text" id="global-scan-dir" class="form-input" placeholder="e.g., \\192.168.9.36\Connect or C:\Watch" style="width: 100%;">
+                <small style="color: #666;">Base directory for pattern-mode rules</small>
+              </div>
+              <div>
+                <label style="display: block; margin-bottom: 5px; font-weight: 500;">
+                  <input type="checkbox" id="global-scan-subdir" style="margin-right: 5px;">
+                  Recursive Watch (ScanSubDir)
+                </label>
+                <small style="color: #666;">When enabled, watches matched directories and all their subdirectories</small>
+              </div>
+            </div>
+            <button class="btn btn-primary" id="save-global-settings-btn" style="margin-top: 15px;">Save Global Settings</button>
+          </div>
+
+          <!-- Import Section -->
+          <div class="import-section">
+            <h3>Import Configuration</h3>
+            <p>Import file watcher rules from an existing INI configuration file</p>
+            <input type="file" id="import-file" accept=".ini" style="display: none;">
+            <button class="btn btn-primary" id="import-ini-btn">
+              Import INI File
+            </button>
+          </div>
+
+          <!-- Toolbar -->
+          <div class="rules-toolbar">
+            <div>
+              <button class="btn btn-primary" id="create-rule-btn">
+                <span style="margin-right: 5px;">➕</span> New Rule
+              </button>
+              <button class="btn" id="export-rules-btn">
+                <span style="margin-right: 5px;">📥</span> Export Rules
+              </button>
+            </div>
+            <div>
+              <span id="rule-count">0 rules</span>
+            </div>
+          </div>
+
+          <!-- Rules List -->
+          <div class="rules-list" id="rules-list">
+            <!-- Rules will be populated here -->
+          </div>
+        </div>
+
+        <!-- Rule Editor Modal -->
+        <div id="rule-modal" class="modal">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h3 id="modal-title">New File Watcher Rule</h3>
+              <button class="btn btn-sm" id="close-modal-header-btn">&times;</button>
+            </div>
+
+            <div class="modal-body">
+              <!-- Tabs -->
+              <div class="form-tabs">
+                <button class="form-tab active" data-tab="matching">Matching</button>
+                <button class="form-tab" data-tab="operations">Operations</button>
+                <button class="form-tab" data-tab="timing">Timing</button>
+                <button class="form-tab" data-tab="advanced">Advanced</button>
+              </div>
+
+              <!-- Tab Contents -->
+              <div id="matching-tab" class="tab-content active">
+                <div class="form-group">
+                  <label>Rule Name *</label>
+                  <input type="text" id="rule-name" class="form-input" placeholder="e.g., Process Invoice Files">
+                </div>
+
+                <div class="form-group">
+                  <label>Description</label>
+                  <textarea id="rule-description" class="form-input" rows="2" placeholder="Optional description"></textarea>
+                </div>
+
+                <div class="form-group">
+                  <label>
+                    <input type="checkbox" id="rule-enabled" class="form-checkbox" checked>
+                    Enabled
+                  </label>
+                </div>
+
+                <div class="form-group">
+                  <label>Watch Mode</label>
+                  <select id="watch-mode" class="form-input">
+                    <option value="absolute">Absolute Path (Direct folder specification)</option>
+                    <option value="pattern">Pattern Mode (Use global ScanDir + regex)</option>
+                  </select>
+                  <div class="regex-helper">Pattern mode uses the global ScanDir as base and matches subdirectories</div>
+                </div>
+
+                <div class="form-group">
+                  <label id="dir-regex-label">Directory Path/Pattern</label>
+                  <input type="text" id="dir-regex" class="form-input" placeholder="e.g., C:\\Watch or (?i)\\Invoices\\Input$">
+                  <div class="regex-helper" id="dir-regex-helper">In absolute mode: full path; In pattern mode: regex to match under ScanDir</div>
+                </div>
+
+                <div class="form-group">
+                  <label>File Regex Pattern</label>
+                  <input type="text" id="file-regex" class="form-input" placeholder="e.g., (?i)^INV.*\.pdf$">
+                  <div class="regex-helper">^ = start, $ = end, .* = any characters</div>
+                </div>
+
+                <div class="form-group">
+                  <label>Content Regex Pattern (Optional)</label>
+                  <input type="text" id="content-regex" class="form-input" placeholder="e.g., INVOICE|RECEIPT">
+                  <div class="regex-helper">Match content within the file</div>
+                </div>
+              </div>
+
+              <div id="operations-tab" class="tab-content">
+                <div class="form-grid">
+                  <div class="form-group">
+                    <label>Copy/Move To Directory</label>
+                    <input type="text" id="copy-to-dir" class="form-input" placeholder="e.g., C:\\Processed">
+                  </div>
+
+                  <div class="form-group">
+                    <label>Operation Type</label>
+                    <select id="copy-option" class="form-input">
+                      <option value="21">Move File</option>
+                      <option value="22">Copy File</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div class="form-grid">
+                  <div class="form-group">
+                    <label>Rename File To</label>
+                    <input type="text" id="rename-to" class="form-input" placeholder="e.g., PROCESSED_{filename}">
+                    <div class="regex-helper">Variables: {filename}, {name}, {ext}, {timestamp}</div>
+                  </div>
+
+                  <div class="form-group">
+                    <label>
+                      <input type="checkbox" id="insert-timestamp" class="form-checkbox">
+                      Insert Timestamp
+                    </label>
+                  </div>
+                </div>
+
+                <div class="form-grid">
+                  <div class="form-group">
+                    <label>Backup To Directory</label>
+                    <input type="text" id="backup-dir" class="form-input" placeholder="e.g., C:\\Backup">
+                  </div>
+
+                  <div class="form-group">
+                    <label>Temp Extension</label>
+                    <input type="text" id="temp-ext" class="form-input" placeholder="e.g., .tmp">
+                  </div>
+                </div>
+
+                <div class="form-grid">
+                  <div class="form-group">
+                    <label>
+                      <input type="checkbox" id="remove-after" class="form-checkbox" checked>
+                      Remove After Copy
+                    </label>
+                  </div>
+
+                  <div class="form-group">
+                    <label>
+                      <input type="checkbox" id="overwrite" class="form-checkbox" checked>
+                      Overwrite Existing Files
+                    </label>
+                  </div>
+                </div>
+
+                <h4 style="margin-top: 20px;">External Programs</h4>
+
+                <div class="form-group">
+                  <label>
+                    Execute Before Processing
+                    <input type="checkbox" id="exec-before-workflow" style="margin-left: 10px;" data-field-prefix="exec-before">
+                    <span style="font-size: 12px; margin-left: 5px;">Use Workflow</span>
+                  </label>
+                  <input type="text" id="exec-before" class="form-input" placeholder="e.g., echo 'processing' >> {file}" style="display: block;">
+                  <select id="exec-before-select" class="form-input" style="display: none;">
+                    <option value="">-- Select Workflow --</option>
+                  </select>
+                </div>
+
+                <div class="form-group">
+                  <label>
+                    Execute After Processing
+                    <input type="checkbox" id="exec-after-workflow" style="margin-left: 10px;" data-field-prefix="exec-after">
+                    <span style="font-size: 12px; margin-left: 5px;">Use Workflow</span>
+                  </label>
+                  <input type="text" id="exec-after" class="form-input" placeholder="e.g., /usr/bin/notify-send 'File processed'" style="display: block;">
+                  <select id="exec-after-select" class="form-input" style="display: none;">
+                    <option value="">-- Select Workflow --</option>
+                  </select>
+                </div>
+
+                <div class="form-group">
+                  <label>
+                    Execute On Error
+                    <input type="checkbox" id="exec-error-workflow" style="margin-left: 10px;" data-field-prefix="exec-error">
+                    <span style="font-size: 12px; margin-left: 5px;">Use Workflow</span>
+                  </label>
+                  <input type="text" id="exec-error" class="form-input" placeholder="e.g., mv {file} /error/folder/" style="display: block;">
+                  <select id="exec-error-select" class="form-input" style="display: none;">
+                    <option value="">-- Select Workflow --</option>
+                  </select>
+                </div>
+              </div>
+
+              <div id="timing-tab" class="tab-content">
+                <h4>Time Window</h4>
+                <div class="form-grid">
+                  <div class="form-group">
+                    <label>Start Time</label>
+                    <div style="display: flex; gap: 10px;">
+                      <input type="number" id="start-hour" class="form-input" min="0" max="23" value="0" style="width: 60px;"> :
+                      <input type="number" id="start-minute" class="form-input" min="0" max="59" value="0" style="width: 60px;">
+                    </div>
+                  </div>
+
+                  <div class="form-group">
+                    <label>End Time</label>
+                    <div style="display: flex; gap: 10px;">
+                      <input type="number" id="end-hour" class="form-input" min="0" max="23" value="23" style="width: 60px;"> :
+                      <input type="number" id="end-minute" class="form-input" min="0" max="59" value="59" style="width: 60px;">
+                    </div>
+                  </div>
+                </div>
+
+                <h4 style="margin-top: 20px;">Days of Week</h4>
+                <div style="display: flex; gap: 15px; flex-wrap: wrap;">
+                  <label><input type="checkbox" class="weekday" value="1" checked> Sunday</label>
+                  <label><input type="checkbox" class="weekday" value="2" checked> Monday</label>
+                  <label><input type="checkbox" class="weekday" value="4" checked> Tuesday</label>
+                  <label><input type="checkbox" class="weekday" value="8" checked> Wednesday</label>
+                  <label><input type="checkbox" class="weekday" value="16" checked> Thursday</label>
+                  <label><input type="checkbox" class="weekday" value="32" checked> Friday</label>
+                  <label><input type="checkbox" class="weekday" value="64" checked> Saturday</label>
+                </div>
+
+                <h4 style="margin-top: 20px;">Processing Delays</h4>
+                <div class="form-grid">
+                  <div class="form-group">
+                    <label>Process After (seconds)</label>
+                    <input type="number" id="process-after" class="form-input" min="0" value="0">
+                    <div class="regex-helper">Wait before processing detected file</div>
+                  </div>
+
+                  <div class="form-group">
+                    <label>Delay Between Files (ms)</label>
+                    <input type="number" id="delay-next" class="form-input" min="0" value="0">
+                    <div class="regex-helper">Delay before processing next file</div>
+                  </div>
+                </div>
+              </div>
+
+              <div id="advanced-tab" class="tab-content">
+                <div class="form-group">
+                  <label>
+                    <input type="checkbox" id="check-in-use" class="form-checkbox" checked>
+                    Check if File is In Use
+                  </label>
+                  <div class="regex-helper">Skip files that are still being written</div>
+                </div>
+
+                <!-- Note: scanSubDir is now a global setting -->
+
+                <div class="form-grid">
+                  <div class="form-group">
+                    <label>Max Retries</label>
+                    <input type="number" id="max-retries" class="form-input" min="0" value="5">
+                  </div>
+
+                  <div class="form-group">
+                    <label>Retry Delay (ms)</label>
+                    <input type="number" id="retry-delay" class="form-input" min="0" value="1000">
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="modal-footer">
+              <button class="btn" id="close-modal-footer-btn">Cancel</button>
+              <button class="btn btn-primary" id="save-rule-btn">Save Rule</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Configure Tab -->
+      <div id="configure-tab" class="tab-content">
+        <form class="config-form" id="config-form">
+          <div class="form-section">
+            <h3>Basic Settings</h3>
+            <div class="form-group">
+              <label>Agent ID</label>
+              <input type="text" class="form-input" value="<%= agent.id %>" disabled>
+            </div>
+            <div class="form-group">
+              <label>Hostname</label>
+              <input type="text" class="form-input" value="<%= agent.metadata?.hostname || '' %>" disabled>
+            </div>
+          </div>
+
+          <div class="form-section">
+            <h3>SSH Server Configuration</h3>
+            <div class="form-group">
+              <label>SSH Server Port</label>
+              <input type="number" id="sshServerPort" class="form-input"
+                     value="<%= agent.config.sshServerPort || 2222 %>" min="1" max="65535">
+            </div>
+            <div class="form-group">
+              <label>Authorized SSH Keys</label>
+              <div id="ssh-keys" class="ssh-key-list">
+                <% const authorizedKeys = agent.config.authorizedSSHKeys || []; %>
+                <% if (authorizedKeys.length === 0) { %>
+                  <p style="color: #999;">No authorized keys configured</p>
+                <% } else { %>
+                  <% authorizedKeys.forEach((key, index) => { %>
+                    <div class="ssh-key-item">
+                      <input type="text" class="form-input" value="<%= key %>" data-index="<%= index %>">
+                      <button type="button" class="btn btn-sm btn-danger remove-ssh-key-btn" data-index="<%= index %>">Remove</button>
+                    </div>
+                  <% }) %>
+                <% } %>
+              </div>
+              <button type="button" class="btn btn-sm add-key-btn" id="add-ssh-key-btn">Add SSH Key</button>
+            </div>
+          </div>
+
+          <div class="form-section">
+            <h3>Deployed Workflows</h3>
+            <% const workflows = agent.config.workflows || []; %>
+            <% if (workflows.length === 0) { %>
+              <p style="color: #999;">No workflows deployed to this agent</p>
+            <% } else { %>
+              <ul class="workflow-list">
+                <% workflows.forEach(workflow => { %>
+                  <li class="workflow-item">
+                    <div>
+                      <strong><%= workflow.name %></strong>
+                      <span style="color: #666; margin-left: 10px;">ID: <%= workflow.id %></span>
+                    </div>
+                    <button type="button" class="btn btn-sm btn-danger remove-workflow-btn"
+                            data-workflow-id="<%= workflow.id %>">Remove</button>
+                  </li>
+                <% }) %>
+              </ul>
+            <% } %>
+            <a href="/workflows" class="btn btn-sm">Deploy Workflows</a>
+          </div>
+
+          <div class="form-section">
+            <h3>File Browser Settings</h3>
+            <div class="form-group">
+              <label>
+                <input type="checkbox" id="fileBrowserEnabled"
+                       <% if (agent.config.fileBrowserSettings?.enabled) { %>checked<% } %>>
+                Enable File Browser
+              </label>
+              <p style="color: #666; font-size: 13px; margin-top: 5px;">
+                Allows browsing, downloading, and uploading files on this agent through the manager UI.
+              </p>
+            </div>
+            <div class="form-group">
+              <label>Allowed Paths</label>
+              <p style="color: #666; font-size: 13px; margin-bottom: 10px;">
+                Whitelist of directories accessible via file browser. If empty, defaults to agent data directory only.
+              </p>
+              <div id="allowed-paths" class="ssh-key-list">
+                <% const allowedPaths = agent.config.fileBrowserSettings?.allowedPaths || []; %>
+                <% if (allowedPaths.length === 0) { %>
+                  <p style="color: #999;">No paths configured (agent data directory only)</p>
+                <% } else { %>
+                  <% allowedPaths.forEach((path, index) => { %>
+                    <div class="ssh-key-item">
+                      <input type="text" class="form-input" value="<%= path %>" data-path-index="<%= index %>">
+                      <button type="button" class="btn btn-sm btn-danger remove-path-btn" data-path-index="<%= index %>">Remove</button>
+                    </div>
+                  <% }) %>
+                <% } %>
+              </div>
+              <button type="button" class="btn btn-sm add-key-btn" id="add-path-btn">Add Path</button>
+            </div>
+            <div class="form-group">
+              <label>Max Upload Size (bytes)</label>
+              <input type="number" id="maxUploadSize" class="form-input"
+                     value="<%= agent.config.fileBrowserSettings?.maxUploadSize || 104857600 %>"
+                     min="1" placeholder="104857600">
+              <p style="color: #666; font-size: 13px; margin-top: 5px;">
+                Default: 104857600 (100MB)
+              </p>
+            </div>
+            <div class="form-group">
+              <label>Max List Items</label>
+              <input type="number" id="maxListItems" class="form-input"
+                     value="<%= agent.config.fileBrowserSettings?.maxListItems || 1000 %>"
+                     min="1" placeholder="1000">
+              <p style="color: #666; font-size: 13px; margin-top: 5px;">
+                Maximum number of files/folders to show per directory. Default: 1000
+              </p>
+            </div>
+          </div>
+
+          <div class="form-section">
+            <h3>Advanced Configuration</h3>
+            <div class="form-group">
+              <label>Config Repository Path</label>
+              <input type="text" id="configRepoPath" class="form-input"
+                     value="<%= agent.config.configRepoPath || '' %>"
+                     placeholder="e.g., /path/to/config/repo">
+            </div>
+            <div class="form-group">
+              <label>Custom Configuration (JSON)</label>
+              <textarea id="customConfig" class="form-input"
+                        placeholder='{"key": "value"}'><%- JSON.stringify(agent.config.custom || {}, null, 2) %></textarea>
+            </div>
+          </div>
+
+          <div class="form-actions">
+            <button type="submit" class="btn btn-primary">Save Configuration</button>
+          </div>
+        </form>
+      </div>
+
     </div>
   </main>
 
   <%- include('partials/footer') %>
 
-  <script src="/js/agent-details.js"></script>
+  <script src="/js/agent-details.js?v=<%= Date.now() %>"></script>
+  <script src="/js/agent-filewatcher.js?v=<%= Date.now() %>"></script>
+  <script src="/js/agent-configure.js?v=<%= Date.now() %>"></script>
 </body>
 </html>

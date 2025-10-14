@@ -16,12 +16,19 @@ The Control Center is a distributed automation platform with hub-and-spoke archi
 cd manager
 npm install         # Install dependencies
 npm start          # Start server on http://localhost:3000
+npm run dev        # Start with passwordless auth (DEV_PASSWORDLESS=true)
+npm run restart    # Kill dev ports and restart server
+npm run dev:restart # Kill dev ports and restart in dev mode
 
 # Killing running instances
 npm run kill:dev        # Kill ports 3000, 8088, 2223 (recommended)
 npm run kill:port       # Interactive port killer (npx kill-port)
 npm run kill:node:win   # Kill all node.exe processes (Windows)
 npm run kill:node:nix   # Kill all node processes (Linux/Mac)
+
+# Development mode (passwordless authentication)
+npm run dev             # Starts with DEV_PASSWORDLESS=true for testing
+npm run dev:restart     # Restart in dev mode
 
 # Production environment variables
 export JWT_SECRET="your-secure-random-secret-here"  # REQUIRED for production

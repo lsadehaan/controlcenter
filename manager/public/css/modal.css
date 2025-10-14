@@ -1,0 +1,209 @@
+/**
+ * Modal Dialog Styles
+ * Clean, modern modal dialogs to replace JavaScript alerts
+ */
+
+/* Overlay */
+.cc-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  animation: cc-modal-fade-in 0.2s ease-out;
+}
+
+.cc-modal-overlay.cc-modal-closing {
+  animation: cc-modal-fade-out 0.2s ease-out;
+}
+
+/* Modal container */
+.cc-modal {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.2);
+  min-width: 400px;
+  max-width: 600px;
+  animation: cc-modal-slide-in 0.2s ease-out;
+}
+
+.cc-modal-closing .cc-modal {
+  animation: cc-modal-slide-out 0.2s ease-out;
+}
+
+/* Header */
+.cc-modal-header {
+  padding: 20px 24px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.cc-modal-header h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #111827;
+}
+
+/* Body */
+.cc-modal-body {
+  padding: 24px;
+  color: #374151;
+  line-height: 1.5;
+}
+
+.cc-modal-body p {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* Footer */
+.cc-modal-footer {
+  padding: 16px 24px;
+  border-top: 1px solid #e5e7eb;
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+/* Buttons */
+.cc-modal-btn {
+  padding: 8px 16px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.cc-modal-btn:focus {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+}
+
+.cc-modal-btn-primary {
+  background: #3b82f6;
+  color: white;
+  border-color: #3b82f6;
+}
+
+.cc-modal-btn-primary:hover {
+  background: #2563eb;
+  border-color: #2563eb;
+}
+
+.cc-modal-btn-secondary {
+  background: white;
+  color: #374151;
+  border-color: #d1d5db;
+}
+
+.cc-modal-btn-secondary:hover {
+  background: #f9fafb;
+  border-color: #9ca3af;
+}
+
+/* Modal type variants */
+.cc-modal-success .cc-modal-header h3 {
+  color: #059669;
+}
+
+.cc-modal-error .cc-modal-header h3 {
+  color: #dc2626;
+}
+
+.cc-modal-warning .cc-modal-header h3 {
+  color: #d97706;
+}
+
+.cc-modal-info .cc-modal-header h3 {
+  color: #2563eb;
+}
+
+/* Success variant button */
+.cc-modal-success .cc-modal-btn-primary {
+  background: #059669;
+  border-color: #059669;
+}
+
+.cc-modal-success .cc-modal-btn-primary:hover {
+  background: #047857;
+  border-color: #047857;
+}
+
+/* Error variant button */
+.cc-modal-error .cc-modal-btn-primary {
+  background: #dc2626;
+  border-color: #dc2626;
+}
+
+.cc-modal-error .cc-modal-btn-primary:hover {
+  background: #b91c1c;
+  border-color: #b91c1c;
+}
+
+/* Warning variant button */
+.cc-modal-warning .cc-modal-btn-primary {
+  background: #d97706;
+  border-color: #d97706;
+}
+
+.cc-modal-warning .cc-modal-btn-primary:hover {
+  background: #b45309;
+  border-color: #b45309;
+}
+
+/* Animations */
+@keyframes cc-modal-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes cc-modal-fade-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes cc-modal-slide-in {
+  from {
+    transform: translateY(-20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes cc-modal-slide-out {
+  from {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateY(-20px);
+    opacity: 0;
+  }
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+  .cc-modal {
+    min-width: 90vw;
+    max-width: 90vw;
+  }
+}

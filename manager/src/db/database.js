@@ -350,6 +350,27 @@ class Database {
     return this.run('UPDATE users SET last_login = ? WHERE id = ?', [Date.now(), userId]);
   }
 
+  async getAllUsers() {
+    return this.all('SELECT id, username, role, created_at, last_login FROM users ORDER BY created_at DESC');
+  }
+
+  async getUserById(userId) {
+    return this.get('SELECT id, username, role, created_at, last_login FROM users WHERE id = ?', [userId]);
+  }
+
+  async deleteUser(userId) {
+    return this.run('DELETE FROM users WHERE id = ?', [userId]);
+  }
+
+  async updateUserPassword(userId, passwordHash) {
+    return this.run('UPDATE users SET password_hash = ? WHERE id = ?', [passwordHash, userId]);
+  }
+
+  async countUsers() {
+    const result = await this.get('SELECT COUNT(*) as count FROM users');
+    return result ? result.count : 0;
+  }
+
   // Session helpers
   async createSession(id, userId, token, expiresAt) {
     return this.run(

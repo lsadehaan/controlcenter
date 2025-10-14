@@ -69,7 +69,12 @@ document.addEventListener('DOMContentLoaded', function() {
     nextBtn.addEventListener('click', nextPage);
   }
 
-  // Workflow execution buttons
+  // Workflow buttons
+  const loadDeployedWorkflowsBtn = document.getElementById('load-deployed-workflows-btn');
+  if (loadDeployedWorkflowsBtn) {
+    loadDeployedWorkflowsBtn.addEventListener('click', loadDeployedWorkflows);
+  }
+
   const loadWorkflowExecutionsBtn = document.getElementById('load-workflow-executions-btn');
   if (loadWorkflowExecutionsBtn) {
     loadWorkflowExecutionsBtn.addEventListener('click', loadWorkflowExecutions);
@@ -159,6 +164,18 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }
 
+  // Event delegation for workflow delete buttons
+  const deployedWorkflowsContent = document.getElementById('deployed-workflows-content');
+  if (deployedWorkflowsContent) {
+    deployedWorkflowsContent.addEventListener('click', function(e) {
+      if (e.target.classList.contains('workflow-delete-btn')) {
+        const workflowId = e.target.dataset.workflowId;
+        const workflowName = e.target.dataset.workflowName;
+        deleteWorkflowFromAgent(workflowId, workflowName);
+      }
+    });
+  }
+
   // Event delegation for breadcrumb navigation
   const breadcrumbPath = document.getElementById('breadcrumb-path');
   if (breadcrumbPath) {
@@ -189,7 +206,7 @@ function switchTab(tabName, buttonElement) {
   document.querySelectorAll('.tab-content').forEach(tab => {
     tab.classList.remove('active');
   });
-  document.querySelectorAll('.tab').forEach(tab => {
+  document.querySelectorAll('.tab-btn').forEach(tab => {
     tab.classList.remove('active');
   });
 
@@ -197,6 +214,11 @@ function switchTab(tabName, buttonElement) {
   document.getElementById(tabName + '-tab').classList.add('active');
   if (buttonElement) {
     buttonElement.classList.add('active');
+  }
+
+  // Auto-load content for specific tabs
+  if (tabName === 'workflows') {
+    loadDeployedWorkflows();
   }
 }
 
@@ -289,20 +311,136 @@ function nextPage() {
   }
 }
 
-async function loadWorkflowExecutions() {
+async function loadDeployedWorkflows() {
+  const contentDiv = document.getElementById('deployed-workflows-content');
+
   try {
-    // Fetch workflow configurations first (for names)
-    const workflowsResponse = await fetch(`/api/workflows`);
-    const workflowsData = await workflowsResponse.json();
-    workflowsMap = {};
-    workflowsData.forEach(wf => {
+    contentDiv.innerHTML = '<p style="color: #666;">Loading workflows from agent...</p>';
+
+    // Fetch deployed workflows from agent
+    const response = await fetch(`/api/agents/${agentId}/workflows/state`);
+    const data = await response.json();
+
+    if (data.error) {
+      contentDiv.innerHTML = `<div style="color: #dc3545;">Error: ${data.error}</div>`;
+      return;
+    }
+
+    if (!data.workflows || data.workflows.length === 0) {
+      contentDiv.innerHTML = '<p style="color: #666;">No workflows deployed to this agent</p>';
+      return;
+    }
+
+    // Render workflows as a table
+    let html = `
+      <table style="width: 100%; border-collapse: collapse;">
+        <thead>
+          <tr style="border-bottom: 2px solid #dee2e6; text-align: left;">
+            <th style="padding: 10px;">Name</th>
+            <th style="padding: 10px;">ID</th>
+            <th style="padding: 10px;">Trigger</th>
+            <th style="padding: 10px;">Status</th>
+            <th style="padding: 10px;">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+    `;
+
+    data.workflows.forEach(wf => {
+      const triggerType = wf.trigger?.type || 'manual';
+      const triggerIcon = {
+        'file': '📁',
+        'filewatcher': '📁',
+        'schedule': '📅',
+        'webhook': '🔗',
+        'manual': '👤'
+      }[triggerType] || '❓';
+
+      const enabledBadge = wf.enabled ?
+        '<span class="status-badge online">Enabled</span>' :
+        '<span class="status-badge offline">Disabled</span>';
+
+      html += `
+        <tr style="border-bottom: 1px solid #e9ecef;">
+          <td style="padding: 10px;">
+            <strong>${escapeHtml(wf.name || 'Unnamed Workflow')}</strong>
+          </td>
+          <td style="padding: 10px; font-family: monospace; font-size: 12px; color: #666;">
+            ${escapeHtml(wf.id)}
+          </td>
+          <td style="padding: 10px;">
+            <span style="background: #e9ecef; padding: 4px 8px; border-radius: 4px; font-size: 12px;">
+              ${triggerIcon} ${triggerType}
+            </span>
+          </td>
+          <td style="padding: 10px;">
+            ${enabledBadge}
+          </td>
+          <td style="padding: 10px;">
+            <button class="file-action-btn delete workflow-delete-btn" data-workflow-id="${escapeHtml(wf.id)}" data-workflow-name="${escapeHtml(wf.name || 'Unnamed Workflow')}">🗑️ Delete</button>
+          </td>
+        </tr>
+      `;
+    });
+
+    html += '</tbody></table>';
+    contentDiv.innerHTML = html;
+
+    // Also update the workflowsMap for use in executions
+    data.workflows.forEach(wf => {
       workflowsMap[wf.id] = wf;
     });
+
+  } catch (error) {
+    contentDiv.innerHTML = `<div style="color: #dc3545;">Error loading workflows: ${error.message}</div>`;
+  }
+}
+
+async function deleteWorkflowFromAgent(workflowId, workflowName) {
+  const confirmed = await Modal.confirm(
+    `Are you sure you want to remove this workflow from the agent?\n\nWorkflow: ${workflowName}\nID: ${workflowId}\n\nThis will remove the workflow from the agent's configuration.`,
+    'Delete Workflow'
+  );
+
+  if (!confirmed) {
+    return;
+  }
+
+  try {
+    const url = `/api/agents/${agentId}/workflows/${workflowId}`;
+    const response = await fetch(url, { method: 'DELETE' });
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || 'Delete failed');
+    }
+
+    await Modal.success(`Workflow "${workflowName}" removed from agent successfully`);
+    loadDeployedWorkflows();
+
+  } catch (error) {
+    await Modal.error('Delete workflow failed: ' + error.message);
+  }
+}
+
+async function loadWorkflowExecutions() {
+  try {
+    // Fetch deployed workflows from agent (these have the actual names)
+    const workflowStateResponse = await fetch(`/api/agents/${agentId}/workflows/state`);
+    if (workflowStateResponse.ok) {
+      const workflowStateData = await workflowStateResponse.json();
+      workflowsMap = {};
+      if (workflowStateData.workflows) {
+        workflowStateData.workflows.forEach(wf => {
+          workflowsMap[wf.id] = wf;
+        });
+      }
+    }
 
     // Populate workflow filter dropdown
     const filterWorkflow = document.getElementById('filter-workflow');
     filterWorkflow.innerHTML = '<option value="">All Workflows</option>';
-    workflowsData.forEach(wf => {
+    Object.values(workflowsMap).forEach(wf => {
       filterWorkflow.innerHTML += `<option value="${wf.id}">${wf.name || wf.id}</option>`;
     });
 
@@ -734,7 +872,7 @@ async function updateApiAddress() {
   let apiAddress = document.getElementById('new-api-address').value.trim();
 
   if (!apiAddress) {
-    alert('Please enter an API address or click "Clear" to use auto-detect');
+    await Modal.warning('Please enter an API address or click "Clear" to use auto-detect');
     return;
   }
 
@@ -846,12 +984,12 @@ function onPathSelected() {
 }
 
 // Refresh the current path
-function refreshCurrentPath() {
+async function refreshCurrentPath() {
   const selector = document.getElementById('path-selector');
   const selectedPath = selector.value;
 
   if (!selectedPath) {
-    alert('Please select a path first');
+    await Modal.warning('Please select a path first');
     return;
   }
 
@@ -998,13 +1136,18 @@ async function downloadFile(path, filename) {
     window.URL.revokeObjectURL(downloadUrl);
 
   } catch (error) {
-    alert('Download failed: ' + error.message);
+    await Modal.error('Download failed: ' + error.message);
   }
 }
 
 async function deleteFileOrFolder(path, isDir) {
   const itemType = isDir ? 'folder' : 'file';
-  if (!confirm(`Are you sure you want to delete this ${itemType}?\n\n${path}`)) {
+  const confirmed = await Modal.confirm(
+    `Are you sure you want to delete this ${itemType}?\n\n${path}`,
+    `Delete ${itemType.charAt(0).toUpperCase() + itemType.slice(1)}`
+  );
+
+  if (!confirmed) {
     return;
   }
 
@@ -1017,11 +1160,11 @@ async function deleteFileOrFolder(path, isDir) {
       throw new Error(data.error || 'Delete failed');
     }
 
-    alert(`✓ ${itemType.charAt(0).toUpperCase() + itemType.slice(1)} deleted successfully`);
+    await Modal.success(`${itemType.charAt(0).toUpperCase() + itemType.slice(1)} deleted successfully`);
     loadFileBrowser(currentPath);
 
   } catch (error) {
-    alert('Delete failed: ' + error.message);
+    await Modal.error('Delete failed: ' + error.message);
   }
 }
 
@@ -1041,7 +1184,7 @@ async function performUpload() {
   const file = fileInput.files[0];
 
   if (!file) {
-    alert('Please select a file to upload');
+    await Modal.warning('Please select a file to upload');
     return;
   }
 
@@ -1068,20 +1211,20 @@ async function performUpload() {
       }
     });
 
-    xhr.addEventListener('load', () => {
+    xhr.addEventListener('load', async () => {
       if (xhr.status >= 200 && xhr.status < 300) {
-        alert('✓ File uploaded successfully');
+        await Modal.success('File uploaded successfully');
         hideUploadDialog();
         loadFileBrowser(currentPath);
       } else {
         const data = JSON.parse(xhr.responseText);
-        alert('Upload failed: ' + (data.error || 'Unknown error'));
+        await Modal.error('Upload failed: ' + (data.error || 'Unknown error'));
         progressDiv.style.display = 'none';
       }
     });
 
-    xhr.addEventListener('error', () => {
-      alert('Upload failed: Network error');
+    xhr.addEventListener('error', async () => {
+      await Modal.error('Upload failed: Network error');
       progressDiv.style.display = 'none';
     });
 
@@ -1089,7 +1232,7 @@ async function performUpload() {
     xhr.send(formData);
 
   } catch (error) {
-    alert('Upload failed: ' + error.message);
+    await Modal.error('Upload failed: ' + error.message);
     progressDiv.style.display = 'none';
   }
 }
@@ -1108,7 +1251,7 @@ async function performCreateFolder() {
   const folderName = document.getElementById('create-folder-name').value.trim();
 
   if (!folderName) {
-    alert('Please enter a folder name');
+    await Modal.warning('Please enter a folder name');
     return;
   }
 
@@ -1123,12 +1266,12 @@ async function performCreateFolder() {
       throw new Error(data.error || 'Create folder failed');
     }
 
-    alert('✓ Folder created successfully');
+    await Modal.success('Folder created successfully');
     hideCreateFolderDialog();
     loadFileBrowser(currentPath);
 
   } catch (error) {
-    alert('Create folder failed: ' + error.message);
+    await Modal.error('Create folder failed: ' + error.message);
   }
 }
 

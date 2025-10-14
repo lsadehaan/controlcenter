@@ -5,7 +5,7 @@ const bcrypt = require('bcryptjs');
 const { v4: uuidv4 } = require('uuid');
 const { signToken, setAuthCookie, clearAuthCookie } = require('../utils/auth');
 
-// Password validation
+// Password validation (exported for reuse in API routes)
 function validatePassword(password) {
   if (!password || password.length < 8) {
     return 'Password must be at least 8 characters long';
@@ -21,6 +21,9 @@ function validatePassword(password) {
   }
   return null;
 }
+
+// Export validation function for reuse
+module.exports.validatePassword = validatePassword;
 
 // Auth event logging
 function logAuthEvent(level, username, ip, event, details = {}) {

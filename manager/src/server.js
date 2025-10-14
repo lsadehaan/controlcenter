@@ -213,15 +213,18 @@ app.get('/agents/:id', async (req, res) => {
       return res.status(404).send('Agent not found');
     }
 
+    const agentConfig = JSON.parse(agent.config || '{}');
+
     res.render('agent-details', {
       title: `Agent: ${agent.hostname || agent.id}`,
       user: req.user,
       activePage: 'agents',
       agent: {
         ...agent,
-        config: JSON.parse(agent.config || '{}'),
+        config: agentConfig,
         metadata: JSON.parse(agent.metadata || '{}')
-      }
+      },
+      fileWatcherRules: agentConfig.fileWatcherRules || []
     });
   } catch (err) {
     console.error('Error loading agent:', err);
