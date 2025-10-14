@@ -8,6 +8,81 @@ Each release should have a section with the version number as a heading level 2 
 
 ---
 
+## v0.14.9
+
+### Critical Fixes
+
+- **Fixed Agent About tab not loading**: JavaScript function collision prevented About tab from displaying agent information
+  - Root cause: `agent-filewatcher.js` declared `function switchTab()` which overrode the correct version from `agent-details.js`
+  - This caused About tab to show "Loading agent information..." indefinitely
+  - The `switchTab` function in `agent-filewatcher.js` was missing the logic to call `loadAgentInfo()` for the About tab
+  - Solution: Renamed function to `switchFileWatcherTab()` to prevent collision
+  - Agent About tab now correctly displays agent version, platform, hostname, SSH port, and workflow count
+
+### Changes
+
+**Manager**:
+- Updated `public/js/agent-filewatcher.js` - Renamed `switchTab` to `switchFileWatcherTab` (function declaration and call site)
+- Updated `package.json` - Version bumped to 0.14.9
+
+### Impact
+
+- About tab now loads automatically when clicked
+- Users can see agent version and system information
+- No more JavaScript function name collisions on agent details page
+- This was a critical bug introduced in v0.14.8 that broke the About tab feature
+
+### Technical Details
+
+**The Bug:**
+Three JavaScript files loaded on the agent details page:
+- `agent-details.js` (line 790) - Contains `switchTab()` with About tab loading logic
+- `agent-filewatcher.js` (line 791) - Declared its own `switchTab()` without About tab logic
+- `agent-configure.js` (line 792) - No `switchTab()` function
+
+Since files load in order, `agent-filewatcher.js` loaded after `agent-details.js` and overwrote the correct `switchTab` function with a simpler version that didn't handle the About tab.
+
+**The Fix:**
+- Renamed `switchTab` to `switchFileWatcherTab` in `agent-filewatcher.js`
+- This function is only used for the file watcher rule editor modal tabs, not main page tabs
+- Now both functions coexist without conflicts
+- `agent-details.js` switchTab() handles main page tabs including About tab
+
+### Deployment
+
+**Manager Only** (No agent changes):
+
+**Docker**:
+```bash
+docker compose down
+docker compose pull
+docker compose up -d
+```
+
+**Native**:
+```bash
+cd manager
+git pull
+npm install --production
+systemctl restart controlcenter-manager
+```
+
+### Upgrading from v0.14.8
+
+This is a critical hotfix for the broken About tab in v0.14.8. All v0.14.8 deployments should upgrade immediately.
+
+**What was broken in v0.14.8:**
+- Agent About tab showed "Loading agent information..." indefinitely
+- No API requests were made when clicking the About tab
+- JavaScript function collision prevented proper tab switching logic
+
+**After upgrading to v0.14.9:**
+- About tab loads agent information automatically
+- Displays agent version, platform, hostname, SSH port, and workflows
+- All agent detail page features work as expected
+
+---
+
 ## v0.14.8
 
 ### New Features

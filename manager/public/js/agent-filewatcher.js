@@ -118,7 +118,7 @@ document.addEventListener('DOMContentLoaded', function() {
   formTabs.forEach(btn => {
     btn.addEventListener('click', function() {
       const tabName = this.getAttribute('data-tab');
-      switchTab(tabName, this);
+      switchFileWatcherTab(tabName, this);
     });
   });
 
@@ -591,7 +591,7 @@ function clearForm() {
   document.getElementById('retry-delay').value = 1000;
 }
 
-function switchTab(tabName, buttonElement) {
+function switchFileWatcherTab(tabName, buttonElement) {
   // Hide all tabs
   document.querySelectorAll('.tab-content').forEach(tab => {
     tab.classList.remove('active');
