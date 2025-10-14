@@ -110,6 +110,9 @@ const csrfProtection = csurf({ cookie: true });
 app.set('views', path.join(__dirname, '..', 'views'));
 app.set('view engine', 'ejs');
 
+// Make version available to all views
+app.locals.version = packageJson.version;
+
 // Create HTTP server
 const server = http.createServer(app);
 

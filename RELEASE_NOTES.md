@@ -8,6 +8,64 @@ Each release should have a section with the version number as a heading level 2 
 
 ---
 
+## v0.14.8
+
+### New Features
+
+- **Footer version display**: Manager now displays version number in the footer of every page
+  - Positioned in the bottom-left corner with small, subtle styling
+  - Version is globally available via `app.locals.version` to all EJS templates
+  - CSS positioned with absolute positioning for consistent placement
+  - Improves visibility of current version across the entire UI
+
+### Changes
+
+**Manager**:
+- Updated `src/server.js` line 114 - Added `app.locals.version = packageJson.version;` to make version globally available
+- Updated `views/partials/footer.ejs` - Added version span element displaying `v<%= version %>`
+- Updated `public/css/style.css` - Added `.footer-version` styling with absolute positioning, small font, and reduced opacity
+- Updated `package.json` - Version bumped to 0.14.8
+
+### Impact
+
+- Users can quickly see the manager version on any page without navigating to Settings
+- Helpful for support and troubleshooting
+- Consistent with standard web application patterns
+- No database schema changes
+
+### Technical Details
+
+The footer version display uses:
+- **Global template variable**: `app.locals.version` makes version available to all EJS views without passing it individually
+- **Absolute positioning**: Places version in bottom-left corner of footer
+- **Subtle styling**: Small font size (0.75rem) with 60% opacity for non-intrusive display
+- **Responsive design**: Works with existing footer flexbox layout
+
+### Deployment
+
+**Manager Only** (No agent changes):
+
+**Docker**:
+```bash
+docker compose down
+docker compose pull
+docker compose up -d
+```
+
+**Native**:
+```bash
+cd manager
+git pull
+npm install --production
+systemctl restart controlcenter-manager
+```
+
+### Upgrading from v0.14.7
+
+No breaking changes. Simply update the manager and restart. After reloading the page, you'll see the version number in the bottom-left corner of every page.
+
+---
+
 ## v0.14.7
 
 ### Critical Fixes
