@@ -8,6 +8,52 @@ Each release should have a section with the version number as a heading level 2 
 
 ---
 
+## v0.14.5
+
+### Critical Fixes
+
+- **Fixed user management "validatePassword is not a function" error**: User creation now works correctly
+  - Root cause: `validatePassword` function export was being overwritten by the router export
+  - The `module.exports = ...` on line 45 was overwriting the `module.exports.validatePassword = ...` from line 26
+  - Fixed by moving the validatePassword export to AFTER the router function export
+  - This allows the function to be properly imported in api.js
+
+### Changes
+
+- **Manager**: Fixed `src/routes/auth.js` - moved validatePassword export to end of file (line 194)
+
+### Impact
+
+- User management system now fully functional
+- Users can create, delete, and reset passwords for admin accounts
+- No workaround was available in v0.14.4
+
+### Deployment
+
+**Manager Only** (No agent changes required):
+
+**Docker**:
+```bash
+docker compose down
+docker compose pull
+docker compose up -d
+```
+
+**Native**:
+```bash
+cd manager
+git pull
+systemctl restart controlcenter-manager
+```
+
+### Upgrading from v0.14.4
+
+This is a critical hotfix that fixes broken user management. All v0.14.4 deployments should upgrade immediately.
+
+**Note**: This issue only affected v0.14.4. If you're on v0.14.3 or earlier, you should upgrade directly to v0.14.5 to get all the features from v0.14.4 plus this fix.
+
+---
+
 ## v0.14.4
 
 ### New Features

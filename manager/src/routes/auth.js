@@ -22,9 +22,6 @@ function validatePassword(password) {
   return null;
 }
 
-// Export validation function for reuse
-module.exports.validatePassword = validatePassword;
-
 // Auth event logging
 function logAuthEvent(level, username, ip, event, details = {}) {
   const log = {
@@ -192,5 +189,8 @@ module.exports = (db, csrfProtection) => {
 
   return router;
 };
+
+// Export validation function for reuse in API routes
+module.exports.validatePassword = validatePassword;
 
 
