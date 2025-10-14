@@ -244,6 +244,78 @@ git push origin v1.0.0
 # 4. CI/CD does the rest automatically
 ```
 
+## Testing Requirements
+
+### ⚠️ CRITICAL: Always Test New Features Before Releases
+
+**NEVER create a release without functionally testing new features.** All new features must be tested through the UI and API before tagging a release.
+
+### Testing Checklist for New Features
+
+Before creating any release with new features:
+
+1. **Start the manager in dev mode**: `npm run dev`
+2. **Test all new UI features**:
+   - Click through all new buttons and forms
+   - Verify all modal dialogs work correctly
+   - Test form validation and error handling
+   - Verify success/error messages display correctly
+3. **Test all new API endpoints**:
+   - Test successful operations
+   - Test error cases (invalid input, missing data, etc.)
+   - Verify error messages are clear and helpful
+4. **Test integration between UI and API**:
+   - Ensure UI correctly calls API endpoints
+   - Verify API responses are properly handled in UI
+   - Check that loading states work correctly
+5. **Check browser console for errors**: No JavaScript errors should appear
+6. **Test with actual data**: Don't just test with empty/default states
+
+### Example: Testing User Management Feature
+
+```bash
+# 1. Start manager
+npm run dev
+
+# 2. Open browser to http://localhost:3000/settings
+
+# 3. Test user creation:
+#    - Click "Add New User"
+#    - Fill in username/password
+#    - Verify password validation works
+#    - Submit and verify success message
+#    - Check user appears in list
+
+# 4. Test password reset:
+#    - Click "Reset Password" for a user
+#    - Fill in new password
+#    - Verify validation works
+#    - Submit and verify success
+
+# 5. Test user deletion:
+#    - Click "Delete" for a user
+#    - Verify confirmation dialog
+#    - Confirm and verify user removed
+#    - Test deleting last user (should fail)
+
+# 6. Check browser console for any errors
+```
+
+### Meta-Instruction for Learning from Mistakes
+
+**Whenever I do something silly that is pointed out to me by the human, add a note to my CLAUDE.md file to remember not to do it again.**
+
+This ensures that mistakes become learning opportunities and are documented for future reference.
+
+### Lessons Learned
+
+#### Release Testing (v0.14.4 - v0.14.5)
+- **Mistake**: Released v0.14.4 with user management feature that was completely broken due to `validatePassword is not a function` error
+- **Root cause**: Did not test the feature through the UI before releasing. Would have caught the error immediately on first user creation attempt.
+- **Impact**: Required immediate hotfix release (v0.14.5) within minutes of v0.14.4 release
+- **Lesson**: ALWAYS test new features functionally before creating a release. No exceptions.
+- **Prevention**: Follow the Testing Checklist above for all future releases with new features
+
 ## Testing Workflows
 
 ### Quick Test Setup
