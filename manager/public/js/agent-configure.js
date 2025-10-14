@@ -1,6 +1,6 @@
 // Agent configure page JavaScript
 // Read agent data from data attributes
-const agent = JSON.parse(document.body.dataset.agentConfig || '{}');
+const configPageAgent = JSON.parse(document.body.dataset.agentConfig || '{}');
 
 // Initialize data from server
 let sshKeys = [];
@@ -8,9 +8,9 @@ let workflows = [];
 let allowedPaths = [];
 
 try {
-  sshKeys = agent.config.authorizedSSHKeys || [];
-  workflows = agent.config.workflows || [];
-  allowedPaths = agent.config.fileBrowserSettings?.allowedPaths || [];
+  sshKeys = configPageAgent.config.authorizedSSHKeys || [];
+  workflows = configPageAgent.config.workflows || [];
+  allowedPaths = configPageAgent.config.fileBrowserSettings?.allowedPaths || [];
 } catch (e) {
   console.error('Failed to parse config data:', e);
   sshKeys = [];
@@ -243,7 +243,7 @@ async function saveConfig(event) {
   };
 
   try {
-    const response = await fetch(`/api/agents/${agent.id}/config`, {
+    const response = await fetch(`/api/agents/${configPageAgent.id}/config`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(config)
@@ -265,7 +265,7 @@ async function saveConfig(event) {
     if (shouldReload) {
       await reloadAgentConfiguration();
     } else {
-      window.location.href = `/agents/${agent.id}`;
+      window.location.href = `/agents/${configPageAgent.id}`;
     }
   } catch (err) {
     await Modal.error('Failed to save configuration: ' + err.message);
@@ -275,7 +275,7 @@ async function saveConfig(event) {
 async function reloadAgentConfiguration() {
   try {
     // Send reload-config command
-    const reloadResponse = await fetch(`/api/agents/${agent.id}/command`, {
+    const reloadResponse = await fetch(`/api/agents/${configPageAgent.id}/command`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ command: 'reload-config' })
@@ -286,10 +286,10 @@ async function reloadAgentConfiguration() {
     }
 
     await Modal.success('Agent configuration reloaded successfully!');
-    window.location.href = `/agents/${agent.id}`;
+    window.location.href = `/agents/${configPageAgent.id}`;
 
   } catch (error) {
     await Modal.error('Failed to reload configuration: ' + error.message);
-    window.location.href = `/agents/${agent.id}`;
+    window.location.href = `/agents/${configPageAgent.id}`;
   }
 }

@@ -47,7 +47,7 @@ import (
 )
 
 // Version information
-const AgentVersion = "0.14.6"
+const AgentVersion = "0.14.7"
 
 type Agent struct {
 	config       *config.Config
@@ -505,6 +505,7 @@ func main() {
 
 	if *standalone {
 		logger.Info().
+			Str("version", AgentVersion).
 			Str("agentId", cfg.AgentID).
 			Bool("standalone", true).
 			Str("configPath", *configPath).
@@ -512,6 +513,7 @@ func main() {
 			Msg("Agent started in STANDALONE mode")
 	} else {
 		logger.Info().
+			Str("version", AgentVersion).
 			Str("agentId", cfg.AgentID).
 			Str("managerUrl", cfg.ManagerURL).
 			Msg("Agent started")

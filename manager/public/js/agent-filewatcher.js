@@ -1,10 +1,10 @@
 // Agent file watcher configuration page JavaScript
 // Read agent data from data attributes
-const agent = JSON.parse(document.body.dataset.agentConfig || '{}');
+const fileWatcherAgent = JSON.parse(document.body.dataset.agentConfig || '{}');
 const fileWatcherRules = JSON.parse(document.body.dataset.filewatcherRules || '[]');
 
 // Initialize agent workflows from config
-const agentWorkflows = (agent && agent.config && agent.config.workflows) ? agent.config.workflows : [];
+const agentWorkflows = (fileWatcherAgent && fileWatcherAgent.config && fileWatcherAgent.config.workflows) ? fileWatcherAgent.config.workflows : [];
 
 // Initialize file watcher configuration
 let rules = fileWatcherRules || [];
@@ -13,7 +13,7 @@ let currentRuleIndex = -1;
 // Initialize global settings with proper fallback
 let globalSettings = {};
 try {
-  globalSettings = (agent && agent.fileWatcherSettings) ? agent.fileWatcherSettings : {};
+  globalSettings = (fileWatcherAgent && fileWatcherAgent.fileWatcherSettings) ? fileWatcherAgent.fileWatcherSettings : {};
 } catch(e) {
   console.error('Failed to parse global settings:', e);
   globalSettings = {};
@@ -214,7 +214,7 @@ async function saveGlobalSettings() {
 
   try {
     // Save to server
-    const response = await fetch(`/api/agents/${agent.id}/config`, {
+    const response = await fetch(`/api/agents/${fileWatcherAgent.id}/config`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ fileWatcherSettings: globalSettings })
@@ -444,7 +444,7 @@ async function reloadAgentFileWatcher() {
   try {
     // Step 1: Send git-pull command
     await Modal.info('Syncing configuration from git...');
-    const pullResponse = await fetch(`/api/agents/${agent.id}/command`, {
+    const pullResponse = await fetch(`/api/agents/${fileWatcherAgent.id}/command`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ command: 'git-pull' })
@@ -458,7 +458,7 @@ async function reloadAgentFileWatcher() {
     await new Promise(resolve => setTimeout(resolve, 3000));
 
     // Step 2: Send reload-filewatcher command
-    const reloadResponse = await fetch(`/api/agents/${agent.id}/command`, {
+    const reloadResponse = await fetch(`/api/agents/${fileWatcherAgent.id}/command`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ command: 'reload-filewatcher' })
@@ -506,7 +506,7 @@ async function toggleRule(index) {
 async function saveToServer() {
   // Save file watcher rules to agent config
   try {
-    const response = await fetch(`/api/agents/${agent.id}/filewatcher`, {
+    const response = await fetch(`/api/agents/${fileWatcherAgent.id}/filewatcher`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ rules })
@@ -622,7 +622,7 @@ document.getElementById('import-file').addEventListener('change', function(e) {
   reader.onload = function(event) {
     const content = event.target.result;
 
-    fetch(`/api/agents/${agent.id}/filewatcher/import`, {
+    fetch(`/api/agents/${fileWatcherAgent.id}/filewatcher/import`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
@@ -673,7 +673,7 @@ document.getElementById('import-file').addEventListener('change', function(e) {
 });
 
 function exportRules() {
-  window.location.href = `/api/agents/${agent.id}/filewatcher/export`;
+  window.location.href = `/api/agents/${fileWatcherAgent.id}/filewatcher/export`;
 }
 
 // Load rules and global settings on page load

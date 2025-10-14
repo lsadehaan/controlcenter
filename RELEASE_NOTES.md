@@ -8,6 +8,103 @@ Each release should have a section with the version number as a heading level 2 
 
 ---
 
+## v0.14.7
+
+### Critical Fixes
+
+- **Fixed JavaScript variable name collision in agent details page**: Agent About tab now loads correctly
+  - Root cause: Both `agent-configure.js` and `agent-filewatcher.js` declared `const agent` in global scope
+  - This caused `Identifier 'agent' has already been declared` syntax error that blocked ALL JavaScript execution
+  - Result: About tab showed "Loading agent information..." indefinitely, and many other features broke
+  - Solution: Renamed variables to be more specific (`configPageAgent` and `fileWatcherAgent`)
+  - All three scripts (`agent-details.js`, `agent-configure.js`, `agent-filewatcher.js`) now work together without conflicts
+
+### Improvements
+
+- **Agent version now logged during startup**: Agent logs include version information for easier troubleshooting
+  - Startup message now includes: `version=0.14.7`
+  - Visible in both standalone and connected modes
+  - Makes it easy to verify which version is running
+
+### Changes
+
+**Manager (JavaScript)**:
+- Updated `public/js/agent-configure.js` - Renamed `agent` to `configPageAgent` (7 references)
+- Updated `public/js/agent-filewatcher.js` - Renamed `agent` to `fileWatcherAgent` (8 references)
+
+**Agent**:
+- Updated `nodes/main.go` - Added version to startup log messages (lines 508, 516)
+- Version set to 0.14.7
+
+**Manager**:
+- Updated `package.json` - Version bumped to 0.14.7
+
+### Impact
+
+- **About tab works**: Users can now see agent version, platform, hostname, and system info
+- **All tabs work**: Configure and File Watcher tabs continue to function correctly
+- **Better logging**: Agent version visible in logs for support and troubleshooting
+- This was a critical bug introduced in v0.14.6 that broke the user interface
+
+### Technical Details
+
+**The Bug:**
+When multiple JavaScript files are loaded on the same page and each declares a variable with the same name in global scope using `const`, JavaScript throws a syntax error. This error blocks execution of ALL JavaScript on the page, not just the conflicting files.
+
+**Files affected:**
+- `agent-details.ejs` loads three scripts: `agent-details.js`, `agent-filewatcher.js`, `agent-configure.js`
+- `agent-filewatcher.js` declared `const agent` (line 3)
+- `agent-configure.js` declared `const agent` (line 3)
+- Error: `Uncaught SyntaxError: Identifier 'agent' has already been declared`
+
+**The Fix:**
+Renamed the conflicting variables to be more specific to their purpose:
+- `agent-configure.js`: `agent` → `configPageAgent`
+- `agent-filewatcher.js`: `agent` → `fileWatcherAgent`
+
+This allows all three scripts to coexist without conflicts.
+
+### Deployment
+
+**Manager Only** (Agent can be updated optionally for version logging):
+
+**Docker**:
+```bash
+docker compose down
+docker compose pull
+docker compose up -d
+```
+
+**Native**:
+```bash
+# Manager
+cd manager
+git pull
+npm install --production
+systemctl restart controlcenter-manager
+
+# Agent (optional - for version logging improvement)
+# Download new agent binary from release assets
+# Stop old agent, replace binary, restart
+```
+
+### Upgrading from v0.14.6
+
+This is a critical hotfix that fixes broken UI features introduced in v0.14.6. All v0.14.6 deployments should upgrade immediately.
+
+**What was broken in v0.14.6:**
+- Agent About tab showed "Loading agent information..." indefinitely
+- JavaScript errors in browser console blocked page functionality
+- Configure and File Watcher tabs may have had issues due to JavaScript execution being blocked
+
+**After upgrading to v0.14.7:**
+- About tab loads and displays agent information correctly
+- No JavaScript errors in console
+- All agent detail page features work as expected
+- Agent logs show version during startup
+
+---
+
 ## v0.14.6
 
 ### New Features
