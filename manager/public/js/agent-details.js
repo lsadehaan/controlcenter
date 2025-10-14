@@ -872,12 +872,6 @@ function formatBytes(bytes) {
   return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
 }
 
-function escapeHtml(text) {
-  const div = document.createElement('div');
-  div.textContent = text;
-  return div.innerHTML;
-}
-
 async function sendCommand(command, payload = {}) {
   const resultDiv = document.getElementById('command-result');
   resultDiv.style.display = 'block';

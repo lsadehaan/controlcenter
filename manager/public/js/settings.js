@@ -335,10 +335,3 @@ function formatDate(timestamp) {
   const date = new Date(timestamp);
   return date.toLocaleString();
 }
-
-// Helper function to escape HTML
-function escapeHtml(text) {
-  const div = document.createElement('div');
-  div.textContent = text;
-  return div.innerHTML;
-}

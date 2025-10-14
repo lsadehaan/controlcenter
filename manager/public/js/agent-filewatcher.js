@@ -607,12 +607,6 @@ function switchFileWatcherTab(tabName, buttonElement) {
   }
 }
 
-function escapeHtml(text) {
-  const div = document.createElement('div');
-  div.textContent = text;
-  return div.innerHTML;
-}
-
 // Import INI file
 document.getElementById('import-file').addEventListener('change', function(e) {
   const file = e.target.files[0];
