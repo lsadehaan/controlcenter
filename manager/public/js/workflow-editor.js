@@ -143,6 +143,10 @@ window.onload = function() {
 
   // Handle node selection
   editor.on('nodeSelected', (id) => {
+    // Auto-save current node properties before switching to new node
+    if (currentNodeId && currentNodeId !== id) {
+      updateNodeProperties();
+    }
     currentNodeId = id;
     showNodeProperties(id);
   });
@@ -508,7 +512,6 @@ function showNodeProperties(id) {
   });
 
   propertiesHtml += `
-    <button id="update-node-properties-btn" class="btn btn-sm btn-primary">Update</button>
     </div>
     <div id="inputs-tab-content" style="display: none;">
       ${generateInputsTab(id)}
@@ -520,7 +523,6 @@ function showNodeProperties(id) {
   // Attach event listeners to dynamically created elements
   const propertiesTabBtn = document.getElementById('properties-tab-btn');
   const inputsTabBtn = document.getElementById('inputs-tab-btn');
-  const updateBtn = document.getElementById('update-node-properties-btn');
 
   if (propertiesTabBtn) {
     propertiesTabBtn.addEventListener('click', () => showPropertiesTab('properties'));
@@ -528,9 +530,17 @@ function showNodeProperties(id) {
   if (inputsTabBtn) {
     inputsTabBtn.addEventListener('click', () => showPropertiesTab('inputs'));
   }
-  if (updateBtn) {
-    updateBtn.addEventListener('click', updateNodeProperties);
-  }
+
+  // Auto-save property changes on input
+  const inputs = document.querySelectorAll('#properties-content .form-input');
+  inputs.forEach(input => {
+    input.addEventListener('change', () => {
+      updateNodeProperties();
+    });
+    input.addEventListener('blur', () => {
+      updateNodeProperties();
+    });
+  });
 }
 
 // Show/hide property tabs

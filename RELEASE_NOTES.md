@@ -8,6 +8,74 @@ Each release should have a section with the version number as a heading level 2 
 
 ---
 
+## v0.15.0
+
+### UX Improvements
+
+- **Workflow Editor Auto-save**: Removed confusing "Update" button and implemented automatic saving of node property changes
+  - Changes now save automatically on field change (dropdowns) and blur (text fields)
+  - Node properties auto-save when switching between nodes
+  - Eliminates accidental loss of work from forgetting to click "Update"
+  - Still requires "Save Workflow *" button to save entire workflow to server
+  - More intuitive workflow editing experience consistent with modern web applications
+
+### Changes
+
+**Manager**:
+- Updated `public/js/workflow-editor.js`:
+  - Removed "Update" button HTML and click handler (lines 510-539)
+  - Added auto-save event listeners on input fields (change and blur events)
+  - Modified nodeSelected event to auto-save previous node before switching (lines 144-152)
+  - Property changes now immediately update node data without manual confirmation
+- Updated `package.json` - Version bumped to 0.15.0
+
+### Impact
+
+- No more lost changes from clicking away without updating
+- Reduced user confusion about when changes are saved
+- Streamlined workflow editing workflow
+- Better UX with fewer required clicks
+- More forgiving interface for complex workflow creation
+
+### Technical Details
+
+**Auto-save Implementation:**
+Three mechanisms ensure changes are never lost:
+1. **Change event**: Dropdowns/selects trigger immediate save
+2. **Blur event**: Text fields save when user clicks away or tabs out
+3. **Node switch**: Previous node saves before displaying new node properties
+
+All three mechanisms call `updateNodeProperties()` which updates Drawflow's internal node data and sets the unsaved changes flag for the "Save Workflow *" button.
+
+### Deployment
+
+**Manager Only** (No agent changes):
+
+**Docker**:
+```bash
+docker compose down
+docker compose pull
+docker compose up -d
+```
+
+**Native**:
+```bash
+cd manager
+git pull
+npm install --production
+systemctl restart controlcenter-manager
+```
+
+### Upgrading from v0.14.10
+
+No breaking changes. Simply update the manager and restart. After reloading the workflow editor page:
+- "Update" button will be gone
+- Changes auto-save as you type/select
+- Node switching preserves all edits
+- "Save Workflow *" button still required to save to server
+
+---
+
 ## v0.14.10
 
 ### Critical Fixes
