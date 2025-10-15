@@ -8,6 +8,105 @@ Each release should have a section with the version number as a heading level 2 
 
 ---
 
+## v0.15.1
+
+### Critical Fixes
+
+- **Fixed agent not loading workflows on startup**: Agents now properly load workflows from git repository during initial startup
+  - Root cause: Initial git sync loaded only `fileBrowserSettings`, but workflows were never loaded into memory
+  - Symptom: After agent restart, manager showed workflows as "out of sync" even though they existed in git
+  - Solution: Refactored startup to call `reloadConfig()` which loads ALL git-managed settings including workflows
+  - Eliminates code duplication by using same logic for startup and reload operations
+
+- **Fixed file watcher UI modal tabs not working**: File watcher rule editor now displays properly with working tab navigation
+  - Root cause 1: Tab switching function used wrong CSS selector (`.tab-btn` instead of `.form-tab`)
+  - Root cause 2: Function affected ALL `.tab-content` elements on page instead of scoping to modal only
+  - Root cause 3: First tab not auto-activated when modal opened, causing blank modal
+  - Solution: Fixed CSS selectors, scoped queries to modal, and auto-activate first tab on open
+  - Users can now properly configure file watcher rules through the UI
+
+### UX Improvements
+
+- **File watcher modal auto-activates first tab**: When clicking "New Rule" or "Edit", the Matching tab is now automatically visible
+- **Better code reuse**: Startup and reload operations now use identical logic via shared `reloadConfig()` function
+
+### Changes
+
+**Manager**:
+- Updated `public/js/agent-filewatcher.js`:
+  - Fixed `switchFileWatcherTab()` to use correct `.form-tab` selector (line 598)
+  - Scoped tab switching to modal only using `modal.querySelectorAll()`
+  - Added auto-activation of first tab in `createRule()` (lines 317-321)
+  - Added auto-activation of first tab in `editRule()` (lines 378-382)
+- Updated `package.json` - Version bumped to 0.15.1
+
+**Agent**:
+- Updated `nodes/main.go`:
+  - Replaced duplicate config loading code with call to `reloadConfig()` (line 407-411)
+  - Ensures workflows and all git-managed settings load consistently on startup
+  - Eliminates 20+ lines of duplicate code
+
+### Impact
+
+- **Workflows sync properly**: No more "out of sync" warnings after agent restart
+- **File watcher UI works**: Users can now create and edit file watcher rules through the UI
+- **Better maintainability**: Single source of truth for config loading logic
+- **Faster troubleshooting**: Consistent behavior between startup and reload
+
+### Technical Details
+
+**Workflow Loading Flow (Fixed):**
+1. Agent starts and initializes git sync
+2. Calls `reloadConfig()` which pulls from git and loads ALL settings
+3. Workflows loaded into `agent.config.Workflows` from git repository
+4. Executor receives workflows and starts monitoring
+5. Manager and agent show same workflow list (in sync)
+
+**File Watcher Tab Switching (Fixed):**
+- Modal-scoped queries prevent affecting main page tabs
+- Correct CSS selector (`.form-tab`) matches actual tab button classes
+- First tab auto-activated on modal open via `switchFileWatcherTab('matching', firstTab)`
+- All four tabs (Matching, Operations, Timing, Advanced) work correctly
+
+### Deployment
+
+**Manager and Agent** (Both require updates):
+
+**Docker**:
+```bash
+docker compose down
+docker compose pull
+docker compose up -d
+```
+
+**Native**:
+```bash
+# Manager
+cd manager
+git pull
+npm install --production
+systemctl restart controlcenter-manager
+
+# Agent
+# Download new agent binary from release assets
+# Stop old agent, replace binary, restart
+```
+
+### Upgrading from v0.15.0
+
+**What was broken in v0.15.0:**
+- File watcher UI showed only tab headers, no form content when clicking "New Rule"
+- Agents didn't load workflows on startup, causing "out of sync" warnings in manager UI
+- Users couldn't configure file watcher rules without manually editing JSON
+
+**After upgrading to v0.15.1:**
+- File watcher UI fully functional with proper tab navigation
+- Workflows load automatically on agent startup
+- Agent and manager stay in sync after restart
+- No manual JSON editing required for file watcher configuration
+
+---
+
 ## v0.15.0
 
 ### UX Improvements

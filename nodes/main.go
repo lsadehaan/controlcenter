@@ -404,26 +404,10 @@ func main() {
 				fmt.Println(agent.gitSync.GetMergeInstructions())
 			}
 
-			// Pull latest config (this may overwrite local changes)
-			if err := agent.gitSync.Pull(); err != nil {
-				logger.Error().Err(err).Msg("Failed to pull from git repository")
-			}
-
-			// Load configuration from git repository (regardless of pull success/failure)
-			gitConfig, err := agent.gitSync.LoadAgentConfig()
-			if err == nil && gitConfig != nil {
-				// Update fileBrowserSettings from git config
-				if fbs, ok := gitConfig["fileBrowserSettings"].(map[string]interface{}); ok {
-					if fbsData, err := json.Marshal(fbs); err == nil {
-						var fileBrowserSettings config.FileBrowserSettings
-						if err := json.Unmarshal(fbsData, &fileBrowserSettings); err == nil {
-							agent.config.FileBrowserSettings = fileBrowserSettings
-							logger.Info().Int("allowedPaths", len(fileBrowserSettings.AllowedPaths)).Bool("enabled", fileBrowserSettings.Enabled).Msg("Loaded fileBrowserSettings from git")
-						}
-					}
-				}
-
-				// Load other git-managed settings here if needed...
+			// Load configuration from git repository (including workflows)
+			// This uses the same logic as reloadConfig() to ensure consistency
+			if err := agent.reloadConfig(); err != nil {
+				logger.Error().Err(err).Msg("Failed to load configuration from git")
 			}
 		}
 	} else {

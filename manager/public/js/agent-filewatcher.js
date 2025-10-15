@@ -165,6 +165,10 @@ document.addEventListener('DOMContentLoaded', function() {
       }
     });
   }
+
+  // Load rules and global settings after DOM is ready
+  loadRules();
+  loadGlobalSettings();
 });
 
 // Helper function to set external program field value
@@ -310,6 +314,11 @@ function createRule() {
   document.getElementById('modal-title').textContent = 'New File Watcher Rule';
   clearForm();
   document.getElementById('rule-modal').style.display = 'block';
+  // Activate the first tab
+  const firstTab = document.querySelector('.form-tab[data-tab="matching"]');
+  if (firstTab) {
+    switchFileWatcherTab('matching', firstTab);
+  }
 }
 
 function editRule(index) {
@@ -366,6 +375,11 @@ function editRule(index) {
   document.getElementById('delay-next').value = proc.delayNextFile || 0;
 
   document.getElementById('rule-modal').style.display = 'block';
+  // Activate the first tab
+  const firstTab = document.querySelector('.form-tab[data-tab="matching"]');
+  if (firstTab) {
+    switchFileWatcherTab('matching', firstTab);
+  }
 }
 
 async function saveRule() {
@@ -592,13 +606,16 @@ function clearForm() {
 }
 
 function switchFileWatcherTab(tabName, buttonElement) {
-  // Hide all tabs
-  document.querySelectorAll('.tab-content').forEach(tab => {
-    tab.classList.remove('active');
-  });
-  document.querySelectorAll('.tab-btn').forEach(tab => {
-    tab.classList.remove('active');
-  });
+  // Hide all tab content panels inside the modal
+  const modal = document.getElementById('rule-modal');
+  if (modal) {
+    modal.querySelectorAll('.tab-content').forEach(tab => {
+      tab.classList.remove('active');
+    });
+    modal.querySelectorAll('.form-tab').forEach(tab => {
+      tab.classList.remove('active');
+    });
+  }
 
   // Show selected tab
   document.getElementById(tabName + '-tab').classList.add('active');
@@ -669,7 +686,3 @@ document.getElementById('import-file').addEventListener('change', function(e) {
 function exportRules() {
   window.location.href = `/api/agents/${fileWatcherAgent.id}/filewatcher/export`;
 }
-
-// Load rules and global settings on page load
-loadRules();
-loadGlobalSettings();
