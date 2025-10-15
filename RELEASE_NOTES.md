@@ -8,6 +8,86 @@ Each release should have a section with the version number as a heading level 2 
 
 ---
 
+## v0.15.4
+
+### Critical Fixes
+
+- **Fixed workflow editor on air-gapped systems**: Workflow editor now works on machines without internet access
+  - Root cause: Drawflow library was loading from CDN (cdn.jsdelivr.net) which requires internet
+  - Symptom: Import/Export buttons don't work, browser console shows connection timeouts and "Drawflow is not defined"
+  - Solution: Bundled Drawflow CSS and JS files locally in manager/public/vendor/drawflow/
+  - All external dependencies are now served from local files
+
+### Changes
+
+**Manager**:
+- Added local Drawflow files: `public/vendor/drawflow/drawflow.min.css` and `drawflow.min.js`
+- Updated `views/workflow-editor.ejs` to use local Drawflow instead of CDN
+- Updated `views/workflow-editor-simple.ejs` to use local Drawflow instead of CDN
+- Updated `src/server.js` Content Security Policy to remove cdn.jsdelivr.net
+- Updated `package.json` - Version bumped to 0.15.4
+
+**Agent (from v0.15.3)**:
+- Added `-version` flag (line 84)
+- Added version flag handler that prints version and exits (lines 98-103)
+- Added prominent version log at startup (lines 138-142)
+
+### Impact
+
+- Workflow editor now fully functional on air-gapped deployments
+- No internet connection required for any manager functionality
+- Eliminates CDN dependencies for offline/internal environments
+- Easier version checking with `-version` flag
+- Better operational visibility with startup version logging
+
+### Deployment
+
+**Manager Update Required** for air-gapped deployment fix:
+
+**Docker**:
+```bash
+docker compose down
+docker compose pull
+docker compose up -d
+```
+
+**Native**:
+```bash
+cd manager
+git pull
+npm install --production
+systemctl restart controlcenter-manager
+```
+
+**Agent Update Optional** (for version improvements):
+- Download new agent binary from release assets
+- Use `./agent -version` to verify version before deployment
+
+### Upgrading from v0.15.3
+
+After updating to v0.15.4:
+- Workflow editor will work immediately on machines without internet
+- Import/Export buttons will function correctly
+- No browser console errors related to Drawflow loading
+- Agent version flag available if you update agent binary
+
+### Technical Details
+
+**Bundled Libraries:**
+- Drawflow v0.0.60 CSS (1.9 KB)
+- Drawflow v0.0.60 JS (46 KB)
+
+Files downloaded from cdn.jsdelivr.net and stored locally in `manager/public/vendor/drawflow/`
+
+**Why This Matters:**
+Air-gapped environments (no internet access) are common for:
+- Industrial control systems
+- Secure enterprise networks
+- Government/military deployments
+- High-security data centers
+
+---
+
 ## v0.15.3
 
 ### UX Improvements
