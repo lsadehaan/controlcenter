@@ -47,7 +47,8 @@ import (
 )
 
 // Version information
-const AgentVersion = "0.14.7"
+// This variable is set at build time via ldflags: -X main.AgentVersion=v0.x.x
+var AgentVersion = "dev"
 
 type Agent struct {
 	config       *config.Config

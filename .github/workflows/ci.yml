@@ -124,7 +124,13 @@ jobs:
 
       - name: Build binary
         run: |
-          go build -v -o agent${{ matrix.os == 'windows-latest' && '.exe' || '' }} .
+          # Extract version from tag if available, otherwise use 'dev'
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+            VERSION="${GITHUB_REF#refs/tags/}"
+          else
+            VERSION="dev"
+          fi
+          go build -v -ldflags="-X main.AgentVersion=${VERSION}" -o agent${{ matrix.os == 'windows-latest' && '.exe' || '' }} .
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4

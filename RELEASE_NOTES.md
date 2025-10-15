@@ -8,6 +8,88 @@ Each release should have a section with the version number as a heading level 2 
 
 ---
 
+## v0.15.2
+
+### Critical Fixes
+
+- **Fixed agent version not updating with releases**: CI/CD pipeline now properly injects version into agent binaries during build
+  - Root cause: Agent had hardcoded version constant that was never updated
+  - Unlike manager (reads version from package.json at runtime), agent has compile-time constant
+  - Solution: Changed constant to variable and updated CI/CD to inject version via ldflags
+  - Agent version now displays correctly in UI after releases
+
+### Changes
+
+**Agent**:
+- Updated `nodes/main.go`:
+  - Changed `const AgentVersion` to `var AgentVersion` (lines 49-51)
+  - Added comment explaining version is set at build time via ldflags
+  - Default value is "dev" for local development builds
+
+**CI/CD**:
+- Updated `.github/workflows/ci.yml`:
+  - Modified build binary step (lines 125-133)
+  - Extracts version from git tag when building releases
+  - Uses `-ldflags="-X main.AgentVersion=${VERSION}"` to inject version
+  - Development builds show "dev" as version
+
+### Impact
+
+- Agent version in UI now matches release version
+- Easier troubleshooting and support with accurate version information
+- Consistent version display between manager and agent
+- No manual version updates needed in code
+
+### Technical Details
+
+**Build-time Version Injection:**
+Go's `-ldflags` flag allows setting variable values at compile time:
+```bash
+VERSION="v0.15.2"
+go build -ldflags="-X main.AgentVersion=${VERSION}" .
+```
+
+This replaces the default "dev" value with the actual release version extracted from the git tag.
+
+**CI/CD Flow:**
+1. Tag is pushed (e.g., v0.15.2)
+2. CI/CD extracts version from `GITHUB_REF`
+3. Builds binary with version injected: `go build -ldflags="-X main.AgentVersion=v0.15.2"`
+4. Binary contains correct version, visible in `/info` endpoint
+5. Manager UI displays correct agent version
+
+### Deployment
+
+**Manager Only** (Version bump):
+
+**Docker**:
+```bash
+docker compose down
+docker compose pull
+docker compose up -d
+```
+
+**Native**:
+```bash
+cd manager
+git pull
+npm install --production
+systemctl restart controlcenter-manager
+```
+
+**Agent (Required for version display fix)**:
+Download new agent binary from release assets and restart. After restart, agent will show correct version (v0.15.2) in UI.
+
+### Upgrading from v0.15.1
+
+After upgrading agents to v0.15.2, the About tab in agent details will show:
+- Before: "v0.14.7" (old hardcoded value)
+- After: "v0.15.2" (correct version from build)
+
+No configuration changes required. Simply update agent binary and restart.
+
+---
+
 ## v0.15.1
 
 ### Critical Fixes
