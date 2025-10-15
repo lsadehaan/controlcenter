@@ -8,6 +8,75 @@ Each release should have a section with the version number as a heading level 2 
 
 ---
 
+## v0.15.3
+
+### UX Improvements
+
+- **Added `-version` flag to agent**: Print version and platform information without starting the agent
+  - Usage: `./agent -version`
+  - Shows agent version and platform (OS/architecture)
+  - Exits immediately after displaying information
+  - Useful for checking agent version before deployment
+
+- **Prominent version logging at startup**: Agent now logs version information immediately when starting
+  - First log message shows version with 🚀 emoji for easy visibility
+  - Displays on console during both normal and standalone mode startup
+  - Helps with troubleshooting and version verification
+
+### Changes
+
+**Agent**:
+- Updated `nodes/main.go`:
+  - Added `-version` flag (line 84)
+  - Added version flag handler that prints version and exits (lines 98-103)
+  - Added prominent version log at startup (lines 138-142)
+  - Version now logged with platform info immediately after logger initialization
+
+### Impact
+
+- Easier version checking without starting full agent
+- Clear version visibility in logs for support and debugging
+- Consistent with standard CLI tool patterns
+- Better operational visibility for agent deployments
+
+### Technical Details
+
+**Version Flag Implementation:**
+```bash
+./agent -version
+# Output:
+# Control Center Agent version v0.15.3
+# Platform: linux/amd64
+```
+
+**Startup Logging:**
+First log message now shows:
+```
+🚀 Control Center Agent Starting version=v0.15.3 platform=linux/amd64
+```
+
+### Deployment
+
+**Agent Only** (No manager changes):
+
+Download new agent binary from release assets and restart:
+```bash
+# Check version before starting
+./agent -version
+
+# Start agent (version will be logged prominently)
+./agent -token YOUR_TOKEN
+```
+
+### Upgrading from v0.15.2
+
+After updating agent to v0.15.3:
+- Use `./agent -version` to verify correct version before deployment
+- Agent logs will show version prominently during startup
+- No configuration changes required
+
+---
+
 ## v0.15.2
 
 ### Critical Fixes

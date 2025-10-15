@@ -81,6 +81,7 @@ func getDefaultConfigDir() string {
 
 func main() {
 	var (
+		versionFlag    = flag.Bool("version", false, "Print version and exit")
 		configPath     = flag.String("config", "", "Path to configuration file")
 		managerURL     = flag.String("manager", "http://localhost:3000", "Manager URL")
 		token          = flag.String("token", "", "Registration token")
@@ -93,6 +94,13 @@ func main() {
 		mergeConfig    = flag.Bool("merge-config", false, "Interactive merge of local and remote configurations")
 	)
 	flag.Parse()
+
+	// Handle version flag
+	if *versionFlag {
+		fmt.Printf("Control Center Agent version %s\n", AgentVersion)
+		fmt.Printf("Platform: %s/%s\n", runtime.GOOS, runtime.GOARCH)
+		os.Exit(0)
+	}
 
 	// Setup logger with both console and rotating file output
 	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
@@ -126,6 +134,13 @@ func main() {
 	multiWriter := zerolog.MultiLevelWriter(consoleWriter, rotatingWriter)
 
 	logger := zerolog.New(multiWriter).With().Timestamp().Logger().Level(currentLevel)
+
+	// Log version prominently at startup
+	logger.Info().
+		Str("version", AgentVersion).
+		Str("platform", fmt.Sprintf("%s/%s", runtime.GOOS, runtime.GOARCH)).
+		Msg("🚀 Control Center Agent Starting")
+
 	logger.Info().
 		Str("logFile", logFilePath).
 		Str("logLevel", currentLevel.String()).
