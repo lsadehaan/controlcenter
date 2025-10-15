@@ -8,6 +8,56 @@ Each release should have a section with the version number as a heading level 2 
 
 ---
 
+## v0.15.6
+
+### Critical Fixes
+
+- **Fixed file upload feature in agent file browser**: File uploads now work correctly
+  - Root cause: Missing `form-data` dependency in package.json
+  - Symptom: Upload failed with error "Cannot find module 'form-data'"
+  - Solution: Added `form-data` package to dependencies
+  - File upload functionality in the agent file browser now works as expected
+
+### Changes
+
+**Manager**:
+- Added `form-data` ^4.0.0 to dependencies in `package.json` (line 27)
+- Updated `package.json` - Version bumped to 0.15.6
+
+### Impact
+
+- File upload feature in agent file browser now functional
+- Users can upload files from browser to agent filesystem
+- No code changes required - just missing dependency
+
+### Deployment
+
+**Manager Update Required** (File upload fix):
+
+**Docker**:
+```bash
+docker compose down
+docker compose pull
+docker compose up -d
+```
+
+**Native**:
+```bash
+cd manager
+git pull
+npm install --production
+systemctl restart controlcenter-manager
+```
+
+### Upgrading from v0.15.5
+
+After updating to v0.15.6:
+- File upload button in agent file browser will work correctly
+- No configuration changes required
+- Agent update not required (this is manager-only fix)
+
+---
+
 ## v0.15.5
 
 ### Critical Fixes
