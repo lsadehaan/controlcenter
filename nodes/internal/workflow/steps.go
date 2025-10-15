@@ -197,18 +197,27 @@ func (s *CommandStep) Execute(config map[string]interface{}, context map[string]
 	// Always store command info in context for downstream steps
 	context["command"] = fullCommand
 	context["commandOutput"] = outputStr
+	context["output"] = outputStr  // Short alias for convenience
 
 	if err != nil {
+		// Extract actual exit code from error
+		exitCode := 1  // Default to 1 if we can't determine the actual code
+		if exitErr, ok := err.(*exec.ExitError); ok {
+			exitCode = exitErr.ExitCode()
+		}
+
 		s.Logger.Error().
 			Str("fullCommand", fullCommand).
 			Str("workDir", workDir).
 			Str("output", outputStr).
+			Int("exitCode", exitCode).
 			Err(err).
 			Msg("❌ Command execution failed")
 
 		// Store error details in context for error handlers
 		context["commandError"] = err.Error()
-		context["commandExitCode"] = "non-zero"
+		context["commandExitCode"] = exitCode
+		context["exitCode"] = exitCode  // Short alias for convenience
 
 		return fmt.Errorf("command failed: %w, output: %s", err, output)
 	}
@@ -218,7 +227,8 @@ func (s *CommandStep) Execute(config map[string]interface{}, context map[string]
 		Str("output", outputStr).
 		Msg("✅ Command executed successfully")
 
-	context["commandExitCode"] = "0"
+	context["commandExitCode"] = 0
+	context["exitCode"] = 0  // Short alias for convenience
 
 	return nil
 }

@@ -8,6 +8,97 @@ Each release should have a section with the version number as a heading level 2 
 
 ---
 
+## v0.15.5
+
+### Critical Fixes
+
+- **Fixed workflow context variables not populating correctly**: Command execution output and exit codes now accessible in workflow steps
+  - Root cause: Context variable names didn't match template variable usage
+  - Code stored `commandOutput` and `commandExitCode`, but users expected `output` and `exitCode`
+  - Solution: Added short aliases for convenience (both forms now work)
+  - Exit code is now the actual numeric value (e.g., `1`, `127`) instead of just "0" or "non-zero"
+
+### Improvements
+
+- **Better exit code handling**: Extract actual numeric exit code from failed commands instead of generic "non-zero"
+- **Enhanced logging**: Exit codes now logged in error messages for easier troubleshooting
+- **Backward compatibility**: Long variable names still work (`{{.commandOutput}}`, `{{.commandExitCode}}`)
+
+### Changes
+
+**Agent**:
+- Updated `nodes/internal/workflow/steps.go`:
+  - Added `context["output"]` as short alias for `context["commandOutput"]` (line 200)
+  - Added `context["exitCode"]` as short alias for `context["commandExitCode"]` (lines 220, 231)
+  - Extract actual exit code from `exec.ExitError` using `ExitCode()` method (lines 204-207)
+  - Store exit code as integer instead of string (lines 219, 230-231)
+  - Log exit code in error messages (line 213)
+
+### Impact
+
+- Template variables in workflow alerts now work as expected
+- Users can use intuitive variable names: `{{.output}}`, `{{.exitCode}}`, `{{.file}}`
+- Better error reporting with actual exit codes
+- Easier workflow debugging with numeric exit codes
+
+### Example Usage
+
+**Before (didn't work):**
+```
+Splitting of {{.file}} failed: {{.exitCode}}
+--- OUTPUT ---
+{{.output}}
+```
+Result: Variables not filled in, showed literal `{{.exitCode}}` and `{{.output}}`
+
+**After (works correctly):**
+```
+Splitting of {{.file}} failed: {{.exitCode}}
+--- OUTPUT ---
+{{.output}}
+```
+Result: Shows actual values like "Splitting of data.csv failed: 1" with command output
+
+**Alternative (also works):**
+```
+Command {{.command}} failed
+Exit code: {{.commandExitCode}}
+Output: {{.commandOutput}}
+```
+
+### Deployment
+
+**Agent Update Required** (Workflow context variable fix):
+
+Download new agent binary from release assets and restart:
+```bash
+# Check version
+./agent -version
+
+# Restart agent
+systemctl restart controlcenter-agent  # systemd
+# or
+./agent -token YOUR_TOKEN  # manual
+```
+
+**Docker**:
+```bash
+# Agent containers need updated binary
+docker compose down
+docker compose pull
+docker compose up -d
+```
+
+### Upgrading from v0.15.4
+
+After updating agent to v0.15.5:
+- Workflow alert messages using `{{.output}}` and `{{.exitCode}}` will display correctly
+- Exit codes show actual values (1, 127, etc.) instead of "non-zero"
+- Both short (`{{.exitCode}}`) and long (`{{.commandExitCode}}`) variable names work
+- No workflow configuration changes required
+
+---
+
 ## v0.15.4
 
 ### Critical Fixes
