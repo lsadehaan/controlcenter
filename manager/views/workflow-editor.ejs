@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <%- include('partials/head') %>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/jerosoler/Drawflow@0.0.60/dist/drawflow.min.css">
+  <link rel="stylesheet" href="/vendor/drawflow/drawflow.min.css">
   <link rel="stylesheet" href="/css/workflow-editor.css">
 </head>
 <body data-workflow='<%- workflow ? JSON.stringify(workflow) : "null" %>'>
@@ -79,7 +79,7 @@
     </div>
   </main>
 
-  <script src="https://cdn.jsdelivr.net/gh/jerosoler/Drawflow/dist/drawflow.min.js"></script>
+  <script src="/vendor/drawflow/drawflow.min.js"></script>
   <script src="/js/workflow-editor.js"></script>
 </body>
 </html>

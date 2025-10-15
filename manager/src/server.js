@@ -61,8 +61,8 @@ app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       ...helmet.contentSecurityPolicy.getDefaultDirectives(),
-      "script-src": ["'self'", "https://cdn.jsdelivr.net"],
-      "style-src": ["'self'", "https:", "'unsafe-inline'"],
+      "script-src": ["'self'"],
+      "style-src": ["'self'", "'unsafe-inline'"],
       // Allow HTTP for internal deployments (disable HTTPS upgrade)
       // For production with SSL, remove this line or set to [] to re-enable
       "upgrade-insecure-requests": null
