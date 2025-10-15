@@ -317,24 +317,43 @@ async function loadDeployedWorkflows() {
   const contentDiv = document.getElementById('deployed-workflows-content');
 
   try {
-    contentDiv.innerHTML = '<p style="color: #666;">Loading workflows from agent...</p>';
+    contentDiv.innerHTML = '<p style="color: #666;">Loading workflows from agent and checking sync status...</p>';
 
-    // Fetch deployed workflows from agent
-    const response = await fetch(`/api/agents/${agentId}/workflows/state`);
-    const data = await response.json();
+    // Fetch deployed workflows from agent (source of truth)
+    const agentResponse = await fetch(`/api/agents/${agentId}/workflows/state`);
+    const agentData = await agentResponse.json();
 
-    if (data.error) {
-      contentDiv.innerHTML = `<div style="color: #dc3545;">Error: ${data.error}</div>`;
+    if (agentData.error) {
+      contentDiv.innerHTML = `<div style="color: #dc3545;">Error: ${agentData.error}</div>`;
       return;
     }
 
-    if (!data.workflows || data.workflows.length === 0) {
+    // Fetch database workflows for comparison
+    const dbResponse = await fetch(`/api/agents/${agentId}`);
+    const dbData = await dbResponse.json();
+    const dbWorkflows = (dbData.config || {}).workflows || [];
+
+    // Compare agent workflows with database workflows
+    const agentWorkflows = agentData.workflows || [];
+    const syncStatus = compareWorkflows(agentWorkflows, dbWorkflows);
+
+    // Show sync warning if there's a mismatch
+    if (!syncStatus.inSync) {
+      await showSyncWarning(syncStatus, agentWorkflows, dbWorkflows);
+      // Reload after sync
+      return loadDeployedWorkflows();
+    }
+
+    if (agentWorkflows.length === 0) {
       contentDiv.innerHTML = '<p style="color: #666;">No workflows deployed to this agent</p>';
       return;
     }
 
     // Render workflows as a table
     let html = `
+      <div style="margin-bottom: 10px; padding: 10px; background: #d4edda; border: 1px solid #c3e6cb; border-radius: 4px; color: #155724;">
+        ✓ Agent and Manager are in sync (${agentWorkflows.length} workflow${agentWorkflows.length !== 1 ? 's' : ''})
+      </div>
       <table style="width: 100%; border-collapse: collapse;">
         <thead>
           <tr style="border-bottom: 2px solid #dee2e6; text-align: left;">
@@ -348,7 +367,7 @@ async function loadDeployedWorkflows() {
         <tbody>
     `;
 
-    data.workflows.forEach(wf => {
+    agentWorkflows.forEach(wf => {
       const triggerType = wf.trigger?.type || 'manual';
       const triggerIcon = {
         'file': '📁',
@@ -389,7 +408,7 @@ async function loadDeployedWorkflows() {
     contentDiv.innerHTML = html;
 
     // Also update the workflowsMap for use in executions
-    data.workflows.forEach(wf => {
+    agentWorkflows.forEach(wf => {
       workflowsMap[wf.id] = wf;
     });
 
@@ -1320,4 +1339,103 @@ async function performCreateFolder() {
 
 function escapeJsString(str) {
   return str.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '\\"').replace(/\n/g, '\\n').replace(/\r/g, '\\r');
+}
+
+// Workflow Synchronization Functions
+
+function compareWorkflows(agentWorkflows, dbWorkflows) {
+  const agentIds = new Set(agentWorkflows.map(w => w.id));
+  const dbIds = new Set(dbWorkflows.map(w => w.id));
+
+  const onlyOnAgent = agentWorkflows.filter(w => !dbIds.has(w.id));
+  const onlyInDb = dbWorkflows.filter(w => !agentIds.has(w.id));
+
+  const inSync = onlyOnAgent.length === 0 && onlyInDb.length === 0;
+
+  return {
+    inSync,
+    onlyOnAgent,
+    onlyInDb,
+    agentCount: agentWorkflows.length,
+    dbCount: dbWorkflows.length
+  };
+}
+
+async function showSyncWarning(syncStatus, agentWorkflows, dbWorkflows) {
+  let message = '<div style="text-align: left;">';
+  message += '<p><strong>⚠️ Workflows are out of sync!</strong></p>';
+
+  if (syncStatus.onlyOnAgent.length > 0) {
+    message += `<p style="margin-top: 10px;"><strong style="color: #856404;">On Agent but not in Manager database (${syncStatus.onlyOnAgent.length}):</strong></p><ul style="margin: 5px 0; padding-left: 20px;">`;
+    syncStatus.onlyOnAgent.forEach(w => {
+      message += `<li>${escapeHtml(w.name || w.id)}</li>`;
+    });
+    message += '</ul>';
+  }
+
+  if (syncStatus.onlyInDb.length > 0) {
+    message += `<p style="margin-top: 10px;"><strong style="color: #856404;">In Manager database but not on Agent (${syncStatus.onlyInDb.length}):</strong></p><ul style="margin: 5px 0; padding-left: 20px;">`;
+    syncStatus.onlyInDb.forEach(w => {
+      message += `<li>${escapeHtml(w.name || w.id)}</li>`;
+    });
+    message += '</ul>';
+  }
+
+  message += '<p style="margin-top: 15px;">How would you like to resolve this?</p>';
+  message += '</div>';
+
+  const choice = await Modal.custom('Workflow Sync Mismatch', message, 'Agent → Manager', 'Manager → Agent');
+
+  if (choice === true) {
+    // Agent → Manager: Update database to match agent (agent is source of truth)
+    await syncAgentToManager(agentWorkflows);
+  } else if (choice === false) {
+    // Manager → Agent: Deploy database workflows to agent
+    await syncManagerToAgent(dbWorkflows);
+  }
+}
+
+async function syncAgentToManager(agentWorkflows) {
+  try {
+    // Update database to match agent's actual state
+    const response = await fetch(`/api/agents/${agentId}/config`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        workflows: agentWorkflows.map(w => ({ id: w.id, name: w.name }))
+      })
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to sync');
+    }
+
+    await Modal.success('Database updated to match agent state');
+  } catch (error) {
+    await Modal.error('Sync failed: ' + error.message);
+  }
+}
+
+async function syncManagerToAgent(dbWorkflows) {
+  try {
+    // Send reload command to agent to pull from git
+    const response = await fetch(`/api/agents/${agentId}/command`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ command: 'reload-config' })
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to send reload command');
+    }
+
+    await Modal.success('Reload command sent to agent');
+
+    // Wait a moment for agent to reload
+    await new Promise(resolve => setTimeout(resolve, 2000));
+  } catch (error) {
+    await Modal.error('Sync failed: ' + error.message);
+  }
 }

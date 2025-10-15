@@ -339,19 +339,15 @@ module.exports = (db, wsServer, gitServer) => {
       }
 
       const config = JSON.parse(agent.config || '{}');
-
-      if (!config.workflows) {
-        return res.status(404).json({ error: 'No workflows found on agent' });
-      }
+      config.workflows = config.workflows || [];
 
       const originalLength = config.workflows.length;
       config.workflows = config.workflows.filter(w => w.id !== req.params.workflowId);
 
-      if (config.workflows.length === originalLength) {
-        return res.status(404).json({ error: 'Workflow not found on this agent' });
-      }
+      const removedFromDb = config.workflows.length < originalLength;
 
-      // Update agent config in database
+      // Always update database and git, even if workflow wasn't in database
+      // This ensures database stays in sync with agent's actual state
       await db.run('UPDATE agents SET config = ? WHERE id = ?', [JSON.stringify(config), req.params.agentId]);
 
       // Update Git repository
@@ -360,14 +356,19 @@ module.exports = (db, wsServer, gitServer) => {
       }
 
       // Send git-pull command to agent to update from repository
-      if (wsServer.sendToAgent(req.params.agentId, 'command', {
+      const agentOnline = wsServer.sendToAgent(req.params.agentId, 'command', {
         command: 'git-pull',
         args: {}
-      })) {
-        res.json({ success: true, message: 'Workflow removed and agent notified' });
+      });
+
+      let message;
+      if (removedFromDb) {
+        message = agentOnline ? 'Workflow removed and agent notified' : 'Workflow removed, agent offline';
       } else {
-        res.json({ success: true, message: 'Workflow removed, agent offline' });
+        message = agentOnline ? 'Workflow synced (not in database, agent notified)' : 'Workflow synced (not in database, agent offline)';
       }
+
+      res.json({ success: true, message: message, removedFromDb: removedFromDb });
     } catch (err) {
       res.status(500).json({ error: err.message });
     }

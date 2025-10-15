@@ -8,6 +8,143 @@ Each release should have a section with the version number as a heading level 2 
 
 ---
 
+## v0.14.10
+
+### Critical Fixes
+
+- **Fixed workflow synchronization issue**: Agent's runtime state and manager database can now be synchronized when out of sync
+  - Root cause: GET operation fetched workflows from agent (source of truth), but DELETE operation checked manager database (tracking layer)
+  - This caused "Workflow not found on this agent" errors when trying to delete workflows visible in the UI
+  - Users were unable to delete workflows that existed on the agent but not in the database
+
+- **Fixed JSON.parse bug in workflow loading**: Manager UI now correctly handles agent configuration
+  - Root cause: API returns `config` as an object, but code tried to `JSON.parse()` it
+  - Error: `"[object Object]" is not valid JSON`
+  - Solution: Removed unnecessary `JSON.parse()` call in `loadDeployedWorkflows()`
+
+### New Features
+
+- **Workflow Sync Detection Modal**: Automatically detects when agent and manager are out of sync
+  - Shows clear list of workflows on agent vs database
+  - Displays when loading the Workflows tab on agent details page
+  - Two sync options:
+    - **Agent → Manager**: Updates database to match agent's actual state (agent is source of truth)
+    - **Manager → Agent**: Sends reload command to agent to pull latest from git
+
+- **Visual Sync Indicators**: Green banner shows sync status
+  - "✓ Agent and Manager are in sync (N workflows)" when synchronized
+  - Updates dynamically after delete operations
+
+- **Improved Delete Operation**: Delete workflow now works even when workflow not in database
+  - Always updates database and git repository
+  - Always sends reload command to agent
+  - Returns helpful messages indicating what was done
+  - No more "Workflow not found" errors
+
+### Architecture Changes
+
+- **Agent state as source of truth**: Agent's runtime workflow state is the authoritative source
+- **Database as tracking layer**: Database tracks which agents have which workflows, not as source of truth
+- **Automatic conflict resolution**: System detects mismatches and prompts user to resolve
+- **Graceful operation**: Operations continue even when database and agent are out of sync
+
+### Changes
+
+**Manager**:
+- Updated `public/js/agent-details.js`:
+  - Fixed line 334: Removed `JSON.parse()` on already-parsed config object
+  - Added `compareWorkflows()` function (lines 1346-1362) for sync detection
+  - Added `showSyncWarning()` function (lines 1364-1396) for conflict resolution UI
+  - Added `syncAgentToManager()` function (lines 1398-1418) to update database
+  - Added `syncManagerToAgent()` function (lines 1420-1441) to send reload command
+  - Modified `loadDeployedWorkflows()` to detect and handle sync mismatches
+- Updated `src/routes/api.js`:
+  - Modified DELETE `/agents/:agentId/workflows/:workflowId` (lines 333-375)
+  - Now handles workflows that exist on agent but not in database
+  - Always updates git and sends reload command
+  - Returns descriptive success messages
+- Updated `package.json` - Version bumped to 0.14.10
+
+### Impact
+
+- **Fixed critical workflow deletion bug**: Users can now delete workflows that are on the agent
+- **Prevents data loss**: Sync detection prevents accidental workflow removal
+- **Better visibility**: Users always know if agent and manager are in sync
+- **Improved UX**: Clear sync indicators and helpful conflict resolution
+- **Database integrity**: Database automatically stays in sync with agent state
+
+### Technical Details
+
+**Sync Detection Flow:**
+1. User navigates to Workflows tab on agent details page
+2. System fetches workflows from both agent state and database
+3. Compares the two lists by workflow ID
+4. If mismatch detected, shows modal with sync options
+5. User chooses sync direction
+6. System performs sync and reloads page to show result
+
+**Delete Operation Flow:**
+1. User clicks delete on a workflow
+2. System removes from database (if present)
+3. System updates git repository
+4. System sends git-pull command to agent
+5. Returns success message indicating what was done
+
+**Sync Modal Options:**
+- **Agent → Manager**: Calls PUT `/api/agents/:id/config` with workflow list from agent
+- **Manager → Agent**: Calls POST `/api/agents/:id/command` with `reload-config` command
+
+### Testing Performed
+
+- ✅ Sync detection when database has workflows, agent doesn't
+- ✅ "Agent → Manager" sync (clearing database to match empty agent)
+- ✅ Green sync indicator when in sync
+- ✅ Delete workflow operation when synced
+- ✅ Automatic deployment and sync when workflows deployed
+- ✅ Database and agent state verification
+
+### Deployment
+
+**Manager Only** (No agent changes):
+
+**Docker**:
+```bash
+docker compose down
+docker compose pull
+docker compose up -d
+```
+
+**Native**:
+```bash
+cd manager
+git pull
+npm install --production
+systemctl restart controlcenter-manager
+```
+
+### Upgrading from v0.14.9
+
+No breaking changes. Simply update the manager and restart:
+- Workflow synchronization will work automatically
+- Existing workflows remain intact
+- UI will show sync status when viewing agent workflows
+- Delete operations will work correctly even when database is out of sync
+
+**What was broken in v0.14.9:**
+- Could not delete workflows that existed on agent but not in database
+- Error: "Delete workflow failed: Workflow not found on this agent"
+- No visibility into sync status between agent and manager
+- JSON parse errors when loading workflows in some cases
+
+**After upgrading to v0.14.10:**
+- Workflow delete works in all cases
+- Sync detection automatically identifies mismatches
+- Clear visual indicators show sync status
+- User controls sync resolution when conflicts occur
+- No more JSON parse errors
+
+---
+
 ## v0.14.9
 
 ### Critical Fixes
