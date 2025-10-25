@@ -1,6 +1,6 @@
 {
   "name": "controlcenter-manager",
-  "version": "0.15.6",
+  "version": "0.16.0",
   "private": true,
   "description": "Control Center Manager - Node.js/Express/EJS scaffold",
   "license": "AGPL-3.0",

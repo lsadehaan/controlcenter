@@ -1,12 +1,16 @@
 package workflow
 
 import (
+	stdcontext "context"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/credentials"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/rs/zerolog"
 )
 
@@ -233,6 +237,119 @@ func (s *CommandStep) Execute(config map[string]interface{}, context map[string]
 	return nil
 }
 
+// S3UploadStep implements S3 file upload
+type S3UploadStep struct {
+	BaseStep
+}
+
+func (s *S3UploadStep) Execute(config map[string]interface{}, context map[string]interface{}) error {
+	// Get required parameters
+	filePath, err := s.getRequiredString(config, "filePath")
+	if err != nil {
+		return err
+	}
+
+	bucket, err := s.getRequiredString(config, "bucket")
+	if err != nil {
+		return err
+	}
+
+	// Get AWS credentials
+	accessKeyID, err := s.getRequiredString(config, "accessKeyId")
+	if err != nil {
+		return err
+	}
+
+	secretAccessKey, err := s.getRequiredString(config, "secretAccessKey")
+	if err != nil {
+		return err
+	}
+
+	region, err := s.getRequiredString(config, "region")
+	if err != nil {
+		return err
+	}
+
+	// Get optional S3 key (defaults to filename)
+	s3Key := s.getOptionalString(config, "s3Key", filepath.Base(filePath))
+
+	// Optional prefix/folder path
+	s3Prefix := s.getOptionalString(config, "s3Prefix", "")
+	if s3Prefix != "" {
+		// Ensure prefix ends with / for proper S3 folder structure
+		if s3Prefix[len(s3Prefix)-1] != '/' {
+			s3Prefix += "/"
+		}
+		s3Key = s3Prefix + s3Key
+	}
+
+	s.Logger.Info().
+		Str("filePath", filePath).
+		Str("bucket", bucket).
+		Str("s3Key", s3Key).
+		Str("region", region).
+		Msg("🌐 Starting S3 upload")
+
+	// Check if file exists
+	fileInfo, err := os.Stat(filePath)
+	if err != nil {
+		return fmt.Errorf("failed to access file: %w", err)
+	}
+
+	// Open file for reading
+	file, err := os.Open(filePath)
+	if err != nil {
+		return fmt.Errorf("failed to open file: %w", err)
+	}
+	defer file.Close()
+
+	// Create AWS config with static credentials
+	awsCfg := aws.Config{
+		Region: region,
+		Credentials: credentials.NewStaticCredentialsProvider(
+			accessKeyID,
+			secretAccessKey,
+			"", // session token (empty for IAM user credentials)
+		),
+	}
+
+	// Create S3 client
+	s3Client := s3.NewFromConfig(awsCfg)
+
+	// Upload file to S3
+	awsCtx := stdcontext.Background()
+	_, err = s3Client.PutObject(awsCtx, &s3.PutObjectInput{
+		Bucket: aws.String(bucket),
+		Key:    aws.String(s3Key),
+		Body:   file,
+	})
+
+	if err != nil {
+		s.Logger.Error().
+			Err(err).
+			Str("filePath", filePath).
+			Str("bucket", bucket).
+			Str("s3Key", s3Key).
+			Msg("❌ S3 upload failed")
+		return fmt.Errorf("failed to upload to S3: %w", err)
+	}
+
+	s.Logger.Info().
+		Str("filePath", filePath).
+		Str("bucket", bucket).
+		Str("s3Key", s3Key).
+		Int64("size", fileInfo.Size()).
+		Msg("✅ File uploaded to S3 successfully")
+
+	// Store S3 details in context for downstream steps
+	context["s3Bucket"] = bucket
+	context["s3Key"] = s3Key
+	context["s3Region"] = region
+	context["s3UploadedFile"] = filePath
+
+	return nil
+}
+
 // AlertStep implements alert sending
 type AlertStep struct {
 	BaseStep
@@ -315,6 +432,9 @@ func NewStepRegistry(logger zerolog.Logger, alertHandler func(level, message str
 			BaseStep:     BaseStep{Type: "alert", Logger: logger},
 			AlertHandler: alertHandler,
 		}
+	})
+	registry.Register("s3-upload", func() Step {
+		return &S3UploadStep{BaseStep: BaseStep{Type: "s3-upload", Logger: logger}}
 	})
 
 	// Register unimplemented steps with proper names

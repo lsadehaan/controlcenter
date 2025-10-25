@@ -8,6 +8,120 @@ Each release should have a section with the version number as a heading level 2 
 
 ---
 
+## v0.16.0
+
+### New Features
+
+- **Added S3 Upload workflow step**: Upload files to Amazon S3 buckets from workflows
+  - New step type: `s3-upload`
+  - Supports AWS Access Key authentication
+  - Configurable bucket, region, and S3 key/prefix
+  - Template variable support for all configuration parameters
+  - Stores upload details in context for downstream steps
+
+### Changes
+
+**Agent**:
+- Added AWS SDK for Go v2 dependencies
+- Implemented `S3UploadStep` in `nodes/internal/workflow/steps.go`
+- Registered `s3-upload` step type in step registry
+- Updated Go module dependencies with AWS SDK packages
+
+### Configuration Parameters
+
+The `s3-upload` step accepts the following parameters:
+
+**Required**:
+- `filePath`: Path to file to upload (supports template variables like `{{.file}}`)
+- `bucket`: S3 bucket name
+- `accessKeyId`: AWS Access Key ID
+- `secretAccessKey`: AWS Secret Access Key
+- `region`: AWS region (e.g., `us-east-1`, `sa-east-1`)
+
+**Optional**:
+- `s3Key`: S3 object key (defaults to filename)
+- `s3Prefix`: S3 prefix/folder path (e.g., `incoming/cards/`)
+
+### Context Variables
+
+After successful upload, the following variables are available for downstream steps:
+- `{{.s3Bucket}}`: Bucket name
+- `{{.s3Key}}`: Full S3 key (including prefix)
+- `{{.s3Region}}`: AWS region
+- `{{.s3UploadedFile}}`: Local file path that was uploaded
+
+### Example Workflow
+
+```json
+{
+  "id": "s3-upload-workflow",
+  "name": "Upload CSV to S3",
+  "trigger": {
+    "type": "filewatcher",
+    "startSteps": ["upload-step"]
+  },
+  "steps": [
+    {
+      "id": "upload-step",
+      "name": "Upload to S3",
+      "type": "s3-upload",
+      "config": {
+        "filePath": "{{.file}}",
+        "bucket": "my-bucket-name",
+        "region": "sa-east-1",
+        "accessKeyId": "AKIAIOSFODNN7EXAMPLE",
+        "secretAccessKey": "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",
+        "s3Prefix": "incoming/cards/",
+        "s3Key": "{{.fileName}}"
+      },
+      "next": ["alert-step"]
+    },
+    {
+      "id": "alert-step",
+      "name": "Notify Success",
+      "type": "alert",
+      "config": {
+        "level": "info",
+        "message": "Uploaded {{.s3UploadedFile}} to s3://{{.s3Bucket}}/{{.s3Key}}"
+      }
+    }
+  ]
+}
+```
+
+### Security Notes
+
+- **Credentials in configuration**: AWS credentials are stored in workflow configuration files
+- **Git repository storage**: Workflows are stored in the config-repo, which is a Git repository
+- **Recommendation**: Use IAM users with minimal permissions (S3 upload-only)
+- **Future enhancement**: Consider using AWS IAM roles or environment variables for credentials
+
+### Deployment
+
+**Agent Update Required** (S3 upload feature):
+
+Download new agent binary from release assets and restart:
+```bash
+# Check version
+./agent -version
+
+# Restart agent
+systemctl restart controlcenter-agent  # systemd
+# or
+./agent -token YOUR_TOKEN  # manual
+```
+
+**Manager Update Not Required** (Agent-only feature)
+
+### Upgrading from v0.15.6
+
+After updating agent to v0.16.0:
+- New `s3-upload` step type available in workflows
+- Existing workflows continue to work unchanged
+- AWS SDK dependencies bundled in agent binary
+
+---
+
 ## v0.15.6
 
 ### Critical Fixes
