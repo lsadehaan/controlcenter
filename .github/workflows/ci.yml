@@ -134,7 +134,7 @@ jobs:
           go build -v -ldflags="-X main.AgentVersion=${VERSION}" -o agent${{ matrix.os == 'windows-latest' && '.exe' || '' }} .
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: agent-${{ matrix.os }}
           path: nodes/agent${{ matrix.os == 'windows-latest' && '.exe' || '' }}
