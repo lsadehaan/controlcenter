@@ -17,7 +17,7 @@
     "lint:fix": "npx eslint src/**/*.js --fix"
   },
   "dependencies": {
-    "bcryptjs": "^3.0.2",
+    "bcryptjs": "^3.0.3",
     "cookie-parser": "^1.4.6",
     "csurf": "^1.11.0",
     "drawflow": "^0.0.60",
