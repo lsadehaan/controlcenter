@@ -347,6 +347,15 @@ func (w *Watcher) startWatchingRule(rule Rule) error {
 }
 
 func (w *Watcher) handleEvents(watcher *fsnotify.Watcher, rule Rule, dirRegex, fileRegex *regexp.Regexp) {
+	// Determine if we should watch recursively
+	// In pattern mode, use global scanSubDir; in absolute mode, use per-rule ScanSubDir
+	watchRecursive := false
+	if rule.WatchMode == "pattern" {
+		watchRecursive = w.scanSubDir
+	} else {
+		watchRecursive = rule.ProcessingOptions.ScanSubDir
+	}
+
 	for {
 		select {
 		case event, ok := <-watcher.Events:
@@ -360,6 +369,22 @@ func (w *Watcher) handleEvents(watcher *fsnotify.Watcher, rule Rule, dirRegex, f
 				Str("event", event.Op.String()).
 				Str("rule", rule.Name).
 				Msg("📂 File event detected")
+
+			// Windows fsnotify peculiarity: it reports events for subdirectories even when not watching recursively
+			// Filter out subdirectory events if not watching recursively
+			if !watchRecursive && dirRegex != nil {
+				eventDir := filepath.Dir(event.Name)
+				// Check if the event directory matches our dirRegex (which represents our watched directory)
+				if !dirRegex.MatchString(eventDir) {
+					w.logger.Info().
+						Str("file", event.Name).
+						Str("eventDir", eventDir).
+						Str("rule", rule.Name).
+						Bool("recursive", watchRecursive).
+						Msg("❌ Event from subdirectory but recursive watching disabled, skipping")
+					continue
+				}
+			}
 
 			// Check if file matches criteria
 			if !w.matchesFile(event.Name, rule, dirRegex, fileRegex) {

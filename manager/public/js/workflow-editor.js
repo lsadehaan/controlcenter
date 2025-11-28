@@ -357,6 +357,21 @@ function addNode(type, pos_x, pos_y) {
       outputs: 2,
       data: { items: '', itemVar: 'item' }
     },
+    's3-upload': {
+      name: 'S3 Upload',
+      class: 'node-action',
+      inputs: 1,
+      outputs: 2,
+      data: {
+        filePath: '',
+        bucket: '',
+        region: '',
+        accessKeyId: '',
+        secretAccessKey: '',
+        s3Key: '',
+        s3Prefix: ''
+      }
+    },
     'alert': {
       name: 'Send Alert',
       class: 'node-output',
@@ -781,7 +796,9 @@ function getNodeInputs(nodeId) {
     }
 
     // Get outputs from the connected node
-    const sourceOutputs = getNodeOutputs(sourceNode.name, sourceNode.data);
+    // conn.output contains which output (e.g., "output_1" or "output_2") we're connected to
+    const outputIndex = conn.output ? parseInt(conn.output.split('_')[1]) : null;
+    const sourceOutputs = getNodeOutputs(sourceNode.name, sourceNode.data, outputIndex);
     sourceOutputs.forEach(output => {
       if (!allInputs.find(v => v.name === output.name)) {
         allInputs.push(output);
@@ -826,7 +843,9 @@ function getNodeInputsRecursive(nodeId, visited) {
       }
 
       // Get outputs from this node
-      const sourceOutputs = getNodeOutputs(sourceNode.name, sourceNode.data);
+      // conn.output contains which output (e.g., "output_1" or "output_2") we're connected to
+      const outputIndex = conn.output ? parseInt(conn.output.split('_')[1]) : null;
+      const sourceOutputs = getNodeOutputs(sourceNode.name, sourceNode.data, outputIndex);
       sourceOutputs.forEach(output => {
         if (!allInputs.find(v => v.name === output.name)) {
           allInputs.push(output);
@@ -1032,6 +1051,22 @@ const NodeTypes = {
     ]
   },
 
+  // Cloud Services
+  's3-upload': {
+    outputs: {
+      output_1: [  // Success path (top output)
+        { name: 's3Bucket', description: 'S3 bucket name' },
+        { name: 's3Key', description: 'S3 object key (including prefix)' },
+        { name: 's3Region', description: 'AWS region' },
+        { name: 's3UploadedFile', description: 'Local file path that was uploaded' }
+      ],
+      output_2: [  // Error path (bottom output)
+        { name: 'error', description: 'Error message' },
+        { name: 'errorStep', description: 'Step ID that failed' }
+      ]
+    }
+  },
+
   // Platform
   'alert': {
     outputs: []  // Alerts don't produce outputs
@@ -1051,12 +1086,34 @@ const NodeTypes = {
 };
 
 // Get outputs produced by a node type
-function getNodeOutputs(nodeType, nodeData) {
+function getNodeOutputs(nodeType, nodeData, outputIndex = null) {
   const nodeDefinition = NodeTypes[nodeType];
-  if (nodeDefinition && nodeDefinition.outputs) {
-    return nodeDefinition.outputs;
+  if (!nodeDefinition || !nodeDefinition.outputs) {
+    return [];
   }
-  return [];
+
+  const outputs = nodeDefinition.outputs;
+
+  // Check if outputs is an array (old format - all outputs together)
+  if (Array.isArray(outputs)) {
+    return outputs;
+  }
+
+  // New format - outputs is an object with output_1, output_2, etc.
+  // If outputIndex is specified, return only that output's variables
+  if (outputIndex !== null) {
+    const outputKey = `output_${outputIndex}`;
+    return outputs[outputKey] || [];
+  }
+
+  // If no specific output requested, return all outputs combined
+  let allOutputs = [];
+  Object.keys(outputs).forEach(key => {
+    if (Array.isArray(outputs[key])) {
+      allOutputs = allOutputs.concat(outputs[key]);
+    }
+  });
+  return allOutputs;
 }
 
 function getNodeFields(type) {
@@ -1083,6 +1140,15 @@ function getNodeFields(type) {
     'alert': [
       { key: 'level', label: 'Alert Level', type: 'select', options: ['info', 'warning', 'error', 'critical'] },
       { key: 'message', label: 'Message', type: 'textarea' }
+    ],
+    's3-upload': [
+      { key: 'filePath', label: 'File Path', type: 'text', placeholder: '{{.file}}' },
+      { key: 'bucket', label: 'S3 Bucket', type: 'text' },
+      { key: 'region', label: 'AWS Region', type: 'text', placeholder: 'us-east-1' },
+      { key: 'accessKeyId', label: 'Access Key ID', type: 'text' },
+      { key: 'secretAccessKey', label: 'Secret Access Key', type: 'password' },
+      { key: 's3Key', label: 'S3 Object Key (optional)', type: 'text', placeholder: 'Defaults to filename' },
+      { key: 's3Prefix', label: 'S3 Prefix/Folder (optional)', type: 'text', placeholder: 'incoming/files/' }
     ],
     'javascript': [
       { key: 'code', label: 'JavaScript Code', type: 'textarea' }
