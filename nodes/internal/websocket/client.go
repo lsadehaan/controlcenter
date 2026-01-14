@@ -7,34 +7,60 @@ import (
 	"net/url"
 	"os"
 	"runtime"
+	"sync"
 	"time"
 
 	"github.com/gorilla/websocket"
 	"github.com/rs/zerolog"
 )
 
+// ReconnectConfig holds configuration for reconnection behavior
+type ReconnectConfig struct {
+	InitialInterval time.Duration // Starting reconnect interval (default: 5s)
+	MaxInterval     time.Duration // Maximum reconnect interval (default: 5min)
+	Multiplier      float64       // Backoff multiplier (default: 2.0)
+}
+
+// DefaultReconnectConfig returns sensible defaults for reconnection
+func DefaultReconnectConfig() ReconnectConfig {
+	return ReconnectConfig{
+		InitialInterval: 5 * time.Second,
+		MaxInterval:     5 * time.Minute,
+		Multiplier:      2.0,
+	}
+}
+
 type Client struct {
-	conn       *websocket.Conn
-	url        string
-	agentID    string
-	logger     zerolog.Logger
-	reconnectInterval time.Duration
-	pingInterval     time.Duration
-	
-	onMessage  func(MessageType, json.RawMessage)
-	onConnect  func()
+	conn            *websocket.Conn
+	url             string
+	agentID         string
+	logger          zerolog.Logger
+	reconnectConfig ReconnectConfig
+	pingInterval    time.Duration
+
+	// Backoff state
+	currentInterval time.Duration
+	failureCount    int
+	lastAttempt     time.Time
+	mu              sync.RWMutex
+
+	// Channel to trigger immediate reconnection
+	reconnectNow chan struct{}
+
+	onMessage    func(MessageType, json.RawMessage)
+	onConnect    func()
 	onDisconnect func()
 }
 
 type MessageType string
 
 const (
-	MessageTypeHeartbeat   MessageType = "heartbeat"
-	MessageTypeCommand     MessageType = "command"
-	MessageTypeConfig      MessageType = "config"
+	MessageTypeHeartbeat    MessageType = "heartbeat"
+	MessageTypeCommand      MessageType = "command"
+	MessageTypeConfig       MessageType = "config"
 	MessageTypeRegistration MessageType = "registration"
-	MessageTypeStatus      MessageType = "status"
-	MessageTypeAlert       MessageType = "alert"
+	MessageTypeStatus       MessageType = "status"
+	MessageTypeAlert        MessageType = "alert"
 )
 
 type Message struct {
@@ -44,24 +70,30 @@ type Message struct {
 }
 
 func NewClient(managerURL, agentID string, logger zerolog.Logger) *Client {
+	return NewClientWithConfig(managerURL, agentID, logger, DefaultReconnectConfig())
+}
+
+func NewClientWithConfig(managerURL, agentID string, logger zerolog.Logger, reconnectConfig ReconnectConfig) *Client {
 	u, _ := url.Parse(managerURL)
 	if u.Scheme == "http" {
 		u.Scheme = "ws"
 	} else if u.Scheme == "https" {
 		u.Scheme = "wss"
 	}
-	
+
 	// Only add /ws if not already present
 	if u.Path == "" || u.Path == "/" {
 		u.Path = "/ws"
 	}
 
 	return &Client{
-		url:               u.String(),
-		agentID:           agentID,
-		logger:            logger,
-		reconnectInterval: 5 * time.Second,
-		pingInterval:      30 * time.Second,
+		url:             u.String(),
+		agentID:         agentID,
+		logger:          logger,
+		reconnectConfig: reconnectConfig,
+		currentInterval: reconnectConfig.InitialInterval,
+		pingInterval:    30 * time.Second,
+		reconnectNow:    make(chan struct{}, 1),
 	}
 }
 
@@ -77,18 +109,110 @@ func (c *Client) OnDisconnect(handler func()) {
 	c.onDisconnect = handler
 }
 
+// TriggerReconnect signals the client to attempt reconnection immediately
+// This resets the backoff and triggers a reconnect attempt
+func (c *Client) TriggerReconnect() {
+	c.mu.Lock()
+	c.currentInterval = c.reconnectConfig.InitialInterval
+	c.failureCount = 0
+	c.mu.Unlock()
+
+	// Non-blocking send to trigger reconnect
+	select {
+	case c.reconnectNow <- struct{}{}:
+		c.logger.Info().Msg("Reconnect triggered - will attempt immediately")
+	default:
+		// Channel already has a pending trigger
+	}
+}
+
+// IsConnected returns whether the WebSocket is currently connected
+func (c *Client) IsConnected() bool {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return c.conn != nil
+}
+
+// GetConnectionStatus returns detailed connection status
+func (c *Client) GetConnectionStatus() map[string]interface{} {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
+	status := map[string]interface{}{
+		"connected":       c.conn != nil,
+		"url":             c.url,
+		"failureCount":    c.failureCount,
+		"currentInterval": c.currentInterval.String(),
+		"maxInterval":     c.reconnectConfig.MaxInterval.String(),
+	}
+
+	if !c.lastAttempt.IsZero() {
+		status["lastAttempt"] = c.lastAttempt.Format(time.RFC3339)
+		status["timeSinceLastAttempt"] = time.Since(c.lastAttempt).String()
+	}
+
+	return status
+}
+
 func (c *Client) Start(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
 			return
+		case <-c.reconnectNow:
+			// Immediate reconnect triggered - skip the wait
+			c.logger.Debug().Msg("Processing triggered reconnect")
 		default:
-			if err := c.connect(ctx); err != nil {
-				c.logger.Error().Err(err).Msg("WebSocket connection failed")
-				time.Sleep(c.reconnectInterval)
+		}
+
+		c.mu.Lock()
+		c.lastAttempt = time.Now()
+		c.mu.Unlock()
+
+		if err := c.connect(ctx); err != nil {
+			c.mu.Lock()
+			c.failureCount++
+			failureCount := c.failureCount
+			currentInterval := c.currentInterval
+
+			// Log at WARN level instead of ERROR - this is expected when manager is down
+			c.logger.Warn().
+				Err(err).
+				Int("failureCount", failureCount).
+				Str("nextRetry", currentInterval.String()).
+				Msg("WebSocket connection failed")
+
+			// Calculate next interval with exponential backoff
+			nextInterval := time.Duration(float64(c.currentInterval) * c.reconnectConfig.Multiplier)
+			if nextInterval > c.reconnectConfig.MaxInterval {
+				nextInterval = c.reconnectConfig.MaxInterval
+			}
+			c.currentInterval = nextInterval
+			c.mu.Unlock()
+
+			// Wait for either the backoff timer or a reconnect trigger
+			select {
+			case <-ctx.Done():
+				return
+			case <-c.reconnectNow:
+				// Immediate reconnect triggered - reset backoff and continue
+				c.mu.Lock()
+				c.currentInterval = c.reconnectConfig.InitialInterval
+				c.failureCount = 0
+				c.mu.Unlock()
+				c.logger.Info().Msg("Backoff reset - attempting immediate reconnect")
+				continue
+			case <-time.After(currentInterval):
+				// Normal backoff wait completed
 				continue
 			}
 		}
+
+		// Connected successfully - reset backoff
+		c.mu.Lock()
+		c.currentInterval = c.reconnectConfig.InitialInterval
+		c.failureCount = 0
+		c.mu.Unlock()
 	}
 }
 
@@ -101,17 +225,23 @@ func (c *Client) connect(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("failed to dial: %w", err)
 	}
+
+	c.mu.Lock()
 	c.conn = conn
+	c.mu.Unlock()
+
 	defer func() {
+		c.mu.Lock()
 		c.conn.Close()
 		c.conn = nil
+		c.mu.Unlock()
 		if c.onDisconnect != nil {
 			c.onDisconnect()
 		}
 	}()
 
 	c.logger.Info().Str("url", c.url).Msg("WebSocket connected")
-	
+
 	if c.onConnect != nil {
 		c.onConnect()
 	}
@@ -125,7 +255,7 @@ func (c *Client) connect(ctx context.Context) error {
 	go func() {
 		for {
 			var msg Message
-			err := c.conn.ReadJSON(&msg)
+			err := conn.ReadJSON(&msg)
 			if err != nil {
 				readChan <- err
 				return
@@ -141,12 +271,12 @@ func (c *Client) connect(ctx context.Context) error {
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
-			
+
 		case <-heartbeatTicker.C:
 			if err := c.SendHeartbeat(); err != nil {
 				return err
 			}
-			
+
 		case err := <-readChan:
 			return err
 		}
@@ -189,7 +319,11 @@ func (c *Client) SendStatus(status string, details map[string]interface{}) error
 }
 
 func (c *Client) SendMessage(msgType MessageType, payload interface{}) error {
-	if c.conn == nil {
+	c.mu.RLock()
+	conn := c.conn
+	c.mu.RUnlock()
+
+	if conn == nil {
 		return fmt.Errorf("not connected")
 	}
 
@@ -204,7 +338,7 @@ func (c *Client) SendMessage(msgType MessageType, payload interface{}) error {
 		Payload: payloadData,
 	}
 
-	return c.conn.WriteJSON(msg)
+	return conn.WriteJSON(msg)
 }
 
 func getHostname() string {
