@@ -3,126 +3,203 @@
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
 [![Release](https://img.shields.io/github/v/release/lsadehaan/controlcenter)](https://github.com/lsadehaan/controlcenter/releases)
 
-Distributed automation platform with hub-and-spoke architecture for enterprise-grade workflow automation.
+A distributed automation platform with hub-and-spoke architecture for workflow automation across multiple hosts.
 
-## 🚀 Quick Deployment (Ubuntu)
+## Overview
 
-### Deploy Manager (Choose One)
+Control Center enables you to automate file processing, command execution, and multi-step workflows across distributed systems. A central **Manager** coordinates lightweight **Agents** running on any number of hosts.
 
-**Docker (Recommended):**
+**Use cases:**
+- Automated file processing pipelines (watch directories, process files, archive)
+- Scheduled task execution across multiple servers
+- Centralized monitoring and alerting
+- Configuration management with Git-based version control
+
+## Quick Start
+
+### 1. Start the Manager
+
 ```bash
-# Download and run deployment script
+cd manager
+npm install
+npm start
+```
+Visit `http://localhost:3000` to set up your admin account.
+
+### 2. Generate a Registration Token
+
+In the web UI: **Agents** > **Generate Token** (valid for 1 hour)
+
+### 3. Start an Agent
+
+Download from [Releases](../../releases) or build from source:
+
+```bash
+cd nodes
+go build -o agent .
+./agent -token YOUR_TOKEN
+```
+
+The agent will register, sync configuration, and begin executing workflows.
+
+## Architecture
+
+```
+              ┌──────────────────────────────────┐
+              │           MANAGER                 │
+              │  • Web UI (Drawflow editor)      │
+              │  • REST API                      │
+              │  • WebSocket (real-time)         │
+              │  • Git SSH Server (port 2223)    │
+              │  • SQLite database               │
+              └───────────────┬──────────────────┘
+                              │
+         ┌────────────────────┼────────────────────┐
+         │                    │                    │
+         ▼                    ▼                    ▼
+   ┌───────────┐        ┌───────────┐       ┌───────────┐
+   │   AGENT   │        │   AGENT   │       │   AGENT   │
+   │ • Workflows│        │ • Workflows│       │ • Workflows│
+   │ • File Watch│       │ • File Watch│      │ • File Watch│
+   │ • SSH Server│       │ • SSH Server│      │ • SSH Server│
+   │ • File Browse│      │ • File Browse│     │ • File Browse│
+   └───────────┘        └───────────┘       └───────────┘
+```
+
+## Key Features
+
+| Feature | Description |
+|---------|-------------|
+| **Visual Workflow Editor** | Drag-and-drop workflow builder with Drawflow.js |
+| **File Triggers** | Watch directories for new/modified files |
+| **Scheduled Tasks** | Run workflows on intervals |
+| **Command Execution** | Execute shell commands with output capture |
+| **File Browser** | Browse, upload, download files on agents |
+| **Real-time Monitoring** | WebSocket heartbeats and live status |
+| **Git-based Config** | Version-controlled configuration sync |
+| **Secure Communication** | SSH key authentication for all traffic |
+
+## Example Workflow
+
+Watch for CSV files, back them up, and send an alert:
+
+```json
+{
+  "trigger": {
+    "type": "file",
+    "config": { "path": "/data/incoming", "pattern": "*.csv" }
+  },
+  "steps": [
+    {
+      "id": "backup",
+      "type": "copy-file",
+      "config": {
+        "source": "{{.filePath}}",
+        "destination": "/data/backup/{{.fileName}}"
+      },
+      "next": ["notify"]
+    },
+    {
+      "id": "notify",
+      "type": "alert",
+      "config": { "level": "info", "message": "Processed: {{.fileName}}" }
+    }
+  ]
+}
+```
+
+## Deployment Options
+
+### Docker (Recommended for Manager)
+
+```bash
 wget https://raw.githubusercontent.com/lsadehaan/controlcenter/main/deploy/deploy-manager.sh
 chmod +x deploy-manager.sh
 ./deploy-manager.sh docker
 ```
 
-**Native Installation:**
+### Native Installation
+
 ```bash
-# Download and run deployment script
-wget https://raw.githubusercontent.com/lsadehaan/controlcenter/main/deploy/deploy-manager.sh
-chmod +x deploy-manager.sh
 ./deploy-manager.sh native
 ```
 
-### Deploy Agent (Always Native)
-
-After deploying the manager, get a registration token from the Web UI (http://your-server:3000), then:
+### Agent Deployment
 
 ```bash
-# Download and run agent installer
 wget https://raw.githubusercontent.com/lsadehaan/controlcenter/main/deploy/deploy-agent.sh
 chmod +x deploy-agent.sh
-sudo ./deploy-agent.sh YOUR_REGISTRATION_TOKEN http://manager-ip:3000
+sudo ./deploy-agent.sh YOUR_TOKEN http://manager-ip:3000
 ```
 
-## 🏗️ Architecture
+### Kubernetes
 
-- **Manager** (`manager/`): Node.js/Express web UI and API server
-  - Can run in Docker or natively
-  - Provides web interface, API, and git-based configuration
-  - SQLite database for persistence
+```bash
+kubectl apply -f https://raw.githubusercontent.com/lsadehaan/controlcenter/main/deploy/kubernetes/controlcenter-k8s.yaml
+```
 
-- **Agent** (`nodes/`): Lightweight Go binary
-  - Always runs natively for direct system access
-  - Zero dependencies - single executable
-  - Watches files, executes workflows, manages SSH connections
+## Docker Images
 
-## 💻 Development Setup
+- `ghcr.io/lsadehaan/controlcenter-manager:latest` - Manager
+- `ghcr.io/lsadehaan/controlcenter-nodes:latest` - Agent (Kubernetes)
 
-### Manager Development
+## Network Ports
+
+| Port | Component | Purpose |
+|------|-----------|---------|
+| 3000 | Manager | Web UI and API |
+| 2223 | Manager | Git SSH (config sync) |
+| 8088 | Agent | Health endpoint |
+| 2222 | Agent | SSH server |
+
+## Documentation
+
+| Document | Description |
+|----------|-------------|
+| [Why Control Center?](docs/WhyControlCenter.md) | Comparison with N8N, when to use |
+| [System Overview](SYSTEM_OVERVIEW.md) | Architecture, features, workflows |
+| [Deployment Guide](DEPLOYMENT.md) | Production deployment instructions |
+| [Setup Guide](SETUP.md) | Development environment setup |
+| [Testing Guide](TESTING.md) | Testing workflows and scenarios |
+| [Technical Reference](CLAUDE.md) | API, configuration, troubleshooting |
+
+## Development
+
+### Manager
 ```bash
 cd manager
 npm install
-npm start
-# Visit http://localhost:3000
+npm run dev          # Passwordless auth for testing
 ```
 
-### Agent Development
+### Agent
 ```bash
 cd nodes
-go run . -token YOUR_TOKEN
-# Health check: http://localhost:8088/healthz
+go run . -token TOKEN -log-level debug
 ```
 
-## 📦 Docker Images
+## Security
 
-Publicly available on GitHub Container Registry:
-- `ghcr.io/lsadehaan/controlcenter-manager:latest` - Manager web UI
-- `ghcr.io/lsadehaan/controlcenter-nodes:latest` - Agent (Kubernetes only)
+- JWT authentication for web UI and API
+- SSH key pairs generated per agent (RSA 2048-bit)
+- Public key authentication for Git operations
+- Time-limited registration tokens (1 hour)
+- File browser disabled by default with path whitelist
 
-## 🌐 Kubernetes Deployment
+## Contributing
 
-```bash
-# Deploy full stack to Kubernetes
-kubectl apply -f https://raw.githubusercontent.com/lsadehaan/controlcenter/main/deploy/kubernetes/controlcenter-k8s.yaml
-
-# Set agent registration token
-kubectl create secret generic agent-registration \
-  --from-literal=token=YOUR_TOKEN \
-  -n controlcenter
-```
-
-## 📚 Documentation
-
-- [Deployment Guide](DEPLOYMENT.md) - Detailed deployment instructions
-- [System Overview](SYSTEM_OVERVIEW.md) - Architecture and components
-- [Testing Guide](TESTING.md) - Testing workflows and examples
-- [Setup Guide](SETUP.md) - Development environment setup
-- [Claude AI Instructions](CLAUDE.md) - AI assistant configuration
-
-## 🔧 Key Features
-
-- **Visual Workflow Editor**: Drag-and-drop workflow creation with Drawflow.js
-- **File Triggers**: Monitor directories and trigger workflows on file events
-- **Remote Execution**: SSH-based remote command execution
-- **Git-based Configuration**: Version-controlled configuration management
-- **Real-time Monitoring**: WebSocket-based agent heartbeat and status
-- **Standalone Mode**: Agents can operate independently when disconnected
-
-## 🛡️ Security
-
-- AGPL-3.0 licensed with dual licensing available
-- SSH key-based authentication between components
-- Secure command execution with no shell injection
-- Path traversal protection in file operations
-
-## 🤝 Contributing
-
-Contributions welcome! Please:
 1. Fork the repository
 2. Create a feature branch
-3. Make your changes
-4. Run tests
-5. Submit a pull request
+3. Make changes and test
+4. Submit a pull request
 
-## 📄 License
+## License
 
-This project is licensed under the GNU Affero General Public License v3.0 - see the [LICENSE](LICENSE) file for details.
+GNU Affero General Public License v3.0 - see [LICENSE](LICENSE).
 
-For commercial use cases requiring proprietary modifications, contact for dual licensing options.
+Commercial licensing available for proprietary use cases.
 
-## 🔗 Links
+## Links
 
 - [Releases](https://github.com/lsadehaan/controlcenter/releases)
 - [Issues](https://github.com/lsadehaan/controlcenter/issues)
