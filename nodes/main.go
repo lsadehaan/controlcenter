@@ -59,6 +59,7 @@ type Agent struct {
 	executor     *workflow.Executor
 	sshServer    *sshserver.SSHServer
 	fileWatcher  *filewatcher.Watcher
+	apiServer    *api.Server
 	logger       zerolog.Logger
 	logLevel     *zerolog.Level
 	configPath   string
@@ -487,7 +488,7 @@ func main() {
 		logger.Info().
 			Str("agentId", cfg.AgentID).
 			Str("managerUrl", cfg.ManagerURL).
-			Msg("Agent connected to manager")
+			Msg("Starting manager connection (will retry with exponential backoff if unavailable)")
 	} else {
 		logger.Info().Msg("Running in standalone mode - Manager connection disabled")
 	}
@@ -561,8 +562,11 @@ func (a *Agent) startHealthEndpoint() {
 	})
 
 	// Register API endpoints for logs, metrics, and workflow data
-	apiServer := api.NewServer(a.config, a.executor, a.logger, a.logLevel)
-	apiServer.RegisterHandlers()
+	a.apiServer = api.NewServer(a.config, a.executor, a.logger, a.logLevel)
+	if a.wsClient != nil {
+		a.apiServer.SetWebSocketClient(a.wsClient)
+	}
+	a.apiServer.RegisterHandlers()
 
 	// Register file browser endpoints (if enabled)
 	fileBrowser := filebrowser.New(a.config, a.logger)
@@ -578,6 +582,8 @@ func (a *Agent) startHealthEndpoint() {
 	a.logger.Info().Msg("  GET /api/metrics - Agent metrics")
 	a.logger.Info().Msg("  GET /api/loglevel - Get current log level")
 	a.logger.Info().Msg("  POST /api/loglevel {\"level\":\"debug\"} - Change log level")
+	a.logger.Info().Msg("  GET /api/connection - WebSocket connection status")
+	a.logger.Info().Msg("  POST /api/reconnect - Trigger immediate reconnect")
 
 	// Log file browser status
 	if a.config.FileBrowserSettings.Enabled {
@@ -606,6 +612,8 @@ func (a *Agent) handleConnect() {
 			a.logger.Error().Err(err).Msg("Failed to send reconnection")
 		} else {
 			a.logger.Info().Msg("Reconnection sent for registered agent")
+			// Sync any pending alerts that were stored while offline
+			go a.syncPendingAlerts()
 		}
 	} else if a.config.RegistrationToken != "" {
 		// New agent with token - send registration
@@ -660,6 +668,8 @@ func (a *Agent) handleMessage(msgType websocket.MessageType, payload json.RawMes
 				} else {
 					a.logger.Info().Str("path", savePath).Msg("Registration state saved")
 				}
+				// Sync any pending alerts that were stored before registration
+				go a.syncPendingAlerts()
 			} else {
 				a.logger.Error().Str("error", resp.Error).Msg("Registration failed")
 			}
@@ -1143,6 +1153,71 @@ func (a *Agent) saveLocalAlert(alert map[string]interface{}) {
 	// Save back to file
 	if data, err := json.MarshalIndent(alerts, "", "  "); err == nil {
 		os.WriteFile(alertsPath, data, 0600)
+	}
+}
+
+// syncPendingAlerts sends any locally stored alerts to the manager
+// and clears them from local storage on success
+func (a *Agent) syncPendingAlerts() {
+	alertsPath := filepath.Join(getDefaultConfigDir(), "alerts.json")
+
+	// Read existing alerts
+	data, err := os.ReadFile(alertsPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			// No pending alerts
+			return
+		}
+		a.logger.Error().Err(err).Msg("Failed to read pending alerts file")
+		return
+	}
+
+	var alerts []map[string]interface{}
+	if err := json.Unmarshal(data, &alerts); err != nil {
+		a.logger.Error().Err(err).Msg("Failed to parse pending alerts")
+		return
+	}
+
+	if len(alerts) == 0 {
+		return
+	}
+
+	a.logger.Info().Int("count", len(alerts)).Msg("Syncing pending alerts to manager")
+
+	// Send each alert
+	successCount := 0
+	failedAlerts := []map[string]interface{}{}
+
+	for _, alert := range alerts {
+		// Mark as synced from offline storage
+		alert["synced_from_offline"] = true
+
+		if err := a.wsClient.SendMessage("alert", alert); err != nil {
+			a.logger.Warn().Err(err).Msg("Failed to sync alert, keeping for retry")
+			// Remove the synced marker for storage
+			delete(alert, "synced_from_offline")
+			failedAlerts = append(failedAlerts, alert)
+		} else {
+			successCount++
+		}
+	}
+
+	// Update the alerts file with only failed alerts (or remove if all succeeded)
+	if len(failedAlerts) == 0 {
+		// All alerts synced successfully, remove the file
+		if err := os.Remove(alertsPath); err != nil && !os.IsNotExist(err) {
+			a.logger.Warn().Err(err).Msg("Failed to remove alerts file after sync")
+		}
+		a.logger.Info().Int("synced", successCount).Msg("All pending alerts synced successfully")
+	} else {
+		// Save remaining failed alerts
+		if data, err := json.MarshalIndent(failedAlerts, "", "  "); err == nil {
+			os.WriteFile(alertsPath, data, 0600)
+		}
+		a.logger.Warn().
+			Int("synced", successCount).
+			Int("remaining", len(failedAlerts)).
+			Msg("Some alerts failed to sync")
 	}
 }
 

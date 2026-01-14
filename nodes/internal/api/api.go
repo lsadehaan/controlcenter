@@ -13,6 +13,7 @@ import (
 
 	"github.com/rs/zerolog"
 	"github.com/your-org/controlcenter/nodes/internal/config"
+	"github.com/your-org/controlcenter/nodes/internal/websocket"
 	"github.com/your-org/controlcenter/nodes/internal/workflow"
 )
 
@@ -22,6 +23,7 @@ type Server struct {
 	executor    *workflow.Executor
 	logger      zerolog.Logger
 	logLevel    *zerolog.Level // Pointer to allow dynamic level changes
+	wsClient    *websocket.Client // WebSocket client for reconnect triggering
 }
 
 // NewServer creates a new API server
@@ -34,6 +36,11 @@ func NewServer(cfg *config.Config, executor *workflow.Executor, logger zerolog.L
 	}
 }
 
+// SetWebSocketClient sets the WebSocket client reference for reconnect triggering
+func (s *Server) SetWebSocketClient(client *websocket.Client) {
+	s.wsClient = client
+}
+
 // RegisterHandlers registers all API endpoints
 func (s *Server) RegisterHandlers() {
 	http.HandleFunc("/api/logs", s.handleLogs)
@@ -42,6 +49,8 @@ func (s *Server) RegisterHandlers() {
 	http.HandleFunc("/api/workflows/state", s.handleWorkflowState)
 	http.HandleFunc("/api/metrics", s.handleMetrics)
 	http.HandleFunc("/api/loglevel", s.handleLogLevel)
+	http.HandleFunc("/api/reconnect", s.handleReconnect)
+	http.HandleFunc("/api/connection", s.handleConnection)
 }
 
 // LogEntry represents a single log line with metadata
@@ -462,4 +471,80 @@ func (s *Server) handleLogLevel(w http.ResponseWriter, r *http.Request) {
 
 	// Method not allowed
 	http.Error(w, "Method not allowed. Use GET or POST", http.StatusMethodNotAllowed)
+}
+
+// ConnectionResponse represents WebSocket connection status
+type ConnectionResponse struct {
+	Connected            bool   `json:"connected"`
+	URL                  string `json:"url"`
+	FailureCount         int    `json:"failureCount"`
+	CurrentInterval      string `json:"currentInterval"`
+	MaxInterval          string `json:"maxInterval"`
+	LastAttempt          string `json:"lastAttempt,omitempty"`
+	TimeSinceLastAttempt string `json:"timeSinceLastAttempt,omitempty"`
+}
+
+// handleConnection returns WebSocket connection status
+// GET /api/connection - Get connection status
+func (s *Server) handleConnection(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+
+	if s.wsClient == nil {
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"connected": false,
+			"error":     "WebSocket client not initialized (standalone mode?)",
+		})
+		return
+	}
+
+	status := s.wsClient.GetConnectionStatus()
+	json.NewEncoder(w).Encode(status)
+}
+
+// ReconnectResponse represents reconnect trigger response
+type ReconnectResponse struct {
+	Triggered    bool   `json:"triggered"`
+	WasConnected bool   `json:"wasConnected"`
+	Message      string `json:"message"`
+}
+
+// handleReconnect triggers an immediate WebSocket reconnection
+// POST /api/reconnect - Trigger reconnect
+func (s *Server) handleReconnect(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed. Use POST", http.StatusMethodNotAllowed)
+		return
+	}
+
+	if s.wsClient == nil {
+		json.NewEncoder(w).Encode(ReconnectResponse{
+			Triggered: false,
+			Message:   "WebSocket client not initialized (standalone mode?)",
+		})
+		return
+	}
+
+	wasConnected := s.wsClient.IsConnected()
+	s.wsClient.TriggerReconnect()
+
+	response := ReconnectResponse{
+		Triggered:    true,
+		WasConnected: wasConnected,
+	}
+
+	if wasConnected {
+		response.Message = "Already connected, but reconnect triggered anyway"
+	} else {
+		response.Message = "Reconnect triggered - backoff reset, attempting immediate connection"
+	}
+
+	s.logger.Info().
+		Bool("wasConnected", wasConnected).
+		Msg("Reconnect triggered via API")
+
+	json.NewEncoder(w).Encode(response)
 }
