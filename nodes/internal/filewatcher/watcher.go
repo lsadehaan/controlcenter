@@ -469,19 +469,6 @@ func (w *Watcher) handleEvents(watcher *fsnotify.Watcher, rule Rule, dirRegex, f
 					time.Sleep(time.Duration(rule.TimeRestrictions.ProcessAfterSecs) * time.Second)
 				}
 
-				// Check if file is still being written
-				if rule.ProcessingOptions.CheckFileInUse {
-					if w.isFileInUse(event.Name) {
-						w.logger.Info().
-							Str("file", event.Name).
-							Msg("🔒 File is still in use, skipping")
-						continue
-					}
-					w.logger.Info().
-						Str("file", event.Name).
-						Msg("✅ File is not in use, proceeding")
-				}
-
 				// Mark file as being processed
 				w.markFileProcessing(event.Name)
 
@@ -508,6 +495,27 @@ func (w *Watcher) handleEvents(watcher *fsnotify.Watcher, rule Rule, dirRegex, f
 func (w *Watcher) processFile(filePath string, rule Rule) {
 	// Ensure we mark the file as done processing when this function exits
 	defer w.markFileProcessed(filePath)
+
+	// Wait for file to become stable/unlocked in worker context to avoid
+	// blocking the fsnotify event loop.
+	if rule.ProcessingOptions.CheckFileInUse {
+		maxRetries := rule.ProcessingOptions.MaxRetries
+		if maxRetries <= 0 {
+			maxRetries = 5
+		}
+		retryDelay := time.Duration(rule.ProcessingOptions.DelayRetry) * time.Millisecond
+		if retryDelay <= 0 {
+			retryDelay = 1000 * time.Millisecond
+		}
+
+		if !w.waitForFileReady(filePath, maxRetries, retryDelay) {
+			w.logger.Warn().
+				Str("file", filePath).
+				Int("retries", maxRetries).
+				Msg("🔒 File still in use/unstable after retries, skipping")
+			return
+		}
+	}
 
 	w.logger.Info().
 		Str("file", filePath).
@@ -729,13 +737,78 @@ func (w *Watcher) checkTimeRestrictions(restrictions TimeRestrictions) bool {
 	return true
 }
 
-func (w *Watcher) isFileInUse(filePath string) bool {
-	file, err := os.OpenFile(filePath, os.O_RDWR|os.O_EXCL, 0)
+func (w *Watcher) waitForFileReady(filePath string, maxRetries int, retryDelay time.Duration) bool {
+	if retryDelay <= 0 {
+		retryDelay = 1000 * time.Millisecond
+	}
+
+	// Probe window for stability checks (size/mtime should stop changing).
+	stabilityWindow := 500 * time.Millisecond
+
+	for attempt := 0; attempt < maxRetries; attempt++ {
+		if !w.isFileInUse(filePath, stabilityWindow) {
+			w.logger.Info().
+				Str("file", filePath).
+				Int("attempt", attempt+1).
+				Msg("✅ File is stable and ready")
+			return true
+		}
+
+		w.logger.Info().
+			Str("file", filePath).
+			Int("attempt", attempt+1).
+			Int("maxRetries", maxRetries).
+			Msg("🔒 File is still in use/unstable, waiting to retry...")
+
+		select {
+		case <-time.After(retryDelay):
+		case <-w.stopChan:
+			return false
+		}
+	}
+
+	return false
+}
+
+func (w *Watcher) isFileInUse(filePath string, stabilityWindow time.Duration) bool {
+	// Missing file is treated as "in use/not ready" for this cycle.
+	info1, err := os.Stat(filePath)
 	if err != nil {
 		return true
 	}
-	file.Close()
-	return false
+
+	// Lock probe:
+	// - Try read/write open first (detects many active write locks)
+	// - If permission denied, fallback to read-only open so permission alone
+	//   doesn't look like a write lock.
+	if f, err := os.OpenFile(filePath, os.O_RDWR, 0); err == nil {
+		f.Close()
+	} else if os.IsPermission(err) {
+		rf, rerr := os.Open(filePath)
+		if rerr != nil {
+			return true
+		}
+		rf.Close()
+	} else {
+		return true
+	}
+
+	if stabilityWindow <= 0 {
+		stabilityWindow = 500 * time.Millisecond
+	}
+	select {
+	case <-time.After(stabilityWindow):
+	case <-w.stopChan:
+		return true
+	}
+
+	info2, err := os.Stat(filePath)
+	if err != nil {
+		return true
+	}
+
+	// If metadata keeps changing, writer is likely still active.
+	return info1.Size() != info2.Size() || info1.ModTime() != info2.ModTime()
 }
 
 func (w *Watcher) copyFile(src, dst string) error {

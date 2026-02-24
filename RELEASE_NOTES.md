@@ -8,6 +8,14 @@ Each release should have a section with the version number as a heading level 2 
 
 ---
 
+## v0.17.2
+
+### Fixes
+
+- **Fixed false "file in use" detection on permission errors**: `isFileInUse` used `O_RDWR|O_EXCL` which returned false positives when the agent user lacked write permission (e.g., root-owned files). Now uses a two-layer check: `O_RDWR` with `O_RDONLY` fallback for lock detection, plus size/modtime stability check over 500ms for active write detection.
+- **Wired up MaxRetries and DelayRetry from UI config**: The "Max Retries" and "Retry Delay" settings in the file watcher Advanced tab were defined but never used. Now the retry loop reads `processingOptions.maxRetries` and `processingOptions.delayRetry` from the rule config.
+- **Moved "in use" check from event loop to worker**: The file-in-use check with retries now runs inside the worker pool (`processFile`) instead of the fsnotify event loop. This prevents retry sleeps from blocking event detection for other files.
+
 ## v0.17.1
 
 ### Fixes
