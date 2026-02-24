@@ -37,6 +37,7 @@ type webhookBinding struct {
 	workflowID string
 	instance   *WorkflowInstance
 	method     string
+	active     bool
 }
 
 type WorkflowInstance struct {
@@ -75,6 +76,14 @@ func (e *Executor) LoadWorkflows(workflows []config.Workflow) {
 
 	// Clear existing workflows
 	e.workflows = make(map[string]*WorkflowInstance)
+
+	// Mark all existing webhook bindings inactive; active ones will be re-enabled
+	// when matching webhook triggers are loaded again.
+	e.webhookMu.Lock()
+	for _, binding := range e.registeredWebhooks {
+		binding.active = false
+	}
+	e.webhookMu.Unlock()
 
 	// Load new workflows
 	for _, wf := range workflows {
@@ -310,6 +319,7 @@ func (e *Executor) handleWebhookTrigger(workflowID string, instance *WorkflowIns
 		binding.workflowID = workflowID
 		binding.instance = instance
 		binding.method = method
+		binding.active = true
 		e.webhookMu.Unlock()
 		e.logger.Info().
 			Str("workflow", workflowID).
@@ -321,6 +331,7 @@ func (e *Executor) handleWebhookTrigger(workflowID string, instance *WorkflowIns
 		workflowID: workflowID,
 		instance:   instance,
 		method:     method,
+		active:     true,
 	}
 	e.registeredWebhooks[path] = binding
 	e.webhookMu.Unlock()
@@ -330,6 +341,13 @@ func (e *Executor) handleWebhookTrigger(workflowID string, instance *WorkflowIns
 		e.webhookMu.Lock()
 		b := *binding // snapshot
 		e.webhookMu.Unlock()
+
+		// If workflow/path is no longer active, reject rather than executing stale config.
+		if !b.active || b.instance == nil {
+			w.WriteHeader(http.StatusNotFound)
+			fmt.Fprintf(w, "webhook not found")
+			return
+		}
 
 		if r.Method != b.method {
 			w.WriteHeader(http.StatusMethodNotAllowed)

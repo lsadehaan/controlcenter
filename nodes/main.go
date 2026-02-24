@@ -462,6 +462,8 @@ func main() {
 		fbSettings := cfg.GetFileBrowserSettings()
 		if fbSettings.Enabled && len(fbSettings.AllowedPaths) > 0 {
 			sshServer.SetAllowedPaths(fbSettings.AllowedPaths)
+		} else {
+			sshServer.SetAllowedPaths(nil)
 		}
 		go func() {
 			if err := sshServer.Start(); err != nil {

@@ -8,6 +8,15 @@ Each release should have a section with the version number as a heading level 2 
 
 ---
 
+## v0.17.1
+
+### Fixes
+
+- **SFTP allowed paths thread safety**: Added `pathsMu sync.RWMutex` to protect `allowedPaths` from concurrent access during config reload and SFTP requests. `SetAllowedPaths` now copies the caller's slice to prevent shared mutation.
+- **Stricter path traversal validation**: Rewrote `validatePath` to explicitly handle `"."` (exact match), `".."` (parent), absolute relative paths, and normal descendants — more robust than the previous prefix check.
+- **Stale webhook handlers after reload**: Added `active` flag to webhook bindings. `LoadWorkflows` marks all bindings inactive before re-processing, so removed workflows return 404 instead of executing stale config.
+- **Startup SFTP policy consistency**: `SetAllowedPaths(nil)` is now called at startup when file browser is disabled, matching the reload behavior.
+
 ## v0.17.0
 
 ### Critical Fix

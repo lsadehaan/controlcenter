@@ -24,6 +24,7 @@ type SSHServer struct {
 	privateKey ssh.Signer
 	keysMu     sync.RWMutex
 	authorizedKeys []ssh.PublicKey
+	pathsMu        sync.RWMutex
 	allowedPaths   []string
 	logger     zerolog.Logger
 	listener   net.Listener
@@ -83,7 +84,16 @@ func (s *SSHServer) UpdateAuthorizedKeys(keys []string) {
 }
 
 func (s *SSHServer) SetAllowedPaths(paths []string) {
-	s.allowedPaths = paths
+	s.pathsMu.Lock()
+	defer s.pathsMu.Unlock()
+
+	if paths == nil {
+		s.allowedPaths = nil
+		return
+	}
+
+	// Copy to avoid sharing caller-owned slices across goroutines.
+	s.allowedPaths = append([]string(nil), paths...)
 }
 
 func (s *SSHServer) Start() error {
@@ -316,12 +326,16 @@ func (s *SSHServer) validatePath(rawPath string) (string, error) {
 		return "", fmt.Errorf("failed to resolve path: %w", err)
 	}
 
+	s.pathsMu.RLock()
+	allowedPaths := append([]string(nil), s.allowedPaths...)
+	s.pathsMu.RUnlock()
+
 	// If no allowed paths configured, deny all SFTP file operations
-	if len(s.allowedPaths) == 0 {
+	if len(allowedPaths) == 0 {
 		return "", fmt.Errorf("no allowed paths configured")
 	}
 
-	for _, allowed := range s.allowedPaths {
+	for _, allowed := range allowedPaths {
 		allowedAbs, err := filepath.Abs(filepath.Clean(allowed))
 		if err != nil {
 			continue
@@ -330,7 +344,20 @@ func (s *SSHServer) validatePath(rawPath string) (string, error) {
 		if err != nil {
 			continue
 		}
-		if !strings.HasPrefix(rel, "..") {
+
+		// Allow "." (same path) and normal descendants, reject parent traversal.
+		if rel == "." {
+			return absPath, nil
+		}
+		parentPrefix := ".." + string(filepath.Separator)
+		if rel == ".." || strings.HasPrefix(rel, parentPrefix) {
+			continue
+		}
+		if filepath.IsAbs(rel) {
+			continue
+		}
+
+		if rel != "" {
 			return absPath, nil
 		}
 	}
