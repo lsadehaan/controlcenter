@@ -572,6 +572,16 @@ func (w *Watcher) processFile(filePath string, rule Rule) {
 	if ops.CopyToDir != "" {
 		var err error
 
+		// Ensure destination directory exists
+		destDir := filepath.Dir(destPath)
+		if err := os.MkdirAll(destDir, 0755); err != nil {
+			w.logger.Error().
+				Err(err).
+				Str("dir", destDir).
+				Msg("❌ Failed to create destination directory")
+			return
+		}
+
 		// Check if destination exists and overwrite setting
 		if !ops.Overwrite && w.fileExists(destPath) {
 			w.logger.Info().

@@ -8,6 +8,12 @@ Each release should have a section with the version number as a heading level 2 
 
 ---
 
+## v0.17.3
+
+### Fixes
+
+- **Fixed file move failing when destination directory doesn't exist**: The filewatcher's move operation (`CopyFileOption=21`) failed with "no such file or directory" when the target directory (e.g., `processed/`) hadn't been created yet. Now automatically creates the destination directory before moving the file, matching the behavior already present in copy operations.
+
 ## v0.17.2
 
 ### Fixes
