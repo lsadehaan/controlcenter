@@ -458,6 +458,11 @@ func main() {
 		logger.Error().Err(err).Msg("Failed to create SSH server")
 	} else {
 		agent.sshServer = sshServer
+		// Wire up allowed paths for SFTP from FileBrowserSettings
+		fbSettings := cfg.GetFileBrowserSettings()
+		if fbSettings.Enabled && len(fbSettings.AllowedPaths) > 0 {
+			sshServer.SetAllowedPaths(fbSettings.AllowedPaths)
+		}
 		go func() {
 			if err := sshServer.Start(); err != nil {
 				logger.Error().Err(err).Msg("SSH server stopped")
@@ -1083,9 +1088,15 @@ func (a *Agent) reloadWorkflows() {
 		}
 	}
 	
-	// Also update SSH authorized keys
+	// Also update SSH server settings
 	if a.sshServer != nil && a.config != nil {
 		a.sshServer.UpdateAuthorizedKeys(a.config.AuthorizedSSHKeys)
+		fbSettings := a.config.GetFileBrowserSettings()
+		if fbSettings.Enabled && len(fbSettings.AllowedPaths) > 0 {
+			a.sshServer.SetAllowedPaths(fbSettings.AllowedPaths)
+		} else {
+			a.sshServer.SetAllowedPaths(nil)
+		}
 	}
 }
 
@@ -1180,6 +1191,9 @@ func (a *Agent) loadFileWatcherRules() {
 			a.config.FileWatcherSettings.ScanSubDir,
 		)
 	}
+	if a.config.FileWatcherSettings.MaxConcurrent > 0 {
+		a.fileWatcher.SetMaxConcurrent(a.config.FileWatcherSettings.MaxConcurrent)
+	}
 
 	// Stop existing watcher
 	a.fileWatcher.Stop()
@@ -1204,7 +1218,7 @@ func (a *Agent) loadFileWatcherRules() {
 	}
 	
 	// Fallback to local config
-	if len(rules) == 0 && a.config != nil {
+	if len(rules) == 0 && a.config != nil && a.config.Extra != nil {
 		if configData, ok := a.config.Extra["fileWatcherRules"].([]interface{}); ok {
 			for _, r := range configData {
 				if ruleData, err := json.Marshal(r); err == nil {

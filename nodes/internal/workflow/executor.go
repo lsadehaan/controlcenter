@@ -18,15 +18,25 @@ import (
 )
 
 type Executor struct {
-	mu           sync.RWMutex
-	workflows    map[string]*WorkflowInstance
-	state        *StateManager
-	logger       zerolog.Logger
-	watcher      *fsnotify.Watcher
-	stopChan     chan struct{}
-	stopped      bool
-	alertHandler func(level, message string, details map[string]interface{})
-	stepRegistry *StepRegistry
+	mu                 sync.RWMutex
+	workflows          map[string]*WorkflowInstance
+	state              *StateManager
+	logger             zerolog.Logger
+	watcher            *fsnotify.Watcher
+	stopChan           chan struct{}
+	stopped            bool
+	alertHandler       func(level, message string, details map[string]interface{})
+	stepRegistry       *StepRegistry
+	webhookMu          sync.Mutex
+	registeredWebhooks map[string]*webhookBinding // tracks registered HTTP paths to prevent duplicate panic
+}
+
+// webhookBinding holds mutable state for a registered webhook handler.
+// The handler closure reads these fields under webhookMu so reloads take effect.
+type webhookBinding struct {
+	workflowID string
+	instance   *WorkflowInstance
+	method     string
 }
 
 type WorkflowInstance struct {
@@ -44,11 +54,12 @@ func NewExecutor(stateFile string, logger zerolog.Logger) (*Executor, error) {
 	}
 
 	return &Executor{
-		workflows:    make(map[string]*WorkflowInstance),
-		state:        state,
-		logger:       logger,
-		stopChan:     make(chan struct{}),
-		stepRegistry: NewStepRegistry(logger, nil),
+		workflows:          make(map[string]*WorkflowInstance),
+		state:              state,
+		logger:             logger,
+		stopChan:           make(chan struct{}),
+		stepRegistry:       NewStepRegistry(logger, nil),
+		registeredWebhooks: make(map[string]*webhookBinding),
 	}, nil
 }
 
@@ -292,9 +303,35 @@ func (e *Executor) handleWebhookTrigger(workflowID string, instance *WorkflowIns
 		method = http.MethodPost
 	}
 
-	// Register handler once per workflowID
+	e.webhookMu.Lock()
+	if binding, exists := e.registeredWebhooks[path]; exists {
+		// Path already registered — update the binding so the existing handler
+		// picks up the new workflow config on the next request.
+		binding.workflowID = workflowID
+		binding.instance = instance
+		binding.method = method
+		e.webhookMu.Unlock()
+		e.logger.Info().
+			Str("workflow", workflowID).
+			Str("path", path).
+			Msg("Webhook path already registered, updated binding")
+		return
+	}
+	binding := &webhookBinding{
+		workflowID: workflowID,
+		instance:   instance,
+		method:     method,
+	}
+	e.registeredWebhooks[path] = binding
+	e.webhookMu.Unlock()
+
 	http.HandleFunc(path, func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != method {
+		// Read current binding under lock so reloads take effect
+		e.webhookMu.Lock()
+		b := *binding // snapshot
+		e.webhookMu.Unlock()
+
+		if r.Method != b.method {
 			w.WriteHeader(http.StatusMethodNotAllowed)
 			fmt.Fprintf(w, "method not allowed")
 			return
@@ -327,13 +364,13 @@ func (e *Executor) handleWebhookTrigger(workflowID string, instance *WorkflowIns
 		}
 
 		// Execute workflow asynchronously
-		go e.executeWorkflow(workflowID, instance, ctx)
+		go e.executeWorkflow(b.workflowID, b.instance, ctx)
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusAccepted)
 		_ = json.NewEncoder(w).Encode(map[string]interface{}{
 			"status":   "queued",
-			"workflow": workflowID,
+			"workflow": b.workflowID,
 		})
 	})
 
@@ -650,16 +687,50 @@ func (sm *StateManager) save() error {
 func (sm *StateManager) StartWorkflow(workflowID string, context map[string]interface{}) {
 	sm.mu.Lock()
 	defer sm.mu.Unlock()
-	
+
+	// Deep-copy context so the state manager owns its own copy.
+	// Without this, json.MarshalIndent in save() races with step goroutines
+	// writing to the same context map (concurrent map read+write = panic).
+	ctxCopy := deepCopyMap(context)
+
 	sm.state[workflowID] = &WorkflowState{
 		WorkflowID:     workflowID,
 		Status:         "running",
 		StartTime:      time.Now(),
-		Context:        context,
+		Context:        ctxCopy,
 		CompletedSteps: []string{},
 	}
-	
+
 	sm.save()
+}
+
+// deepCopyMap recursively deep-copies a map[string]interface{}.
+func deepCopyMap(m map[string]interface{}) map[string]interface{} {
+	if m == nil {
+		return nil
+	}
+	result := make(map[string]interface{}, len(m))
+	for k, v := range m {
+		result[k] = deepCopyValue(v)
+	}
+	return result
+}
+
+// deepCopyValue recursively deep-copies a value that may contain nested maps or slices.
+func deepCopyValue(v interface{}) interface{} {
+	switch val := v.(type) {
+	case map[string]interface{}:
+		return deepCopyMap(val)
+	case []interface{}:
+		result := make([]interface{}, len(val))
+		for i, item := range val {
+			result[i] = deepCopyValue(item)
+		}
+		return result
+	default:
+		// Scalars (string, int, float64, bool, nil) are safe to share
+		return v
+	}
 }
 
 func (sm *StateManager) CompleteStep(workflowID, stepID string) {

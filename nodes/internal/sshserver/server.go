@@ -8,15 +8,23 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	"github.com/rs/zerolog"
 	"golang.org/x/crypto/ssh"
 )
 
+const (
+	maxFilenameLen = 4096             // Max filename length in SFTP operations
+	maxUploadSize  = 100 * 1024 * 1024 // 100MB max upload size
+)
+
 type SSHServer struct {
 	port       int
 	privateKey ssh.Signer
+	keysMu     sync.RWMutex
 	authorizedKeys []ssh.PublicKey
+	allowedPaths   []string
 	logger     zerolog.Logger
 	listener   net.Listener
 }
@@ -68,8 +76,14 @@ func (s *SSHServer) UpdateAuthorizedKeys(keys []string) {
 		}
 		authorizedKeys = append(authorizedKeys, pubKey)
 	}
+	s.keysMu.Lock()
 	s.authorizedKeys = authorizedKeys
-	s.logger.Info().Int("count", len(s.authorizedKeys)).Msg("Updated authorized keys")
+	s.keysMu.Unlock()
+	s.logger.Info().Int("count", len(authorizedKeys)).Msg("Updated authorized keys")
+}
+
+func (s *SSHServer) SetAllowedPaths(paths []string) {
+	s.allowedPaths = paths
 }
 
 func (s *SSHServer) Start() error {
@@ -108,7 +122,11 @@ func (s *SSHServer) Stop() error {
 }
 
 func (s *SSHServer) authCallback(conn ssh.ConnMetadata, key ssh.PublicKey) (*ssh.Permissions, error) {
-	for _, authorizedKey := range s.authorizedKeys {
+	s.keysMu.RLock()
+	keys := s.authorizedKeys
+	s.keysMu.RUnlock()
+
+	for _, authorizedKey := range keys {
 		if string(authorizedKey.Marshal()) == string(key.Marshal()) {
 			s.logger.Info().Str("user", conn.User()).Msg("SSH authentication successful")
 			return &ssh.Permissions{
@@ -168,8 +186,18 @@ func (s *SSHServer) handleSession(newChannel ssh.NewChannel) {
 	for req := range requests {
 		switch req.Type {
 		case "exec":
+			if len(req.Payload) < 4 {
+				s.logger.Warn().Msg("exec request payload too short")
+				req.Reply(false, nil)
+				continue
+			}
 			s.handleExec(channel, req)
 		case "subsystem":
+			if len(req.Payload) < 4 {
+				s.logger.Warn().Msg("subsystem request payload too short")
+				req.Reply(false, nil)
+				continue
+			}
 			if string(req.Payload[4:]) == "sftp" {
 				s.handleSFTP(channel, req)
 			} else {
@@ -279,6 +307,37 @@ func (s *SSHServer) handleSFTP(channel ssh.Channel, req *ssh.Request) {
 	}
 }
 
+// validatePath checks that the given path is under one of the allowed base paths.
+// Returns the cleaned absolute path or an error.
+func (s *SSHServer) validatePath(rawPath string) (string, error) {
+	cleaned := filepath.Clean(rawPath)
+	absPath, err := filepath.Abs(cleaned)
+	if err != nil {
+		return "", fmt.Errorf("failed to resolve path: %w", err)
+	}
+
+	// If no allowed paths configured, deny all SFTP file operations
+	if len(s.allowedPaths) == 0 {
+		return "", fmt.Errorf("no allowed paths configured")
+	}
+
+	for _, allowed := range s.allowedPaths {
+		allowedAbs, err := filepath.Abs(filepath.Clean(allowed))
+		if err != nil {
+			continue
+		}
+		rel, err := filepath.Rel(allowedAbs, absPath)
+		if err != nil {
+			continue
+		}
+		if !strings.HasPrefix(rel, "..") {
+			return absPath, nil
+		}
+	}
+
+	return "", fmt.Errorf("path %q is not under any allowed directory", rawPath)
+}
+
 func (s *SSHServer) handleSFTPGet(channel ssh.Channel) {
 	// Read filename length
 	lenBytes := make([]byte, 4)
@@ -286,19 +345,30 @@ func (s *SSHServer) handleSFTPGet(channel ssh.Channel) {
 		s.logger.Error().Err(err).Msg("Failed to read filename length")
 		return
 	}
-	
+
 	fileLen := int(lenBytes[0])<<24 | int(lenBytes[1])<<16 | int(lenBytes[2])<<8 | int(lenBytes[3])
-	
+
+	if fileLen < 0 || fileLen > maxFilenameLen {
+		s.logger.Warn().Int("fileLen", fileLen).Msg("SFTP GET: filename length out of range")
+		channel.Write([]byte{0})
+		return
+	}
+
 	// Read filename
 	filename := make([]byte, fileLen)
 	if _, err := io.ReadFull(channel, filename); err != nil {
 		s.logger.Error().Err(err).Msg("Failed to read filename")
 		return
 	}
-	
-	filePath := string(filename)
+
+	filePath, err := s.validatePath(string(filename))
+	if err != nil {
+		s.logger.Warn().Err(err).Str("file", string(filename)).Msg("SFTP GET: path rejected")
+		channel.Write([]byte{0})
+		return
+	}
 	s.logger.Info().Str("file", filePath).Msg("SFTP GET request")
-	
+
 	// Read file
 	data, err := os.ReadFile(filePath)
 	if err != nil {
@@ -306,7 +376,7 @@ func (s *SSHServer) handleSFTPGet(channel ssh.Channel) {
 		channel.Write([]byte{0}) // Error
 		return
 	}
-	
+
 	// Send success and file size
 	channel.Write([]byte{1}) // Success
 	sizeBytes := make([]byte, 8)
@@ -315,7 +385,7 @@ func (s *SSHServer) handleSFTPGet(channel ssh.Channel) {
 		sizeBytes[i] = byte(size >> (8 * (7 - i)))
 	}
 	channel.Write(sizeBytes)
-	
+
 	// Send file data
 	channel.Write(data)
 }
@@ -327,31 +397,48 @@ func (s *SSHServer) handleSFTPPut(channel ssh.Channel) {
 		s.logger.Error().Err(err).Msg("Failed to read filename length")
 		return
 	}
-	
+
 	fileLen := int(lenBytes[0])<<24 | int(lenBytes[1])<<16 | int(lenBytes[2])<<8 | int(lenBytes[3])
-	
+
+	if fileLen < 0 || fileLen > maxFilenameLen {
+		s.logger.Warn().Int("fileLen", fileLen).Msg("SFTP PUT: filename length out of range")
+		channel.Write([]byte{0})
+		return
+	}
+
 	// Read filename
 	filename := make([]byte, fileLen)
 	if _, err := io.ReadFull(channel, filename); err != nil {
 		s.logger.Error().Err(err).Msg("Failed to read filename")
 		return
 	}
-	
-	filePath := string(filename)
+
+	filePath, err := s.validatePath(string(filename))
+	if err != nil {
+		s.logger.Warn().Err(err).Str("file", string(filename)).Msg("SFTP PUT: path rejected")
+		channel.Write([]byte{0})
+		return
+	}
 	s.logger.Info().Str("file", filePath).Msg("SFTP PUT request")
-	
+
 	// Read file size
 	sizeBytes := make([]byte, 8)
 	if _, err := io.ReadFull(channel, sizeBytes); err != nil {
 		s.logger.Error().Err(err).Msg("Failed to read file size")
 		return
 	}
-	
+
 	var size uint64
 	for i := 0; i < 8; i++ {
 		size = (size << 8) | uint64(sizeBytes[i])
 	}
-	
+
+	if size > maxUploadSize {
+		s.logger.Warn().Uint64("size", size).Msg("SFTP PUT: file size exceeds limit")
+		channel.Write([]byte{0})
+		return
+	}
+
 	// Read file data
 	data := make([]byte, size)
 	if _, err := io.ReadFull(channel, data); err != nil {
@@ -359,7 +446,7 @@ func (s *SSHServer) handleSFTPPut(channel ssh.Channel) {
 		channel.Write([]byte{0}) // Error
 		return
 	}
-	
+
 	// Ensure directory exists
 	dir := filepath.Dir(filePath)
 	if err := os.MkdirAll(dir, 0755); err != nil {
@@ -367,13 +454,13 @@ func (s *SSHServer) handleSFTPPut(channel ssh.Channel) {
 		channel.Write([]byte{0}) // Error
 		return
 	}
-	
+
 	// Write file
 	if err := os.WriteFile(filePath, data, 0644); err != nil {
 		s.logger.Error().Err(err).Msg("Failed to write file")
 		channel.Write([]byte{0}) // Error
 		return
 	}
-	
+
 	channel.Write([]byte{1}) // Success
 }

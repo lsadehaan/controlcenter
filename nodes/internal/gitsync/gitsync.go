@@ -115,16 +115,35 @@ func (g *GitSync) Pull() error {
 		return fmt.Errorf("git fetch failed: %w - output: %s", err, string(output))
 	}
 
-	// Reset to origin/main (or master)
+	// Determine the remote branch
 	branch := "main"
-	cmd = exec.Command("git", "-C", g.repoPath, "reset", "--hard", fmt.Sprintf("origin/%s", branch))
-	if _, err := cmd.CombinedOutput(); err != nil {
-		// Try master branch if main doesn't exist
+	cmd = exec.Command("git", "-C", g.repoPath, "rev-parse", "--verify", fmt.Sprintf("origin/%s", branch))
+	if err := cmd.Run(); err != nil {
 		branch = "master"
-		cmd = exec.Command("git", "-C", g.repoPath, "reset", "--hard", fmt.Sprintf("origin/%s", branch))
-		if output2, err2 := cmd.CombinedOutput(); err2 != nil {
-			return fmt.Errorf("git reset failed: %w - output: %s", err2, string(output2))
+	}
+
+	// Check for local commits ahead of remote and back them up
+	cmd = exec.Command("git", "-C", g.repoPath, "log", "--oneline", fmt.Sprintf("origin/%s..HEAD", branch))
+	if output, err := cmd.Output(); err == nil && len(strings.TrimSpace(string(output))) > 0 {
+		timestamp := time.Now().Format("20060102-150405")
+		backupBranch := fmt.Sprintf("backup/%s/%s", g.agentID, timestamp)
+		g.logger.Warn().
+			Str("commits", strings.TrimSpace(string(output))).
+			Str("backup_branch", backupBranch).
+			Msg("Local commits ahead of remote - creating backup branch before reset")
+
+		cmd = exec.Command("git", "-C", g.repoPath, "branch", backupBranch, "HEAD")
+		if branchOut, err := cmd.CombinedOutput(); err != nil {
+			g.logger.Error().Err(err).Str("output", string(branchOut)).Msg("Failed to create backup branch - aborting reset to prevent data loss")
+			return fmt.Errorf("cannot reset: backup branch creation failed: %w", err)
 		}
+		g.logger.Warn().Str("branch", backupBranch).Msg("Local commits backed up to branch")
+	}
+
+	// Reset to remote branch
+	cmd = exec.Command("git", "-C", g.repoPath, "reset", "--hard", fmt.Sprintf("origin/%s", branch))
+	if output, err := cmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("git reset failed: %w - output: %s", err, string(output))
 	}
 
 	g.logger.Info().Str("branch", branch).Msg("Repository updated successfully")

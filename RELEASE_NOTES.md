@@ -8,6 +8,46 @@ Each release should have a section with the version number as a heading level 2 
 
 ---
 
+## v0.17.0
+
+### Critical Fix
+
+- **Fixed concurrent map read/write crash**: Agent panicked (exit code 2) when multiple files arrived simultaneously. Root cause: `CommandStep.Execute()` mutated a shared context map while `StateManager.save()` serialized it via `json.MarshalIndent`. Fixed with recursive deep-copy of context maps in `StartWorkflow()`.
+
+### Security Hardening
+
+- **SSH/SFTP path traversal protection**: SFTP file operations now validate paths against a configurable allowlist (`fileBrowserSettings.allowedPaths`). Requests outside allowed directories are rejected.
+- **SFTP size limits**: Filename length capped at 4096 bytes, upload size capped at 100MB to prevent OOM from malicious payloads.
+- **SSH payload length guards**: Added bounds checks before indexing `req.Payload` in `handleSession` and `handleExec` to prevent index-out-of-range panics from malformed SSH requests.
+- **SSH authorized keys mutex**: Added `sync.RWMutex` to protect concurrent access to `authorizedKeys` during key updates and authentication callbacks.
+
+### Concurrency Fixes
+
+- **WebSocket write serialization**: Added `writeMu` to satisfy gorilla/websocket's single-writer requirement. Added `connMu` to protect the connection pointer from concurrent read/write/nil races. Read pump now captures the connection pointer to avoid accessing `c.conn` without locking.
+- **WebSocket close synchronization**: Disconnect path now acquires `writeMu` before closing the connection, preventing write/close races under load.
+- **Webhook handler thread safety**: Protected `registeredWebhooks` map with `sync.Mutex`. Webhook handlers now read config through a mutable binding so reloads take effect without requiring a restart.
+- **Webhook duplicate registration guard**: Prevents `http.HandleFunc` panic on duplicate path registration during config reload.
+
+### File Watcher Improvements
+
+- **Bounded worker pool**: Replaced unbounded goroutine spawning with a configurable worker pool (default: 3 workers, configurable via `fileWatcherSettings.maxConcurrent`). Prevents resource exhaustion when many files arrive simultaneously.
+- **Clean shutdown**: Workers, event handlers, and cleanup goroutines are tracked with `sync.WaitGroup` for orderly shutdown. Fixed potential panic from sending to a closed channel during shutdown.
+- **Watcher key fix**: Fixed mismatch between watcher lookup key and storage key that could cause duplicate watchers for the same directory.
+- **Time restrictions fix**: Zero-value time restrictions no longer block all file processing. Empty restrictions now correctly mean "no restrictions".
+
+### Bug Fixes
+
+- **Fixed `getPlatform()` in API**: Changed from `os.Getenv("GOOS")` (always empty at runtime) to `runtime.GOOS`/`runtime.GOARCH`.
+- **Auto-generate AgentID**: `config.Load()` now generates a UUID if `AgentID` is empty, fixing the config test and preventing blank agent IDs on first run.
+- **Nil map guard**: Fixed potential panic when accessing `config.Extra` map in `loadFileWatcherRules` when Extra is nil.
+- **Git pull data safety**: Local commits ahead of remote are backed up to a branch before `git reset --hard`. If backup branch creation fails, the reset is aborted to prevent data loss.
+- **SFTP allowed paths reload**: SSH server allowed paths are now updated on config reload (not just startup). Disabling file browser or clearing paths properly revokes SFTP access.
+
+### Breaking Changes
+
+- **SFTP requires `fileBrowserSettings` configuration**: SFTP file operations now require `fileBrowserSettings.enabled: true` with `allowedPaths` configured. Existing SFTP automation will need to add this configuration.
+- **Bounded file processing**: File watcher now processes at most 3 files concurrently by default (previously unbounded). Configure `fileWatcherSettings.maxConcurrent` to adjust.
+
 ## v0.16.0
 
 ### New Features

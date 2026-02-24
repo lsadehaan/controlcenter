@@ -5,6 +5,8 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+
+	"github.com/google/uuid"
 )
 
 type Config struct {
@@ -44,8 +46,9 @@ type LogSettings struct {
 }
 
 type FileWatcherSettings struct {
-	ScanDir    string `json:"scanDir"`    // Root directory for pattern-based watching
-	ScanSubDir bool   `json:"scanSubDir"` // Whether to recursively watch matched directories
+	ScanDir       string `json:"scanDir"`       // Root directory for pattern-based watching
+	ScanSubDir    bool   `json:"scanSubDir"`    // Whether to recursively watch matched directories
+	MaxConcurrent int    `json:"maxConcurrent"` // Max concurrent file processing workers (default: 3)
 }
 
 type FileBrowserSettings struct {
@@ -101,6 +104,11 @@ func Load(path string) (*Config, error) {
 				return nil, err
 			}
 		}
+	}
+
+	// Generate AgentID if not set
+	if cfg.AgentID == "" {
+		cfg.AgentID = uuid.New().String()
 	}
 
 	return cfg, nil

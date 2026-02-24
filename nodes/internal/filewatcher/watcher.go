@@ -92,6 +92,12 @@ type ProcessingFile struct {
 	endTime   time.Time
 }
 
+// fileJob represents a file processing job for the worker pool
+type fileJob struct {
+	filePath string
+	rule     Rule
+}
+
 // Watcher manages file watching rules
 type Watcher struct {
 	mu               sync.Mutex
@@ -104,6 +110,9 @@ type Watcher struct {
 	scanDir          string  // Global root directory for pattern mode
 	scanSubDir       bool    // Global recursive flag for pattern mode
 	processingFiles  sync.Map // map[string]*ProcessingFile - thread-safe map of files being processed
+	maxConcurrent    int          // Max concurrent file processing workers (default: 3)
+	workChan         chan fileJob // Channel for worker pool jobs
+	wg               sync.WaitGroup // WaitGroup for worker pool shutdown
 }
 
 // WorkflowExecutor interface for executing workflows
@@ -119,13 +128,22 @@ func NewWatcher(logger zerolog.Logger, executor WorkflowExecutor) *Watcher {
 		watchers:         make(map[string]*fsnotify.Watcher),
 		logger:           logger.With().Str("component", "filewatcher").Logger(),
 		stopChan:         make(chan struct{}),
+		stopped:          true, // Start in stopped state so first Start() works cleanly
 		workflowExecutor: executor,
+		maxConcurrent:    3, // Default: 3 concurrent file processing workers
 	}
 
-	// Start cleanup goroutine for processed files
-	go w.cleanupProcessedFiles()
-
 	return w
+}
+
+// SetMaxConcurrent sets the maximum number of concurrent file processing workers
+func (w *Watcher) SetMaxConcurrent(n int) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	if n < 1 {
+		n = 1
+	}
+	w.maxConcurrent = n
 }
 
 // SetGlobalSettings updates the global file watcher settings
@@ -173,6 +191,18 @@ func (w *Watcher) Start() error {
 	// Reset the stopped flag and create new stop channel
 	w.stopped = false
 	w.stopChan = make(chan struct{})
+
+	// Create worker pool channel and start workers
+	w.workChan = make(chan fileJob, w.maxConcurrent*2)
+	for i := 0; i < w.maxConcurrent; i++ {
+		w.wg.Add(1)
+		go w.fileWorker(i)
+	}
+
+	// Start cleanup goroutine for processed files
+	w.wg.Add(1)
+	go w.cleanupProcessedFiles()
+
 	w.mu.Unlock()
 
 	for _, rule := range w.rules {
@@ -190,24 +220,45 @@ func (w *Watcher) Start() error {
 	return nil
 }
 
+// fileWorker processes file jobs from the work channel
+func (w *Watcher) fileWorker(id int) {
+	defer w.wg.Done()
+	for {
+		select {
+		case job, ok := <-w.workChan:
+			if !ok {
+				return
+			}
+			w.processFile(job.filePath, job.rule)
+		case <-w.stopChan:
+			return
+		}
+	}
+}
+
 // Stop stops all file watchers
 func (w *Watcher) Stop() {
 	w.mu.Lock()
-	defer w.mu.Unlock()
-	
+
 	if w.stopped {
+		w.mu.Unlock()
 		w.logger.Debug().Msg("File watchers already stopped")
 		return
 	}
-	
+
 	w.stopped = true
 	close(w.stopChan)
-	
+
 	for _, watcher := range w.watchers {
 		watcher.Close()
 	}
 	w.watchers = make(map[string]*fsnotify.Watcher)
-	
+
+	w.mu.Unlock()
+
+	// Wait for all goroutines (workers, event handlers, cleanup) to finish
+	w.wg.Wait()
+
 	w.logger.Info().Msg("File watchers stopped")
 }
 
@@ -299,9 +350,10 @@ func (w *Watcher) startWatchingRule(rule Rule) error {
 		Msg("Found directories to watch")
 
 	for _, dir := range dirsToWatch {
-		// Check if we already have a watcher for this directory
+		// Check if we already have a watcher for this directory+rule combo
+		watcherKey := rule.ID + ":" + dir
 		w.mu.Lock()
-		if _, exists := w.watchers[dir]; exists {
+		if _, exists := w.watchers[watcherKey]; exists {
 			w.mu.Unlock()
 			w.logger.Debug().Str("dir", dir).Msg("Watcher already exists for directory, skipping")
 			continue
@@ -328,10 +380,14 @@ func (w *Watcher) startWatchingRule(rule Rule) error {
 			}
 		}
 
-		w.watchers[rule.ID + ":" + dir] = watcher
+		w.watchers[watcherKey] = watcher
 
 		// Start goroutine to handle events for this watcher
-		go w.handleEvents(watcher, rule, dirRegex, fileRegex)
+		w.wg.Add(1)
+		go func() {
+			defer w.wg.Done()
+			w.handleEvents(watcher, rule, dirRegex, fileRegex)
+		}()
 
 		w.logger.Info().
 			Str("rule", rule.Name).
@@ -429,8 +485,12 @@ func (w *Watcher) handleEvents(watcher *fsnotify.Watcher, rule Rule, dirRegex, f
 				// Mark file as being processed
 				w.markFileProcessing(event.Name)
 
-				// Process the file
-				go w.processFile(event.Name, rule)
+				// Send to worker pool for processing
+				select {
+				case w.workChan <- fileJob{filePath: event.Name, rule: rule}:
+				case <-w.stopChan:
+					return
+				}
 			}
 			
 		case err, ok := <-watcher.Errors:
@@ -640,8 +700,15 @@ func (w *Watcher) matchesFile(filePath string, rule Rule, dirRegex, fileRegex *r
 }
 
 func (w *Watcher) checkTimeRestrictions(restrictions TimeRestrictions) bool {
+	// Zero values mean "no restrictions" — allow all times
+	if restrictions.StartHour == 0 && restrictions.StartMinute == 0 &&
+		restrictions.EndHour == 0 && restrictions.EndMinute == 0 &&
+		restrictions.WeekDayInterval == 0 {
+		return true
+	}
+
 	now := time.Now()
-	
+
 	// Check day of week
 	if restrictions.WeekDayInterval > 0 {
 		dayMask := 1 << uint(now.Weekday())
@@ -649,16 +716,16 @@ func (w *Watcher) checkTimeRestrictions(restrictions TimeRestrictions) bool {
 			return false
 		}
 	}
-	
+
 	// Check time of day
 	currentMinutes := now.Hour()*60 + now.Minute()
 	startMinutes := restrictions.StartHour*60 + restrictions.StartMinute
 	endMinutes := restrictions.EndHour*60 + restrictions.EndMinute
-	
+
 	if currentMinutes < startMinutes || currentMinutes > endMinutes {
 		return false
 	}
-	
+
 	return true
 }
 
@@ -1082,6 +1149,7 @@ func (w *Watcher) markFileProcessed(filePath string) {
 
 // cleanupProcessedFiles periodically removes old processed files from the map
 func (w *Watcher) cleanupProcessedFiles() {
+	defer w.wg.Done()
 	ticker := time.NewTicker(10 * time.Second)
 	defer ticker.Stop()
 

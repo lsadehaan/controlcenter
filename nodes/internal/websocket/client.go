@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"os"
 	"runtime"
+	"sync"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -15,12 +16,14 @@ import (
 
 type Client struct {
 	conn       *websocket.Conn
+	connMu     sync.RWMutex // protects conn pointer reads/writes
+	writeMu    sync.Mutex   // serializes websocket writes (gorilla requires single-writer)
 	url        string
 	agentID    string
 	logger     zerolog.Logger
 	reconnectInterval time.Duration
 	pingInterval     time.Duration
-	
+
 	onMessage  func(MessageType, json.RawMessage)
 	onConnect  func()
 	onDisconnect func()
@@ -101,10 +104,18 @@ func (c *Client) connect(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("failed to dial: %w", err)
 	}
+	c.connMu.Lock()
 	c.conn = conn
+	c.connMu.Unlock()
 	defer func() {
+		// Acquire writeMu first to ensure no concurrent SendMessage is mid-write,
+		// then connMu to nil out the pointer. Lock ordering: writeMu → connMu.
+		c.writeMu.Lock()
+		c.connMu.Lock()
 		c.conn.Close()
 		c.conn = nil
+		c.connMu.Unlock()
+		c.writeMu.Unlock()
 		if c.onDisconnect != nil {
 			c.onDisconnect()
 		}
@@ -120,12 +131,13 @@ func (c *Client) connect(ctx context.Context) error {
 	heartbeatTicker := time.NewTicker(c.pingInterval)
 	defer heartbeatTicker.Stop()
 
-	// Start read pump
+	// Start read pump — capture conn pointer so the goroutine never
+	// touches c.conn without the lock after this point.
 	readChan := make(chan error, 1)
-	go func() {
+	go func(rc *websocket.Conn) {
 		for {
 			var msg Message
-			err := c.conn.ReadJSON(&msg)
+			err := rc.ReadJSON(&msg)
 			if err != nil {
 				readChan <- err
 				return
@@ -135,7 +147,7 @@ func (c *Client) connect(ctx context.Context) error {
 				c.onMessage(msg.Type, msg.Payload)
 			}
 		}
-	}()
+	}(conn)
 
 	for {
 		select {
@@ -189,7 +201,11 @@ func (c *Client) SendStatus(status string, details map[string]interface{}) error
 }
 
 func (c *Client) SendMessage(msgType MessageType, payload interface{}) error {
-	if c.conn == nil {
+	c.connMu.RLock()
+	conn := c.conn
+	c.connMu.RUnlock()
+
+	if conn == nil {
 		return fmt.Errorf("not connected")
 	}
 
@@ -204,7 +220,9 @@ func (c *Client) SendMessage(msgType MessageType, payload interface{}) error {
 		Payload: payloadData,
 	}
 
-	return c.conn.WriteJSON(msg)
+	c.writeMu.Lock()
+	defer c.writeMu.Unlock()
+	return conn.WriteJSON(msg)
 }
 
 func getHostname() string {

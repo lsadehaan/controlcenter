@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -382,7 +383,7 @@ func getDataDir() string {
 }
 
 func getPlatform() string {
-	return fmt.Sprintf("%s/%s", os.Getenv("GOOS"), os.Getenv("GOARCH"))
+	return runtime.GOOS + "/" + runtime.GOARCH
 }
 
 // LogLevelResponse represents log level status
