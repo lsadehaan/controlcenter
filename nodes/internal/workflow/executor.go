@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/fsnotify/fsnotify"
+	"github.com/robfig/cron/v3"
 	"github.com/rs/zerolog"
 	"github.com/your-org/controlcenter/nodes/internal/config"
 )
@@ -246,42 +247,79 @@ func (e *Executor) handleFileTrigger(workflowID string, instance *WorkflowInstan
 }
 
 func (e *Executor) handleScheduleTrigger(workflowID string, instance *WorkflowInstance, config map[string]interface{}) {
-	// Parse cron expression for simple interval calculation
-	// TODO: Use proper cron library for full cron support
-	interval := 60 * time.Second // Default 1 minute
-	
-	if cronExpr, ok := config["cron"].(string); ok {
-		// Simple parsing - if it starts with "* * * * *" it's every minute
-		// If it starts with "0 * * * *" or similar, it's every hour
-		parts := strings.Fields(cronExpr)
-		if len(parts) >= 5 {
-			if parts[0] == "*" {
-				interval = 1 * time.Minute
-			} else if parts[1] == "*" && parts[0] != "*" {
-				interval = 1 * time.Hour
-			} else if parts[2] == "*" && parts[1] != "*" {
-				interval = 24 * time.Hour
-			}
-		}
-		e.logger.Info().
+	cronExpr, hasCron := config["cron"].(string)
+	intervalStr, hasInterval := config["interval"].(string)
+
+	if hasCron && cronExpr != "" {
+		e.handleCronTrigger(workflowID, instance, cronExpr)
+	} else if hasInterval && intervalStr != "" {
+		e.handleIntervalTrigger(workflowID, instance, intervalStr)
+	} else {
+		e.logger.Error().
+			Str("workflow", workflowID).
+			Msg("Schedule trigger has no cron expression or interval configured")
+	}
+}
+
+func (e *Executor) handleCronTrigger(workflowID string, instance *WorkflowInstance, cronExpr string) {
+	parser := cron.NewParser(cron.Minute | cron.Hour | cron.Dom | cron.Month | cron.Dow)
+	schedule, err := parser.Parse(cronExpr)
+	if err != nil {
+		e.logger.Error().
+			Err(err).
 			Str("workflow", workflowID).
 			Str("cron", cronExpr).
-			Dur("interval", interval).
-			Msg("Scheduled trigger set (using simplified interval)")
-	} else if intervalStr, ok := config["interval"].(string); ok {
-		if d, err := time.ParseDuration(intervalStr); err == nil {
-			interval = d
-		}
-		e.logger.Info().
-			Str("workflow", workflowID).
-			Dur("interval", interval).
-			Msg("Scheduled trigger set")
-	} else {
-		e.logger.Info().
-			Str("workflow", workflowID).
-			Dur("interval", interval).
-			Msg("Scheduled trigger set (default interval)")
+			Msg("Failed to parse cron expression")
+		return
 	}
+
+	now := time.Now()
+	next := schedule.Next(now)
+	e.logger.Info().
+		Str("workflow", workflowID).
+		Str("cron", cronExpr).
+		Time("nextRun", next).
+		Msg("Cron trigger scheduled")
+
+	for {
+		now = time.Now()
+		next = schedule.Next(now)
+		delay := next.Sub(now)
+
+		timer := time.NewTimer(delay)
+		select {
+		case <-timer.C:
+			e.logger.Info().
+				Str("workflow", workflowID).
+				Str("cron", cronExpr).
+				Msg("Cron trigger fired")
+			e.executeWorkflow(workflowID, instance, map[string]interface{}{
+				"trigger":      "schedule",
+				"time":         time.Now().Unix(),
+				"scheduledTime": next.Unix(),
+			})
+		case <-e.stopChan:
+			timer.Stop()
+			return
+		}
+	}
+}
+
+func (e *Executor) handleIntervalTrigger(workflowID string, instance *WorkflowInstance, intervalStr string) {
+	interval, err := time.ParseDuration(intervalStr)
+	if err != nil {
+		e.logger.Error().
+			Err(err).
+			Str("workflow", workflowID).
+			Str("interval", intervalStr).
+			Msg("Failed to parse interval duration")
+		return
+	}
+
+	e.logger.Info().
+		Str("workflow", workflowID).
+		Dur("interval", interval).
+		Msg("Interval trigger scheduled")
 
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
@@ -293,7 +331,6 @@ func (e *Executor) handleScheduleTrigger(workflowID string, instance *WorkflowIn
 				"trigger": "schedule",
 				"time":    time.Now().Unix(),
 			})
-			
 		case <-e.stopChan:
 			return
 		}

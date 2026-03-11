@@ -1070,11 +1070,16 @@ function getNodeFields(type) {
         placeholder: 'This workflow is designed to be called from file watchers' }
     ],
     'schedule-trigger': [
-      { key: 'cron', label: 'Cron Expression', type: 'text', default: '0 * * * *' }
+      { key: 'cron', label: 'Cron Expression', type: 'text', default: '0 * * * *',
+        placeholder: 'min hour day month weekday (e.g. 30 8 * * * = daily 8:30 AM)' },
+      { key: 'interval', label: 'Or Interval (instead of cron)', type: 'text',
+        placeholder: 'e.g. 5m, 1h, 30s (leave empty to use cron)' }
     ],
     'run-command': [
       { key: 'command', label: 'Command', type: 'text' },
-      { key: 'args', label: 'Arguments', type: 'text' }
+      { key: 'args', label: 'Arguments', type: 'text' },
+      { key: 'workingDir', label: 'Working Directory', type: 'text',
+        placeholder: 'Directory to run command in (optional)' }
     ],
     'move-file': [
       { key: 'source', label: 'Source Path', type: 'text' },

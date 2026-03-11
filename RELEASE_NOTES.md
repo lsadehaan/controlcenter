@@ -8,7 +8,13 @@ Each release should have a section with the version number as a heading level 2 
 
 ---
 
-## v0.17.3
+## v0.18.0
+
+### New Features
+
+- **Proper cron scheduling support**: Schedule triggers now use real cron expression parsing (via `robfig/cron`), firing at the exact configured time instead of rough interval approximations. Supports full 5-field cron syntax: `minute hour day-of-month month day-of-week` (e.g., `30 8 * * *` for daily at 8:30 AM, `0 */2 * * *` for every 2 hours).
+- **Interval trigger alternative**: Schedule triggers can now use a Go duration string (e.g., `5m`, `1h`, `30s`) as an alternative to cron expressions for simple recurring intervals.
+- **Working directory for run-command**: The run-command workflow step now exposes a "Working Directory" field in the UI, allowing commands to run in a specific folder.
 
 ### Fixes
 
